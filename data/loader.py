@@ -11,7 +11,7 @@ def load_dataset(file_path):
         pd.DataFrame: The loaded dataset as a pandas DataFrame.
     """
     if file_path.endswith(".csv"):
-        return pd.read_csv(file_path, encoding='utf-7')
+        return pd.read_csv(file_path, encoding='utf-8')
     elif file_path.endswith(".parquet"):
         return pd.read_parquet(file_path)
     else:

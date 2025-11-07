@@ -17,7 +17,7 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics):
                 case "Violin Summary Plot":
                     shap.plots.violin(shap_values[:,:, i], max_display=20, feature_names=X_test.columns, show=False)
                 case "Bar Plot":
-                    shap.plots.bar(shap_values[:,:, i], max_display=20, show=False)
+                    shap.plots.bar(shap_values[:,:, i], max_display=20, show=False)     
                 case "Beeswarm Summary Plot":
                     shap.plots.beeswarm(shap_values[:,:, i], max_display=20, show=False)
                 case "Waterfall Summary Plot":
