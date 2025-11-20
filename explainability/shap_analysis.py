@@ -207,6 +207,10 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
                         # Mostra a contribuição de cada feature numa ÚNICA predição
                         # Usa a primeira amostra como exemplo
                         shap.plots.waterfall(shap_values[0,:, i], max_display=20, show=False)
+                        
+                    case "Force Plot":
+                        # Mostra a contribuição das features pra uma predição específica
+                        shap.plots.force(shap_values[0,:, i], matplotlib=True, show=False)
 
                 # Salva o gráfico em alta resolução
                 filename = f"{graphic} dataset {dataset_name} class {cls}.png"

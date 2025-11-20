@@ -34,12 +34,11 @@ SHAP_SAMPLE_PERCENTAGE = 1  # 20% do dataset de teste
 
 XGBOOST_PARAMS = {
     # Função objetivo: binary:logistic pra classificação binária
-    "objective": 'binary:logistic',
+    "objective": 'multi:softprob',  # multi:softprob pra multi-class
 
     # Métrica de avaliação: logloss (correto pra binary:logistic)
     # Obs: mlogloss é pra multi-class, logloss é pra binário
-    "eval_metric": 'logloss',
-
+    "eval_metric": 'mlogloss',
     # Seed pra reprodutibilidade
     "random_state": RANDOM_STATE,
 
@@ -65,12 +64,25 @@ DISCARTED_COLUMNS = [
     'ndsCom', 'protocol', 'ethType', 'TPID', 'gooseAppid', 'class'
 ]
 
+# Remove features de consistência (baseadas em temporização)
+# Essas features podem vazar informação do alvo
+# Pro caso de uso real, é melhor não usar essas features
+WITHOUT_CONSISTENCY_FEATURES = True
+
+# Se for pra remover, adiciona elas na lista de descartadas
+if WITHOUT_CONSISTENCY_FEATURES:
+    CONSISTENCY_FEATURES = [
+        'stDiff', 'sqDiff', 'gooseLengthDiff', 'cbStatusDiff', 'apduSizeDiff', 
+        'frameLengthDiff', 'timestampDiff', 'tDiff', 'timeFromLastChange'
+    ]
+    DISCARTED_COLUMNS.extend(CONSISTENCY_FEATURES)
+
 # Nomes das classes pro problema de classificação
 # A ordem importa! Deve corresponder à ordem do LabelEncoder
-CLASS_NAMES = ["FRG", "Normal"]
+CLASS_NAMES = ["SOG.DB", "FRG", "SOG.PB", "SOG.PBM", "Normal"]
 
 # Caminho pro dataset
-DATASET_PATH = "./data/CSV files/grayhole.csv"
+DATASET_PATH = "./data/CSV files/dataset_downsampled.csv"
 
 # ============================================
 # CONFIGURAÇÕES DE VISUALIZAÇÃO (SHAP)
@@ -82,5 +94,6 @@ GRAPHICS = [
     "Violin Summary Plot",      # Mostra distribuição dos valores SHAP
     "Bar Plot",                  # Importância média das features
     "Beeswarm Summary Plot",     # Visualização densa dos valores SHAP
-    "Waterfall Summary Plot"     # Contribuição individual de cada feature
+    "Waterfall Summary Plot",     # Contribuição individual de cada feature
+    "Force Plot"                # Contribuição detalhada para uma predição específica
 ]

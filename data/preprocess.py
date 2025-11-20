@@ -1,3 +1,4 @@
+from json import encoder
 from sklearn.preprocessing import LabelEncoder
 
 def preprocess(df, target_column, discarted_columns):
@@ -24,6 +25,6 @@ def preprocess(df, target_column, discarted_columns):
     # Ex: ["FRG", "Normal"] vira [0, 1]
     encoder = LabelEncoder()
     y_encoded = encoder.fit_transform(y)
-
+    
     # Retorna também o encoder pra poder decodificar as predições depois
     return X, y_encoded, encoder
