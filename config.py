@@ -28,6 +28,10 @@ SAMPLE_SIZE = None
 # Usa None pra processar todo o dataset de teste (não recomendado pra datasets grandes)
 SHAP_SAMPLE_PERCENTAGE = 1  # 20% do dataset de teste
 
+# Caminho base pra salvar os resultados dos experimentos
+# Cada experimento vai criar uma subpasta aqui
+PATH_BASE="./results_without_consistency_features"
+
 # ============================================
 # PARÂMETROS DO MODELO XGBOOST
 # ============================================

@@ -1,3 +1,9 @@
+# Ignorar arquivos de dados e resultados gerados
 CSV files/
 
-results/
+# Pasta para salvar os resultados dos experimentos
+results_with_consistency_features/
+results_without_consistency_features/
+
+# Ignorar arquivos temporários e de cache
+__pycache__/

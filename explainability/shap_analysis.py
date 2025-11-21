@@ -186,18 +186,21 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
 
                 # Configura a figura
                 plt.figure(figsize=(12, 8))
-                plt.title(f"{cls} Class {graphic}")
+                if graphic == "Bar Plot":
+                    plt.title(f"Summary {graphic}")
+                else:
+                    plt.title(f"{cls} Class {graphic}")
 
                 # Gera o tipo de gráfico apropriado
                 match graphic:
                     case "Violin Summary Plot":
                         # Mostra a distribuição dos valores SHAP pra cada feature
-                        shap.plots.violin(shap_values[:,:, i], max_display=20,
-                                         feature_names=X_test_sample.columns, show=False)
+                        shap.plots.violin(shap_values[:,:, i], max_display=20, feature_names=X_test_sample.columns, show=False)
 
                     case "Bar Plot":
                         # Mostra a importância média (|SHAP|) de cada feature
-                        shap.plots.bar(shap_values[:,:, i], max_display=20, show=False)
+                        # shap.plots.bar(shap_values[:,:, i], max_display=20, show=False)
+                        shap.summary_plot(shap_values, X_test, plot_type="bar", show=False)
 
                     case "Beeswarm Summary Plot":
                         # Visualização densa mostrando valor SHAP vs valor da feature

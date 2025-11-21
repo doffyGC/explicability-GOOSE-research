@@ -139,7 +139,7 @@ def main():
     # Salva relatórios em Markdown e Log
     md_path, log_path = save_metrics_report(
         cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa,
-        test_cm, CLASS_NAMES, dataset_name, output_dir="./results"
+        test_cm, CLASS_NAMES, dataset_name, output_dir=PATH_BASE
     )
 
     print(f"✓ Relatório Markdown salvo: {md_path}")
@@ -168,7 +168,7 @@ def main():
         X_test,
         CLASS_NAMES,
         dataset_name=dataset_name,
-        path_base="./results",
+        path_base=PATH_BASE,
         graphics=GRAPHICS,
         sample_percentage=SHAP_SAMPLE_PERCENTAGE,
         random_state=RANDOM_STATE
