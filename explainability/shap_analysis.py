@@ -200,7 +200,7 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
                     case "Bar Plot":
                         # Mostra a importância média (|SHAP|) de cada feature
                         # shap.plots.bar(shap_values[:,:, i], max_display=20, show=False)
-                        shap.summary_plot(shap_values, X_test, plot_type="bar", show=False)
+                        shap.summary_plot(shap_values, X_test, plot_type="bar", class_names=class_names, show=False)
 
                     case "Beeswarm Summary Plot":
                         # Visualização densa mostrando valor SHAP vs valor da feature
