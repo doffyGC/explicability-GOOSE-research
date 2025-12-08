@@ -1,10 +1,52 @@
 import xgboost as xgb
 from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
 import gc
 
-def train_model(X, y, params, n_splits, seed, test_size=0.2):
+
+def _get_classifier(model_type, params):
     """
-    Treina um modelo XGBoost usando validação cruzada K-Fold.
+    Retorna o classificador configurado com base no tipo informado.
+    
+    Suporta aliases de nomes (ex: 'xgb' -> 'xgboost', 'rf' -> 'random_forest', etc).
+    """
+    from config import MODEL_NAME_ALIASES
+    
+    # Normaliza o nome: lowercase e remove espaços
+    model_type_normalized = str(model_type).strip().lower()
+    
+    # Resolve o alias pro nome canônico
+    if model_type_normalized in MODEL_NAME_ALIASES:
+        model_type_canonical = MODEL_NAME_ALIASES[model_type_normalized]
+    else:
+        raise ValueError(
+            f"Modelo não suportado: '{model_type}'. "
+            f"Modelos disponíveis: {', '.join(MODEL_NAME_ALIASES.values())}"
+        )
+    
+    match model_type_canonical:
+        case "xgboost":
+            return xgb.XGBClassifier(**params)
+        case "random_forest":
+            return RandomForestClassifier(**params)
+        case "svm":
+            return SVC(**params)
+        case "mlp":
+            return MLPClassifier(**params)
+        case "decision_tree":
+            return DecisionTreeClassifier(**params)
+        case "logistic_regression":
+            return LogisticRegression(**params)
+        case _:
+            raise ValueError(f"Modelo não suportado: {model_type_canonical}")
+
+def train_model(X, y, model_type, params, n_splits, seed, test_size=0.2):
+    """
+    Treina um classificador (XGBoost ou baseline escolhido) usando validação cruzada K-Fold.
 
     IMPORTANTE: Segue boas práticas acadêmicas!
     1. Separa um conjunto de TESTE FINAL (hold-out) ANTES do K-Fold
@@ -14,7 +56,8 @@ def train_model(X, y, params, n_splits, seed, test_size=0.2):
     Args:
         X (pd.DataFrame): DataFrame com as features.
         y (np.array): Array com a variável target (já codificada).
-        params (dict): Dicionário com os parâmetros do XGBoost.
+        model_type (str): Tipo de classificador (xgboost, random_forest, svm, mlp, decision_tree, logistic_regression).
+        params (dict): Dicionário com os parâmetros do classificador escolhido.
         n_splits (int): Número de folds pra validação cruzada.
         seed (int): Seed pra reprodutibilidade.
         test_size (float): Proporção do dataset reservada pro teste final (padrão: 0.2 = 20%).
@@ -67,7 +110,9 @@ def train_model(X, y, params, n_splits, seed, test_size=0.2):
         print(f"  - Validação: {len(X_val_fold)} amostras")
 
         # Treina o modelo nesse fold
-        model = xgb.XGBClassifier(**params)
+        model = _get_classifier(model_type, params)
+        
+        print("  - Treinando modelo...")
         model.fit(X_train_fold, y_train_fold)
 
         # Guarda o modelo e os dados de validação pra calcular métricas depois
@@ -87,7 +132,7 @@ def train_model(X, y, params, n_splits, seed, test_size=0.2):
     # PASSO 3: Treina modelo final usando TODOS os dados de treino
     # Esse modelo vai ser usado pro SHAP e pra produção
     print(f"Treinando modelo final com TODOS os {len(X_train_full)} dados de treino...")
-    final_model = xgb.XGBClassifier(**params)
+    final_model = _get_classifier(model_type, params)
     final_model.fit(X_train_full, y_train_full)
     print("✓ Modelo final treinado!")
     print()
