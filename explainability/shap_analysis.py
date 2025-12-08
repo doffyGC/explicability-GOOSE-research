@@ -1,7 +1,40 @@
 import shap
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import os
 import gc
+
+def get_ten_most_important_features(shap_values, X):
+    """
+    Retorna as top 10 features mais importantes com base nos valores SHAP.
+    """
+
+    # Extrai o array NumPy REAL de valores shap
+    if hasattr(shap_values, "values"):
+        shap_array = shap_values.values
+    else:
+        shap_array = shap_values  # compatibilidade caso já seja array
+
+    # Se for multiclasse → média entre classes
+    if shap_array.ndim == 3:
+        shap_array = np.mean(np.abs(shap_array), axis=2)
+    else:
+        shap_array = np.abs(shap_array)
+
+    # Média por feature
+    mean_abs_shap = shap_array.mean(axis=0)
+
+    feature_importance = pd.DataFrame({
+        "feature": X.columns,
+        "importance": mean_abs_shap
+    })
+
+    top_10 = feature_importance.nlargest(10, "importance")
+    top_10["percentage"] = (top_10["importance"] / top_10["importance"].sum()) * 100
+
+    print(top_10)
+
 
 def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, sample_percentage=0.20, random_state=42):
     """
@@ -55,6 +88,10 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
     shap_values = explainer(X_test_sample)
     print("✓ Valores SHAP calculados!")
     print()
+    
+    # Verifica as 10 features mais importantes
+    print("Calculando as 10 features mais importantes baseado nos valores SHAP médios absolutos...")
+    get_ten_most_important_features(shap_values, X_test_sample)
 
     # Detecta se é classificação binária ou multiclasse
     # Binária: shap_values tem shape (n_samples, n_features)
@@ -213,8 +250,9 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
                         
                     case "Force Plot":
                         # Mostra a contribuição das features pra uma predição específica
+                        plt.figure(figsize=(30, 4))
                         shap.plots.force(shap_values[0,:, i], matplotlib=True, show=False)
-
+                        
                 # Salva o gráfico em alta resolução
                 filename = f"{graphic} dataset {dataset_name} class {cls}.png"
                 full_path = os.path.join(save_path, filename)

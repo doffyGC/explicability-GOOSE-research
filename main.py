@@ -73,10 +73,20 @@ def main():
     # ETAPA 3: Treinamento
     # ========================================
 
+    # Exibe qual modelo foi escolhido
+    model_desc = MODEL_DESCRIPTIONS.get(MODEL_PARAMS.__class__.__name__, "")
+    canonical_model = MODEL_NAME_ALIASES.get(MODEL_TYPE.lower(), MODEL_TYPE)
+    print("=" * 60)
+    print(f"MODELO ESCOLHIDO: {canonical_model.upper()}")
+    print(f"Description: {MODEL_DESCRIPTIONS.get(canonical_model, canonical_model)}")
+    print("=" * 60)
+    print()
+
     # Treina modelos usando validação cruzada + hold-out test set
     cv_models, final_model, X_test, y_test = train_model(
         X, y,
-        params=XGBOOST_PARAMS,
+        model_type=MODEL_TYPE,
+        params=MODEL_PARAMS.get(canonical_model, XGBOOST_PARAMS),
         n_splits=N_SPLITS,
         seed=RANDOM_STATE,
         test_size=TEST_SIZE
@@ -87,7 +97,7 @@ def main():
     # ========================================
 
     # Avalia modelos da CV e o modelo final
-    cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa, test_cm = evaluate_models(
+    cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa, test_cm, cv_total_cm = evaluate_models(
         cv_models, final_model, X_test, y_test, CLASS_NAMES
     )
 
@@ -139,7 +149,7 @@ def main():
     # Salva relatórios em Markdown e Log
     md_path, log_path = save_metrics_report(
         cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa,
-        test_cm, CLASS_NAMES, dataset_name, output_dir=PATH_BASE
+        test_cm, CLASS_NAMES, dataset_name, output_dir=PATH_BASE, cv_total_cm=cv_total_cm
     )
 
     print(f"✓ Relatório Markdown salvo: {md_path}")
@@ -163,16 +173,16 @@ def main():
     print()
 
     # Descomenta as linhas abaixo pra rodar o SHAP:
-    run_shap(
-        final_model,
-        X_test,
-        CLASS_NAMES,
-        dataset_name=dataset_name,
-        path_base=PATH_BASE,
-        graphics=GRAPHICS,
-        sample_percentage=SHAP_SAMPLE_PERCENTAGE,
-        random_state=RANDOM_STATE
-    )
+    # run_shap(
+    #     final_model,
+    #     X_test,
+    #     CLASS_NAMES,
+    #     dataset_name=dataset_name,
+    #     path_base=PATH_BASE,
+    #     graphics=GRAPHICS,
+    #     sample_percentage=SHAP_SAMPLE_PERCENTAGE,
+    #     random_state=RANDOM_STATE
+    # )
 
     print("=" * 60)
     print("✓ PIPELINE CONCLUÍDO COM SUCESSO!")

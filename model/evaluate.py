@@ -3,6 +3,7 @@ from sklearn.metrics import classification_report, confusion_matrix, cohen_kappa
 from scipy.stats import sem, t
 from datetime import datetime
 import os
+from config import MODEL_TYPE
 
 def mean_confidence_interval(data, confidence=0.95):
     """
@@ -68,6 +69,9 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
     precision_scores = {cls: [] for cls in class_names}
     recall_scores = {cls: [] for cls in class_names}
     f1_scores = {cls: [] for cls in class_names}
+    # Matriz de confusão agregada (soma das matrizes dos folds)
+    n_classes = len(class_names)
+    cv_total_cm = np.zeros((n_classes, n_classes), dtype=int)
 
     for fold_num, (model, X_val, y_val) in enumerate(cv_models, 1):
         # Prediz no conjunto de validação desse fold
@@ -82,6 +86,12 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
 
         # Calcula acurácia por classe (diagonal da matriz de confusão)
         cm = confusion_matrix(y_val, y_pred)
+        # Agrega a matriz de confusão deste fold na matriz total
+        try:
+            cv_total_cm += cm
+        except Exception:
+            # Caso haja problemas de shape, assegura conversão para array
+            cv_total_cm = cv_total_cm + np.asarray(cm, dtype=int)
         class_acc = cm.diagonal() / cm.sum(axis=1)
         accuracy_scores.append(class_acc)
 
@@ -100,6 +110,11 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
     # CORRIGIDO: Agrega o Kappa corretamente (era uma lista, agora é mean ± CI)
     kappa_mean, kappa_ci = mean_confidence_interval(kappa_scores)
     print(f"\n✓ Cohen's Kappa (CV): {kappa_mean:.4f} ± {kappa_ci:.4f}")
+    print()
+
+    # Mostra a matriz de confusão agregada dos folds
+    print("Matriz de Confusão Agregada (CV - soma de todos os folds):")
+    print(cv_total_cm)
     print()
 
     # Monta o resumo das métricas por classe
@@ -173,11 +188,11 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
     print(test_cm)
     print()
 
-    return cv_metrics_summary, test_metrics, kappa_mean, kappa_ci, test_kappa, test_cm
+    return cv_metrics_summary, test_metrics, kappa_mean, kappa_ci, test_kappa, test_cm, cv_total_cm
 
 
 def save_metrics_report(cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa,
-                       test_cm, class_names, dataset_name, output_dir="./results"):
+                       test_cm, class_names, dataset_name, output_dir="./results", cv_total_cm=None):
     """
     Salva um relatório completo das métricas em formato Markdown e Log.
 
@@ -188,6 +203,7 @@ def save_metrics_report(cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kap
         kappa_ci (float): IC do Kappa na CV.
         test_kappa (float): Kappa do teste final.
         test_cm (np.array): Matriz de confusão do teste final.
+        cv_total_cm (np.array, optional): Matriz de confusão agregada da CV (soma dos folds).
         class_names (list): Nomes das classes.
         dataset_name (str): Nome do dataset.
         output_dir (str): Diretório onde salvar os relatórios.
@@ -213,7 +229,7 @@ def save_metrics_report(cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kap
     # GERA RELATÓRIO EM MARKDOWN
     # ========================================
 
-    md_content = f"""# Relatório de Métricas - XGBoost
+    md_content = f"""# Relatório de Métricas - {MODEL_TYPE.upper()}
 
 **Dataset:** {dataset_name}
 **Data/Hora:** {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
@@ -247,6 +263,22 @@ Resultados da validação cruzada com **intervalo de confiança de 95%** (IC 95%
     md_content += f"\n### Métricas Globais (CV)\n\n"
     md_content += f"- **Cohen's Kappa:** {kappa_mean:.4f} ± {kappa_ci:.4f}\n"
     md_content += f"\n---\n\n"
+
+    # Se disponível, inclui a matriz de confusão agregada da CV
+    if cv_total_cm is not None:
+        md_content += "## 🧾 Matriz de Confusão (CV - Agregada)\n\n"
+        md_content += "```\nPredito →    "
+        for cls in class_names:
+            md_content += f"{cls:>12} "
+        md_content += "\nReal ↓\n"
+
+        for i, cls in enumerate(class_names):
+            md_content += f"{cls:12} "
+            for j in range(len(class_names)):
+                md_content += f"{cv_total_cm[i][j]:>12} "
+            md_content += "\n"
+
+        md_content += "```\n\n"
 
     # ========================================
     # Métricas do Teste Final
@@ -319,7 +351,7 @@ Resultados da validação cruzada com **intervalo de confiança de 95%** (IC 95%
     md_content += f"- **Cohen's Kappa ({test_kappa:.4f}):** {kappa_interp}\n"
 
     md_content += f"\n---\n\n"
-    md_content += f"*Relatório gerado automaticamente pelo pipeline de treinamento XGBoost*\n"
+    md_content += f"*Relatório gerado automaticamente pelo pipeline de treinamento {MODEL_TYPE.upper()}*\n"
 
     # Salva o arquivo Markdown
     with open(md_path, 'w', encoding='utf-8') as f:
@@ -351,6 +383,26 @@ VALIDAÇÃO CRUZADA (K-Fold) - Média ± IC 95%
         log_content += f"  Accuracy:  {cv_metrics['Accuracy Mean'][i]:.4f} ± {cv_metrics['Accuracy CI'][i]:.4f}\n"
 
     log_content += f"\nCohen's Kappa (CV): {kappa_mean:.4f} ± {kappa_ci:.4f}\n"
+
+    # Inclui matriz de confusão agregada da CV, se disponível
+    if cv_total_cm is not None:
+        log_content += f"\n{'-'*80}\n"
+        log_content += "MATRIZ DE CONFUSÃO (CV - Agregada)\n"
+        log_content += f"{'-'*80}\n\n"
+
+        # Header
+        log_content += "Predito →    "
+        for cls in class_names:
+            log_content += f"{cls:>12} "
+        log_content += "\nReal ↓\n"
+
+        for i, cls in enumerate(class_names):
+            log_content += f"{cls:12} "
+            for j in range(len(class_names)):
+                log_content += f"{cv_total_cm[i][j]:>12} "
+            log_content += "\n"
+
+        log_content += f"\n{'='*80}\n"
 
     log_content += f"\n{'='*80}\n"
     log_content += f"TESTE FINAL (Hold-out)\n"

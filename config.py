@@ -30,11 +30,48 @@ SHAP_SAMPLE_PERCENTAGE = 1  # 20% do dataset de teste
 
 # Caminho base pra salvar os resultados dos experimentos
 # Cada experimento vai criar uma subpasta aqui
-PATH_BASE="./results_without_consistency_features"
+PATH_BASE="./results_with_consistency_features"
 
 # ============================================
 # PARÂMETROS DO MODELO XGBOOST
 # ============================================
+
+# Tipo de modelo/classificador a ser usado.
+# Opções completas:
+#   - 'xgboost' (aliases: 'xgb')
+#   - 'random_forest' (aliases: 'rf', 'randomforest')
+#   - 'svm' (aliases: 'support_vector_machine', 'supportvectormachine')
+#   - 'mlp' (aliases: 'neural_network', 'multilayer_perceptron')
+#   - 'decision_tree' (aliases: 'dt', 'decisiontree')
+#   - 'logistic_regression' (aliases: 'lr', 'logisticregression')
+MODEL_TYPE = "mlp"
+
+# Mapa de aliases para facilitar a escrita de nomes dos modelos
+MODEL_NAME_ALIASES = {
+    # XGBoost
+    "xgboost": "xgboost",
+    "xgb": "xgboost",
+    # Random Forest
+    "random_forest": "random_forest",
+    "rf": "random_forest",
+    "randomforest": "random_forest",
+    # SVM
+    "svm": "svm",
+    "support_vector_machine": "svm",
+    "supportvectormachine": "svm",
+    # MLP
+    "mlp": "mlp",
+    "neural_network": "mlp",
+    "multilayer_perceptron": "mlp",
+    # Decision Tree
+    "decision_tree": "decision_tree",
+    "dt": "decision_tree",
+    "decisiontree": "decision_tree",
+    # Logistic Regression
+    "logistic_regression": "logistic_regression",
+    "lr": "logistic_regression",
+    "logisticregression": "logistic_regression",
+}
 
 XGBOOST_PARAMS = {
     # Função objetivo: binary:logistic pra classificação binária
@@ -57,6 +94,76 @@ XGBOOST_PARAMS = {
     # "scale_pos_weight": 1,       # Peso pra classe positiva (útil em desbalanceamento)
 }
 
+# Parâmetros para Random Forest (baseline ensemble)
+RF_PARAMS = {
+    "n_estimators": 200,
+    "max_depth": None,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "n_jobs": -1,
+    "random_state": RANDOM_STATE,
+}
+
+# Parâmetros para SVM com kernel RBF (tradicional em IDS)
+SVM_PARAMS = {
+    "C": 1.0,
+    "kernel": "rbf",
+    "gamma": "scale",
+    "probability": True,  # habilita predict_proba
+    "random_state": RANDOM_STATE,
+}
+
+# Parâmetros para MLP (baseline deep learning)
+MLP_PARAMS = {
+    "hidden_layer_sizes": (100,),
+    "activation": "relu",
+    "solver": "adam",
+    "alpha": 0.0001,
+    "learning_rate": "constant",
+    "max_iter": 200,
+    "random_state": RANDOM_STATE,
+}
+
+# Parâmetros para Decision Tree (interpretável)
+DT_PARAMS = {
+    "criterion": "gini",
+    "max_depth": None,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "random_state": RANDOM_STATE,
+}
+
+# Parâmetros para Logistic Regression (linear)
+LR_PARAMS = {
+    "penalty": "l2",
+    "C": 1.0,
+    "solver": "lbfgs",
+    "max_iter": 500,
+    "multi_class": "multinomial",
+    "random_state": RANDOM_STATE,
+    "n_jobs": -1,
+}
+
+# Mapa para facilitar a escolha do modelo (usando nomes canônicos)
+MODEL_PARAMS = {
+    "xgboost": XGBOOST_PARAMS,
+    "random_forest": RF_PARAMS,
+    "svm": SVM_PARAMS,
+    "mlp": MLP_PARAMS,
+    "decision_tree": DT_PARAMS,
+    "logistic_regression": LR_PARAMS,
+}
+
+# Descrição dos modelos pra logging
+MODEL_DESCRIPTIONS = {
+    "xgboost": "XGBoost (Gradient Boosting)",
+    "random_forest": "Random Forest (Ensemble - Baseline Clássico)",
+    "svm": "SVM com kernel RBF (Tradicional em IDS)",
+    "mlp": "MLP - Neural Network (Baseline Deep Learning)",
+    "decision_tree": "Decision Tree (Baseline Interpretável)",
+    "logistic_regression": "Logistic Regression (Baseline Linear)",
+}
+
 # ============================================
 # CONFIGURAÇÕES DO DATASET
 # ============================================
@@ -71,7 +178,7 @@ DISCARTED_COLUMNS = [
 # Remove features de consistência (baseadas em temporização)
 # Essas features podem vazar informação do alvo
 # Pro caso de uso real, é melhor não usar essas features
-WITHOUT_CONSISTENCY_FEATURES = True
+WITHOUT_CONSISTENCY_FEATURES = False
 
 # Se for pra remover, adiciona elas na lista de descartadas
 if WITHOUT_CONSISTENCY_FEATURES:
@@ -79,6 +186,7 @@ if WITHOUT_CONSISTENCY_FEATURES:
         'stDiff', 'sqDiff', 'gooseLengthDiff', 'cbStatusDiff', 'apduSizeDiff', 
         'frameLengthDiff', 'timestampDiff', 'tDiff', 'timeFromLastChange'
     ]
+    PATH_BASE="./results_without_consistency_features"
     DISCARTED_COLUMNS.extend(CONSISTENCY_FEATURES)
 
 # Nomes das classes pro problema de classificação
@@ -95,9 +203,9 @@ DATASET_PATH = "./data/CSV files/dataset_downsampled.csv"
 # Tipos de gráficos SHAP pra gerar
 # Cada gráfico dá uma perspectiva diferente da explicabilidade
 GRAPHICS = [
-    "Violin Summary Plot",      # Mostra distribuição dos valores SHAP
-    "Bar Plot",                  # Importância média das features
-    "Beeswarm Summary Plot",     # Visualização densa dos valores SHAP
-    "Waterfall Summary Plot",     # Contribuição individual de cada feature
-    "Force Plot"                # Contribuição detalhada para uma predição específica
+    # "Violin Summary Plot",      # Mostra distribuição dos valores SHAP
+    # "Bar Plot",                  # Importância média das features
+    # "Beeswarm Summary Plot",     # Visualização densa dos valores SHAP
+    # "Waterfall Summary Plot",     # Contribuição individual de cada feature
+    # "Force Plot"                # Contribuição detalhada para uma predição específica
 ]
