@@ -5,6 +5,8 @@ from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 import gc
 
 
@@ -34,13 +36,25 @@ def _get_classifier(model_type, params):
         case "random_forest":
             return RandomForestClassifier(**params)
         case "svm":
-            return SVC(**params)
+            # SVM é sensível à escala: usa StandardScaler no pipeline
+            return Pipeline([
+                ("scaler", StandardScaler()),
+                ("clf", SVC(**params))
+            ])
         case "mlp":
-            return MLPClassifier(**params)
+            # MLP também se beneficia de normalização
+            return Pipeline([
+                ("scaler", StandardScaler()),
+                ("clf", MLPClassifier(**params))
+            ])
         case "decision_tree":
             return DecisionTreeClassifier(**params)
         case "logistic_regression":
-            return LogisticRegression(**params)
+            # LR (multinomial) também é sensível à escala
+            return Pipeline([
+                ("scaler", StandardScaler()),
+                ("clf", LogisticRegression(**params))
+            ])
         case _:
             raise ValueError(f"Modelo não suportado: {model_type_canonical}")
 

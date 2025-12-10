@@ -362,7 +362,7 @@ Resultados da validação cruzada com **intervalo de confiança de 95%** (IC 95%
     # ========================================
 
     log_content = f"""{'='*80}
-RELATÓRIO DE MÉTRICAS - XGBoost
+RELATÓRIO DE MÉTRICAS - {MODEL_TYPE.upper()}
 {'='*80}
 
 Dataset: {dataset_name}

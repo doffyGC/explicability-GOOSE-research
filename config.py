@@ -178,7 +178,7 @@ DISCARTED_COLUMNS = [
 # Remove features de consistência (baseadas em temporização)
 # Essas features podem vazar informação do alvo
 # Pro caso de uso real, é melhor não usar essas features
-WITHOUT_CONSISTENCY_FEATURES = False
+WITHOUT_CONSISTENCY_FEATURES = True
 
 # Se for pra remover, adiciona elas na lista de descartadas
 if WITHOUT_CONSISTENCY_FEATURES:

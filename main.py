@@ -23,7 +23,7 @@ def main():
     """
 
     print("\n" + "=" * 60)
-    print("PIPELINE DE TREINAMENTO E AVALIAÇÃO - XGBoost")
+    print(f"PIPELINE DE TREINAMENTO E AVALIAÇÃO - {MODEL_TYPE.upper()}")
     print("=" * 60)
     print()
 

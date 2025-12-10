@@ -7,3 +7,9 @@ results_without_consistency_features/
 
 # Ignorar arquivos temporários e de cache
 __pycache__/
+
+# ignorar arquivos dentro da confusão de matriz
+confusion_matrix/
+
+# ignorar o arquivo da matriz de confusão
+matrix_confusion.py
