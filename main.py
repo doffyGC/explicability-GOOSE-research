@@ -97,7 +97,7 @@ def main():
     # ========================================
 
     # Avalia modelos da CV e o modelo final
-    cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa, test_cm, cv_total_cm = evaluate_models(
+    cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa, test_cm, cv_total_cm, deployment_metrics = evaluate_models(
         cv_models, final_model, X_test, y_test, CLASS_NAMES
     )
 
@@ -149,7 +149,7 @@ def main():
     # Salva relatórios em Markdown e Log
     md_path, log_path = save_metrics_report(
         cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa,
-        test_cm, CLASS_NAMES, dataset_name, output_dir=PATH_BASE, cv_total_cm=cv_total_cm
+        test_cm, CLASS_NAMES, dataset_name, output_dir=PATH_BASE, cv_total_cm=cv_total_cm, deployment_metrics=deployment_metrics
     )
 
     print(f"✓ Relatório Markdown salvo: {md_path}")
@@ -173,16 +173,16 @@ def main():
     print()
 
     # Descomenta as linhas abaixo pra rodar o SHAP:
-    # run_shap(
-    #     final_model,
-    #     X_test,
-    #     CLASS_NAMES,
-    #     dataset_name=dataset_name,
-    #     path_base=PATH_BASE,
-    #     graphics=GRAPHICS,
-    #     sample_percentage=SHAP_SAMPLE_PERCENTAGE,
-    #     random_state=RANDOM_STATE
-    # )
+    run_shap(
+        final_model,
+        X_test,
+        CLASS_NAMES,
+        dataset_name=dataset_name,
+        path_base=PATH_BASE,
+        graphics=GRAPHICS,
+        sample_percentage=SHAP_SAMPLE_PERCENTAGE,
+        random_state=RANDOM_STATE
+    )
 
     print("=" * 60)
     print("✓ PIPELINE CONCLUÍDO COM SUCESSO!")

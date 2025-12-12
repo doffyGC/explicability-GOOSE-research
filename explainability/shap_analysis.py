@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import gc
+from config import MODEL_TYPE
 
 def get_ten_most_important_features(shap_values, X):
     """
@@ -195,7 +196,7 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
                         shap.plots.waterfall(shap_values_class[0], max_display=20, show=False)
 
                 # Salva o gráfico em alta resolução
-                filename = f"{graphic} dataset {dataset_name} class {cls}.png"
+                filename = f"{graphic} classifier {MODEL_TYPE} class {cls}.png"
                 full_path = os.path.join(save_path, filename)
                 plt.savefig(full_path, dpi=300, bbox_inches='tight')
                 plt.close()
@@ -254,7 +255,7 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
                         shap.plots.force(shap_values[0,:, i], matplotlib=True, show=False)
                         
                 # Salva o gráfico em alta resolução
-                filename = f"{graphic} dataset {dataset_name} class {cls}.png"
+                filename = f"{graphic} classifier {MODEL_TYPE} class {cls}.png"
                 full_path = os.path.join(save_path, filename)
                 plt.savefig(full_path, dpi=300, bbox_inches='tight')
                 plt.close()

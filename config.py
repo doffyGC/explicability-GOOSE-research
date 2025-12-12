@@ -44,7 +44,7 @@ PATH_BASE="./results_with_consistency_features"
 #   - 'mlp' (aliases: 'neural_network', 'multilayer_perceptron')
 #   - 'decision_tree' (aliases: 'dt', 'decisiontree')
 #   - 'logistic_regression' (aliases: 'lr', 'logisticregression')
-MODEL_TYPE = "mlp"
+MODEL_TYPE = "random_forest"
 
 # Mapa de aliases para facilitar a escrita de nomes dos modelos
 MODEL_NAME_ALIASES = {
@@ -178,7 +178,7 @@ DISCARTED_COLUMNS = [
 # Remove features de consistência (baseadas em temporização)
 # Essas features podem vazar informação do alvo
 # Pro caso de uso real, é melhor não usar essas features
-WITHOUT_CONSISTENCY_FEATURES = True
+WITHOUT_CONSISTENCY_FEATURES = False
 
 # Se for pra remover, adiciona elas na lista de descartadas
 if WITHOUT_CONSISTENCY_FEATURES:
@@ -204,8 +204,8 @@ DATASET_PATH = "./data/CSV files/dataset_downsampled.csv"
 # Cada gráfico dá uma perspectiva diferente da explicabilidade
 GRAPHICS = [
     # "Violin Summary Plot",      # Mostra distribuição dos valores SHAP
-    # "Bar Plot",                  # Importância média das features
-    # "Beeswarm Summary Plot",     # Visualização densa dos valores SHAP
+    "Bar Plot",                  # Importância média das features
+    "Beeswarm Summary Plot",     # Visualização densa dos valores SHAP
     # "Waterfall Summary Plot",     # Contribuição individual de cada feature
     # "Force Plot"                # Contribuição detalhada para uma predição específica
 ]

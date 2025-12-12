@@ -4,6 +4,12 @@ from scipy.stats import sem, t
 from datetime import datetime
 import os
 from config import MODEL_TYPE
+import time
+import pickle
+import tracemalloc
+import sys
+import tracemalloc
+import sys
 
 def mean_confidence_interval(data, confidence=0.95):
     """
@@ -53,6 +59,10 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
             - test_metrics: Métricas do teste final (hold-out)
             - kappa_mean: Média do Cohen's Kappa nos folds de CV
             - kappa_ci: Intervalo de confiança do Cohen's Kappa
+            - test_kappa: Kappa no teste final
+            - test_cm: Matriz de confusão do teste final
+            - cv_total_cm: Matriz de confusão agregada da CV
+            - deployment_metrics: Métricas de latência/memória para inferência
     """
 
     print("=" * 60)
@@ -188,11 +198,164 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
     print(test_cm)
     print()
 
-    return cv_metrics_summary, test_metrics, kappa_mean, kappa_ci, test_kappa, test_cm, cv_total_cm
+    # ========================================
+    # PARTE 3: Métricas de Desempenho de Inferência
+    # ========================================
+
+    print("=" * 60)
+    print("AVALIAÇÃO: Métricas de Desempenho de Inferência")
+    print("=" * 60)
+
+    # Garantir numpy array para fatias de lote
+    X_test_np = X_test.values if hasattr(X_test, 'values') else np.asarray(X_test)
+
+    batch_sizes = [1, 8, 32, 128]
+    repetitions = 10  # Aumentado para melhor estatística
+
+    # Medição de latência por batch size
+    latency_results = {}
+    all_times_for_analysis = []  # Para estatísticas globais
+    
+    for bs in batch_sizes:
+        # Limitar ao tamanho disponível
+        n = min(len(X_test_np), bs)
+        if n == 0:
+            continue
+        x_batch = X_test_np[:n]
+        times = []
+        for _ in range(repetitions):
+            start = time.perf_counter()
+            _ = final_model.predict(x_batch)
+            end = time.perf_counter()
+            elapsed = end - start
+            times.append(elapsed)
+            all_times_for_analysis.append(elapsed)
+        
+        times_ms = np.array(times) * 1000  # Converter para ms
+        mean_time = np.mean(times)
+        
+        latency_results[bs] = {
+            "mean_ms": float(np.mean(times_ms)),
+            "std_ms": float(np.std(times_ms, ddof=1)) if len(times_ms) > 1 else 0.0,
+            "p95_ms": float(np.percentile(times_ms, 95)),
+            "p99_ms": float(np.percentile(times_ms, 99)),
+            "max_ms": float(np.max(times_ms)),
+            "per_sample_us": float((mean_time / n) * 1e6),
+            "throughput_samples_per_sec": float(n / mean_time) if mean_time > 0 else 0.0
+        }
+
+    # Processing Time per Sample (média global de batch size 1)
+    processing_time_per_sample_us = latency_results.get(1, {}).get("per_sample_us", 0.0)
+
+    # Tamanho do modelo em memória (serializado)
+    try:
+        model_bytes = pickle.dumps(final_model)
+        model_size_mb = len(model_bytes) / (1024 * 1024)
+    except Exception:
+        model_size_mb = None
+
+    # Runtime memory (memória usada durante inferência)
+    tracemalloc.start()
+    baseline_memory = tracemalloc.get_traced_memory()[0]
+    
+    # Fazer algumas predições para capturar uso de memória
+    test_batch = X_test_np[:min(100, len(X_test_np))]
+    for _ in range(5):
+        _ = final_model.predict(test_batch)
+    
+    current, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    
+    runtime_memory_mb = (peak - baseline_memory) / (1024 * 1024)
+    memory_overhead_mb = runtime_memory_mb
+
+    # GOOSE deadline compatibility (IEC 61850: típico 3-4ms)
+    goose_deadline_ms = 3.0  # Threshold padrão do protocolo GOOSE
+    single_sample_latency_ms = latency_results.get(1, {}).get("mean_ms", 0.0)
+    goose_compatible = single_sample_latency_ms <= goose_deadline_ms
+
+    # Real-time capability (mensagens por segundo)
+    real_time_msg_per_sec = latency_results.get(1, {}).get("throughput_samples_per_sec", 0.0)
+
+    # Memory feasibility (comparação com limites típicos de edge devices)
+    memory_limits = {
+        "minimal": 256,  # 256 MB
+        "standard": 512,  # 512 MB
+        "comfortable": 1024  # 1 GB
+    }
+    
+    total_memory_estimate_mb = (model_size_mb or 0) + runtime_memory_mb
+    memory_feasibility = "Unknown"
+    if total_memory_estimate_mb <= memory_limits["minimal"]:
+        memory_feasibility = "Minimal (≤256MB) ✓"
+    elif total_memory_estimate_mb <= memory_limits["standard"]:
+        memory_feasibility = "Standard (≤512MB) ✓"
+    elif total_memory_estimate_mb <= memory_limits["comfortable"]:
+        memory_feasibility = "Comfortable (≤1GB) ✓"
+    else:
+        memory_feasibility = "High Memory (>1GB) ⚠"
+
+    # Latency scaling (comparação entre batch sizes)
+    latency_scaling = {}
+    if 1 in latency_results and 128 in latency_results:
+        time_1 = latency_results[1]["mean_ms"]
+        time_128 = latency_results[128]["mean_ms"]
+        scaling_factor = time_128 / (time_1 * 128) if time_1 > 0 else 0
+        latency_scaling = {
+            "batch_1_to_128_efficiency": float(scaling_factor),
+            "interpretation": "Eficiente" if scaling_factor < 1.2 else "Ineficiente" if scaling_factor > 2.0 else "Moderado"
+        }
+
+    deployment_metrics = {
+        "latency": latency_results,
+        "processing_time_per_sample_us": processing_time_per_sample_us,
+        "model_size_mb": model_size_mb,
+        "runtime_memory_mb": runtime_memory_mb,
+        "memory_overhead_mb": memory_overhead_mb,
+        "total_memory_estimate_mb": total_memory_estimate_mb,
+        "memory_feasibility": memory_feasibility,
+        "goose_deadline_ms": goose_deadline_ms,
+        "goose_compatible": goose_compatible,
+        "real_time_capability_msg_per_sec": real_time_msg_per_sec,
+        "latency_scaling": latency_scaling
+    }
+
+    # Print resumo expandido
+    print("\n📊 LATÊNCIA:")
+    for bs in sorted(latency_results.keys()):
+        lr = latency_results[bs]
+        print(f"  Batch {bs:3d}: Mean={lr['mean_ms']:7.3f}ms | Std={lr['std_ms']:6.3f}ms | "
+              f"P95={lr['p95_ms']:7.3f}ms | P99={lr['p99_ms']:7.3f}ms | Max={lr['max_ms']:7.3f}ms")
+        print(f"             Per-sample={lr['per_sample_us']:8.2f}µs | Throughput={lr['throughput_samples_per_sec']:8.1f} samples/s")
+    
+    print(f"\n✓ Processing Time per Sample: {processing_time_per_sample_us:.2f} µs")
+    
+    print("\n💾 MEMÓRIA:")
+    if model_size_mb is not None:
+        print(f"  Model size (serialized):  {model_size_mb:8.2f} MB")
+    print(f"  Runtime memory (peak):    {runtime_memory_mb:8.2f} MB")
+    print(f"  Memory overhead:          {memory_overhead_mb:8.2f} MB")
+    print(f"  Total estimate:           {total_memory_estimate_mb:8.2f} MB")
+    print(f"  Memory feasibility:       {memory_feasibility}")
+    
+    print("\n⚡ DEPLOYMENT / REAL-TIME:")
+    print(f"  GOOSE deadline (3ms):     {'✓ COMPATIBLE' if goose_compatible else '✗ NOT COMPATIBLE'} ({single_sample_latency_ms:.3f}ms)")
+    print(f"  Real-time capability:     {real_time_msg_per_sec:.1f} msg/s")
+    
+    if latency_scaling:
+        print(f"  Latency scaling (1→128):  {latency_scaling['interpretation']} (factor: {latency_scaling['batch_1_to_128_efficiency']:.2f})")
+    
+    print("\n📌 NOTAS:")
+    print("  - Overhead in passive monitoring: Latência adicional depende de integração com sistema")
+    print("  - Embedded device performance: Valores são estimativas; teste em hardware real recomendado")
+    print("  - Efficiency trade-offs: Considere quantização para reduzir model size e latência")
+    print()
+
+    return cv_metrics_summary, test_metrics, kappa_mean, kappa_ci, test_kappa, test_cm, cv_total_cm, deployment_metrics
 
 
 def save_metrics_report(cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa,
-                       test_cm, class_names, dataset_name, output_dir="./results", cv_total_cm=None):
+                       test_cm, class_names, dataset_name, output_dir="./results", cv_total_cm=None, deployment_metrics=None):
     """
     Salva um relatório completo das métricas em formato Markdown e Log.
 
@@ -324,6 +487,52 @@ Resultados da validação cruzada com **intervalo de confiança de 95%** (IC 95%
     md_content += "```\n\n"
 
     # ========================================
+    # Desempenho de Inferência
+    # ========================================
+    if deployment_metrics is not None:
+        md_content += f"## ⚙️ Desempenho de Inferência\n\n"
+        
+        # Seção de Latência
+        md_content += f"### 📊 Latência\n\n"
+        md_content += "| Batch | Mean (ms) | Std (ms) | P95 (ms) | P99 (ms) | Max (ms) | Per-Sample (µs) | Throughput (samples/s) |\n"
+        md_content += "|-------|-----------|----------|----------|----------|----------|-----------------|------------------------|\n"
+        for bs in sorted(deployment_metrics["latency"].keys()):
+            lr = deployment_metrics["latency"][bs]
+            md_content += f"| {bs:5d} | {lr['mean_ms']:9.3f} | {lr['std_ms']:8.3f} | {lr['p95_ms']:8.3f} | {lr['p99_ms']:8.3f} | {lr['max_ms']:8.3f} | {lr['per_sample_us']:15.2f} | {lr['throughput_samples_per_sec']:22.1f} |\n"
+        
+        md_content += f"\n**✓ Processing Time per Sample:** {deployment_metrics['processing_time_per_sample_us']:.2f} µs\n\n"
+        
+        # Latency Scaling
+        if deployment_metrics.get("latency_scaling"):
+            ls = deployment_metrics["latency_scaling"]
+            md_content += f"**Latency Scaling (Batch 1→128):** {ls['interpretation']} (efficiency factor: {ls['batch_1_to_128_efficiency']:.2f})\n\n"
+        
+        # Seção de Memória
+        md_content += f"### 💾 Memória\n\n"
+        md_content += "| Métrica | Valor |\n"
+        md_content += "|---------|-------|\n"
+        if deployment_metrics.get("model_size_mb") is not None:
+            md_content += f"| Model size (serialized) | {deployment_metrics['model_size_mb']:.2f} MB |\n"
+        md_content += f"| Runtime memory (peak) | {deployment_metrics['runtime_memory_mb']:.2f} MB |\n"
+        md_content += f"| Memory overhead | {deployment_metrics['memory_overhead_mb']:.2f} MB |\n"
+        md_content += f"| **Total estimate** | **{deployment_metrics['total_memory_estimate_mb']:.2f} MB** |\n"
+        md_content += f"| Memory feasibility | {deployment_metrics['memory_feasibility']} |\n\n"
+        
+        # Seção de Deployment/Real-time
+        md_content += f"### ⚡ Deployment / Real-time\n\n"
+        md_content += "| Métrica | Valor |\n"
+        md_content += "|---------|-------|\n"
+        goose_status = "✓ COMPATIBLE" if deployment_metrics['goose_compatible'] else "✗ NOT COMPATIBLE"
+        goose_latency = deployment_metrics['latency'].get(1, {}).get('mean_ms', 0.0)
+        md_content += f"| GOOSE deadline compatibility (3ms) | {goose_status} ({goose_latency:.3f}ms) |\n"
+        md_content += f"| Real-time capability | {deployment_metrics['real_time_capability_msg_per_sec']:.1f} msg/s |\n\n"
+        
+        md_content += f"**📌 Notas sobre Deployment:**\n\n"
+        md_content += f"- **Overhead in passive monitoring:** A latência adicional depende da integração com o sistema de monitoramento\n"
+        md_content += f"- **Embedded device performance:** Os valores apresentados são estimativas; testes em hardware real são recomendados\n"
+        md_content += f"- **Efficiency trade-offs:** Considere técnicas de quantização para reduzir model size e latência em ~2-4x\n\n"
+
+    # ========================================
     # Interpretação
     # ========================================
 
@@ -435,6 +644,46 @@ VALIDAÇÃO CRUZADA (K-Fold) - Média ± IC 95%
         for j in range(len(class_names)):
             log_content += f"{test_cm[i][j]:>12} "
         log_content += "\n"
+
+    # ========================================
+    # DESEMPENHO DE INFERÊNCIA (LOG)
+    # ========================================
+    if deployment_metrics is not None:
+        log_content += f"\n{'='*80}\n"
+        log_content += f"DESEMPENHO DE INFERÊNCIA\n"
+        log_content += f"{'='*80}\n\n"
+        
+        log_content += "📊 LATÊNCIA:\n"
+        for bs in sorted(deployment_metrics["latency"].keys()):
+            lr = deployment_metrics["latency"][bs]
+            log_content += f"  Batch {bs:3d}: Mean={lr['mean_ms']:7.3f}ms | Std={lr['std_ms']:6.3f}ms | "
+            log_content += f"P95={lr['p95_ms']:7.3f}ms | P99={lr['p99_ms']:7.3f}ms | Max={lr['max_ms']:7.3f}ms\n"
+            log_content += f"             Per-sample={lr['per_sample_us']:8.2f}µs | Throughput={lr['throughput_samples_per_sec']:8.1f} samples/s\n"
+        
+        log_content += f"\n✓ Processing Time per Sample: {deployment_metrics['processing_time_per_sample_us']:.2f} µs\n"
+        
+        if deployment_metrics.get("latency_scaling"):
+            ls = deployment_metrics["latency_scaling"]
+            log_content += f"  Latency scaling (1→128): {ls['interpretation']} (factor: {ls['batch_1_to_128_efficiency']:.2f})\n"
+        
+        log_content += "\n💾 MEMÓRIA:\n"
+        if deployment_metrics.get("model_size_mb") is not None:
+            log_content += f"  Model size (serialized):  {deployment_metrics['model_size_mb']:8.2f} MB\n"
+        log_content += f"  Runtime memory (peak):    {deployment_metrics['runtime_memory_mb']:8.2f} MB\n"
+        log_content += f"  Memory overhead:          {deployment_metrics['memory_overhead_mb']:8.2f} MB\n"
+        log_content += f"  Total estimate:           {deployment_metrics['total_memory_estimate_mb']:8.2f} MB\n"
+        log_content += f"  Memory feasibility:       {deployment_metrics['memory_feasibility']}\n"
+        
+        log_content += "\n⚡ DEPLOYMENT / REAL-TIME:\n"
+        goose_status = "✓ COMPATIBLE" if deployment_metrics['goose_compatible'] else "✗ NOT COMPATIBLE"
+        goose_latency = deployment_metrics['latency'].get(1, {}).get('mean_ms', 0.0)
+        log_content += f"  GOOSE deadline (3ms):     {goose_status} ({goose_latency:.3f}ms)\n"
+        log_content += f"  Real-time capability:     {deployment_metrics['real_time_capability_msg_per_sec']:.1f} msg/s\n"
+        
+        log_content += "\n📌 NOTAS:\n"
+        log_content += "  - Overhead in passive monitoring: Latência adicional depende de integração com sistema\n"
+        log_content += "  - Embedded device performance: Valores são estimativas; teste em hardware real recomendado\n"
+        log_content += "  - Efficiency trade-offs: Considere quantização para reduzir model size e latência\n"
 
     log_content += f"\n{'='*80}\n"
     log_content += f"Relatório salvo em: {md_path}\n"
