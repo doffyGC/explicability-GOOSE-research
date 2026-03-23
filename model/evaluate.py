@@ -3,7 +3,8 @@ from sklearn.metrics import classification_report, confusion_matrix, cohen_kappa
 from scipy.stats import sem, t
 from datetime import datetime
 import os
-from config import MODEL_TYPE
+from config import MODEL_TYPE, WITHOUT_CONSISTENCY_FEATURES
+from model.matrix_confusion import plot_confusion_matrix
 
 def mean_confidence_interval(data, confidence=0.95):
     """
@@ -312,5 +313,17 @@ VALIDAÇÃO CRUZADA (K-Fold) - Média ± IC 95%
     # Salva o arquivo Log
     with open(log_path, 'w', encoding='utf-8') as f:
         f.write(log_content)
+
+    # Gera e salva figura da matriz de confusão agregada (SVG) se disponível
+    if cv_total_cm is not None:
+        try:
+            svg_filename = f"confusion_matrix_{dataset_name}_{timestamp}.svg"
+            svg_path = os.path.join(output_dir, svg_filename)
+            # delta_features True <=> estamos usando features de diferença (consistência)
+            delta_flag = not WITHOUT_CONSISTENCY_FEATURES
+            plot_confusion_matrix(cv_total_cm, class_names, svg_path, delta_features=delta_flag)
+            print(f"Saved confusion matrix SVG: {svg_path}")
+        except Exception as e:
+            print(f"Warning: falha ao gerar figura da matriz de confusão: {e}")
 
     return md_path, log_path
