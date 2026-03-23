@@ -58,14 +58,12 @@ def _get_classifier(model_type, params):
         case _:
             raise ValueError(f"Modelo não suportado: {model_type_canonical}")
 
-def train_model(X, y, model_type, params, n_splits, seed, test_size=0.2):
+def train_model(X, y, model_type, params, n_splits, seed):
     """
     Treina um classificador (XGBoost ou baseline escolhido) usando validação cruzada K-Fold.
 
     IMPORTANTE: Segue boas práticas acadêmicas!
-    1. Separa um conjunto de TESTE FINAL (hold-out) ANTES do K-Fold
-    2. Usa K-Fold apenas no conjunto de TREINO
-    3. O teste final fica intocado até a avaliação final
+    1. Usa Validação Cruzada K-Fold em todo o conjunto de dados
 
     Args:
         X (pd.DataFrame): DataFrame com as features.
@@ -77,47 +75,24 @@ def train_model(X, y, model_type, params, n_splits, seed, test_size=0.2):
         test_size (float): Proporção do dataset reservada pro teste final (padrão: 0.2 = 20%).
 
     Returns:
-        tuple: (cv_models, final_model, X_test, y_test)
+        tuple: (cv_models, final_model)
             - cv_models: Lista de tuplas (model, X_val, y_val) dos folds de validação
-            - final_model: Modelo final treinado em TODOS os dados de treino
-            - X_test: Features do conjunto de teste final (hold-out)
-            - y_test: Classes do conjunto de teste final (hold-out)
+            - final_model: Modelo final treinado em TODOS os dados
     """
-
     print("=" * 60)
-    print("ETAPA 1: Separando conjunto de teste final (hold-out)")
-    print("=" * 60)
-
-    # PASSO 1: Separa teste final ANTES de qualquer coisa
-    # Isso é ESSENCIAL pra ter uma avaliação honesta do modelo
-    # Esse conjunto NÃO PODE ser usado no treinamento!
-    X_train_full, X_test, y_train_full, y_test = train_test_split(
-        X, y,
-        test_size=test_size,
-        stratify=y,  # Mantém a proporção de classes
-        random_state=seed
-    )
-
-    print(f"✓ Dados divididos:")
-    print(f"  - Treino (pra K-Fold): {len(X_train_full)} amostras ({(1-test_size)*100:.0f}%)")
-    print(f"  - Teste final (hold-out): {len(X_test)} amostras ({test_size*100:.0f}%)")
-    print()
-
-    print("=" * 60)
-    print(f"ETAPA 2: Validação cruzada K-Fold ({n_splits} folds)")
+    print(f"ETAPA: Validação cruzada K-Fold ({n_splits} folds)")
     print("=" * 60)
 
-    # PASSO 2: Faz K-Fold APENAS nos dados de treino
-    # Cada fold vai treinar e validar pra estimar a performance
+    # Faz K-Fold em TODO o conjunto de dados
     kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     cv_models = []
 
-    for fold_num, (train_idx, val_idx) in enumerate(kf.split(X_train_full, y_train_full), 1):
-        # Divide o conjunto de treino em treino e validação desse fold
-        X_train_fold = X_train_full.iloc[train_idx]
-        X_val_fold = X_train_full.iloc[val_idx]
-        y_train_fold = y_train_full[train_idx]
-        y_val_fold = y_train_full[val_idx]
+    for fold_num, (train_idx, val_idx) in enumerate(kf.split(X, y), 1):
+        # Divide o conjunto em treino e validação desse fold
+        X_train_fold = X.iloc[train_idx]
+        X_val_fold = X.iloc[val_idx]
+        y_train_fold = y[train_idx]
+        y_val_fold = y[val_idx]
 
         print(f"\nTreinando fold {fold_num}/{n_splits}...")
         print(f"  - Treino: {len(X_train_fold)} amostras")
@@ -145,14 +120,11 @@ def train_model(X, y, model_type, params, n_splits, seed, test_size=0.2):
 
     # PASSO 3: Treina modelo final usando TODOS os dados de treino
     # Esse modelo vai ser usado pro SHAP e pra produção
-    print(f"Treinando modelo final com TODOS os {len(X_train_full)} dados de treino...")
+    print(f"Treinando modelo final com TODOS os {len(X)} dados...")
     final_model = _get_classifier(model_type, params)
-    final_model.fit(X_train_full, y_train_full)
+    final_model.fit(X, y)
     print("✓ Modelo final treinado!")
     print()
 
-    # Retorna:
-    # - cv_models: pros cálculos de métrica (mean ± CI)
-    # - final_model: pro SHAP e avaliação final
-    # - X_test, y_test: pro teste final (hold-out)
-    return cv_models, final_model, X_test, y_test
+    # Retorna cv_models (para métricas) e final_model (para SHAP)
+    return cv_models, final_model

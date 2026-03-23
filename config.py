@@ -205,7 +205,7 @@ DATASET_PATH = "./data/CSV files/dataset_downsampled.csv"
 GRAPHICS = [
     # "Violin Summary Plot",      # Mostra distribuição dos valores SHAP
     "Bar Plot",                  # Importância média das features
-    # "Beeswarm Summary Plot",     # Visualização densa dos valores SHAP
+    "Beeswarm Summary Plot",     # Visualização densa dos valores SHAP
     # "Waterfall Summary Plot",     # Contribuição individual de cada feature
     # "Force Plot"                # Contribuição detalhada para uma predição específica
 ]

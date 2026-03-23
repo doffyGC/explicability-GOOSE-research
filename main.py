@@ -82,23 +82,22 @@ def main():
     print("=" * 60)
     print()
 
-    # Treina modelos usando validação cruzada + hold-out test set
-    cv_models, final_model, X_test, y_test = train_model(
+    # Treina modelos usando apenas Validação Cruzada K-Fold (sem hold-out)
+    cv_models, final_model = train_model(
         X, y,
         model_type=MODEL_TYPE,
         params=MODEL_PARAMS.get(canonical_model, XGBOOST_PARAMS),
         n_splits=N_SPLITS,
-        seed=RANDOM_STATE,
-        test_size=TEST_SIZE
+        seed=RANDOM_STATE
     )
 
     # ========================================
     # ETAPA 4: Avaliação
     # ========================================
 
-    # Avalia modelos da CV e o modelo final
-    cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa, test_cm, cv_total_cm = evaluate_models(
-        cv_models, final_model, X_test, y_test, CLASS_NAMES
+    # Avalia modelos da CV (sem hold-out)
+    cv_metrics, kappa_mean, kappa_ci, cv_total_cm = evaluate_models(
+        cv_models, final_model, CLASS_NAMES
     )
 
     # ========================================
@@ -125,24 +124,6 @@ def main():
     print(f"\nCohen's Kappa (CV): {kappa_mean:.4f} ± {kappa_ci:.4f}")
     print()
 
-    print("🎯 TESTE FINAL (Hold-out - Conjunto nunca visto):")
-    print("-" * 60)
-    for i, cls in enumerate(CLASS_NAMES):
-        print(f"\n{cls}:")
-        print(f"  F1-score:  {test_metrics['F1-score'][i]:.4f}")
-        print(f"  Precision: {test_metrics['Precision'][i]:.4f}")
-        print(f"  Recall:    {test_metrics['Recall'][i]:.4f}")
-
-    # Calcula e mostra acurácia global do teste a partir da matriz de confusão retornada
-    try:
-        test_acc = test_cm.diagonal().sum() / test_cm.sum()
-    except Exception:
-        test_acc = 0.0
-    print(f"\nAcurácia (Teste): {test_acc:.4f}")
-
-    print(f"\nCohen's Kappa (Teste): {test_kappa:.4f}")
-    print()
-
     # ========================================
     # ETAPA 5.1: Salvar Relatório de Métricas
     # ========================================
@@ -157,8 +138,7 @@ def main():
 
     # Salva relatórios em Markdown e Log
     md_path, log_path = save_metrics_report(
-        cv_metrics, test_metrics, kappa_mean, kappa_ci, test_kappa,
-        test_cm, CLASS_NAMES, dataset_name, output_dir=PATH_BASE, cv_total_cm=cv_total_cm
+        cv_metrics, kappa_mean, kappa_ci, CLASS_NAMES, dataset_name, output_dir=PATH_BASE, cv_total_cm=cv_total_cm
     )
 
     print(f"✓ Relatório Markdown salvo: {md_path}")
@@ -181,19 +161,28 @@ def main():
     print("    (pode demorar vários minutos dependendo do dataset!)")
     print()
     
-    print("conteúdo presente no xtest:", X_test.columns.tolist())
 
-    # Descomenta as linhas abaixo pra rodar o SHAP:
-    # run_shap(
-    #     final_model,
-    #     X_test,
-    #     CLASS_NAMES,
-    #     dataset_name=dataset_name,
-    #     path_base=PATH_BASE,
-    #     graphics=GRAPHICS,
-    #     sample_percentage=SHAP_SAMPLE_PERCENTAGE,
-    #     random_state=RANDOM_STATE
-    # )
+    # Preparação para SHAP: usar o ÚLTIMO conjunto de validação do K-Fold
+    if cv_models and len(cv_models) > 0:
+        # cv_models é lista de tuplas (model, X_val, y_val)
+        _, shap_X, _ = cv_models[-1]
+        print(f"Usando último fold de validação para SHAP: {len(shap_X)} amostras")
+    else:
+        shap_X = X
+        print("Aviso: cv_models vazio — usando todo o conjunto X como fallback para SHAP")
+
+    # Descomente a chamada abaixo para gerar os gráficos SHAP usando `shap_X`.
+    # ATENÇÃO: pode demorar dependendo do tamanho do conjunto selecionado.
+    run_shap(
+        final_model,
+        shap_X,
+        CLASS_NAMES,
+        dataset_name=dataset_name,
+        path_base=PATH_BASE,
+        graphics=GRAPHICS,
+        sample_percentage=SHAP_SAMPLE_PERCENTAGE,
+        random_state=RANDOM_STATE
+    )
 
     print("=" * 60)
     print("✓ PIPELINE CONCLUÍDO COM SUCESSO!")
