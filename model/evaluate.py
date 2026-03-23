@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.metrics import classification_report, confusion_matrix, cohen_kappa_score
+from sklearn.metrics import classification_report, confusion_matrix, cohen_kappa_score, accuracy_score
 from scipy.stats import sem, t
 from datetime import datetime
 import os
@@ -84,7 +84,7 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
         kappa = cohen_kappa_score(y_val, y_pred)
         kappa_scores.append(kappa)
 
-        # Calcula acurácia por classe (diagonal da matriz de confusão)
+        # Matriz de confusão (para agregação)
         cm = confusion_matrix(y_val, y_pred)
         # Agrega a matriz de confusão deste fold na matriz total
         try:
@@ -92,8 +92,9 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
         except Exception:
             # Caso haja problemas de shape, assegura conversão para array
             cv_total_cm = cv_total_cm + np.asarray(cm, dtype=int)
-        class_acc = cm.diagonal() / cm.sum(axis=1)
-        accuracy_scores.append(class_acc)
+        # Calcula acurácia global (um valor por fold)
+        acc = accuracy_score(y_val, y_pred)
+        accuracy_scores.append(acc)
 
         # Coleta precision, recall e f1 de cada classe
         for cls in class_names:
@@ -103,9 +104,9 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
 
         print(f"Fold {fold_num}: Kappa = {kappa:.4f}")
 
-    # Agrega os resultados (mean ± CI)
+    # Agrega os resultados (mean ± CI) da acurácia global por fold
     accuracy_scores = np.array(accuracy_scores)
-    accuracy_conf_intervals = [mean_confidence_interval(accuracy_scores[:, i]) for i in range(len(class_names))]
+    acc_mean, acc_ci = mean_confidence_interval(accuracy_scores)
 
     # CORRIGIDO: Agrega o Kappa corretamente (era uma lista, agora é mean ± CI)
     kappa_mean, kappa_ci = mean_confidence_interval(kappa_scores)
@@ -117,20 +118,18 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
     print(cv_total_cm)
     print()
 
-    # Monta o resumo das métricas por classe
+    # Monta o resumo das métricas por classe (sem acurácia por classe)
     cv_metrics_summary = {
         "Classe": [],
         "Precision Mean": [], "Precision CI": [],
         "Recall Mean": [], "Recall CI": [],
-        "F1-score Mean": [], "F1-score CI": [],
-        "Accuracy Mean": [], "Accuracy CI": []
+        "F1-score Mean": [], "F1-score CI": []
     }
 
     for i, cls in enumerate(class_names):
         pm, pci = mean_confidence_interval(precision_scores[cls])
         rm, rci = mean_confidence_interval(recall_scores[cls])
         f1m, f1ci = mean_confidence_interval(f1_scores[cls])
-        acc_m, acc_ci = accuracy_conf_intervals[i]
 
         cv_metrics_summary["Classe"].append(cls)
         cv_metrics_summary["Precision Mean"].append(pm)
@@ -139,8 +138,10 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
         cv_metrics_summary["Recall CI"].append(rci)
         cv_metrics_summary["F1-score Mean"].append(f1m)
         cv_metrics_summary["F1-score CI"].append(f1ci)
-        cv_metrics_summary["Accuracy Mean"].append(acc_m)
-        cv_metrics_summary["Accuracy CI"].append(acc_ci)
+
+    # Inclui a acurácia global (CV) no resumo para uso nos relatórios
+    cv_metrics_summary["Global Accuracy Mean"] = acc_mean
+    cv_metrics_summary["Global Accuracy CI"] = acc_ci
 
     # ========================================
     # PARTE 2: Métricas do Teste Final (Hold-out)
@@ -161,15 +162,13 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
 
     # Matriz de confusão
     test_cm = confusion_matrix(y_test, y_test_pred)
-    test_class_acc = test_cm.diagonal() / test_cm.sum(axis=1)
 
-    # Monta dicionário com métricas do teste
+    # Monta dicionário com métricas do teste (sem acurácia por classe)
     test_metrics = {
         "Classe": [],
         "Precision": [],
         "Recall": [],
-        "F1-score": [],
-        "Accuracy": []
+        "F1-score": []
     }
 
     for i, cls in enumerate(class_names):
@@ -177,10 +176,11 @@ def evaluate_models(cv_models, final_model, X_test, y_test, class_names):
         test_metrics["Precision"].append(test_report[cls]['precision'])
         test_metrics["Recall"].append(test_report[cls]['recall'])
         test_metrics["F1-score"].append(test_report[cls]['f1-score'])
-        test_metrics["Accuracy"].append(test_class_acc[i])
 
     print(f"✓ Cohen's Kappa (Teste): {test_kappa:.4f}")
-    print(f"✓ Acurácia Global (Teste): {test_report['accuracy']:.4f}")
+    # Calcula acurácia global do teste a partir da matriz de confusão
+    test_acc = test_cm.diagonal().sum() / test_cm.sum() if test_cm.sum() > 0 else 0.0
+    print(f"✓ Acurácia Global (Teste): {test_acc:.4f}")
     print()
 
     # Mostra matriz de confusão
@@ -244,9 +244,9 @@ Resultados da validação cruzada com **intervalo de confiança de 95%** (IC 95%
 
 """
 
-    # Tabela de métricas da CV
-    md_content += "| Classe | F1-Score | Precision | Recall | Accuracy |\n"
-    md_content += "|--------|----------|-----------|--------|----------|\n"
+    # Tabela de métricas da CV (sem acurácia por classe)
+    md_content += "| Classe | F1-Score | Precision | Recall |\n"
+    md_content += "|--------|----------|-----------|--------|\n"
 
     for i, cls in enumerate(class_names):
         f1_mean = cv_metrics['F1-score Mean'][i]
@@ -255,12 +255,11 @@ Resultados da validação cruzada com **intervalo de confiança de 95%** (IC 95%
         prec_ci = cv_metrics['Precision CI'][i]
         rec_mean = cv_metrics['Recall Mean'][i]
         rec_ci = cv_metrics['Recall CI'][i]
-        acc_mean = cv_metrics['Accuracy Mean'][i]
-        acc_ci = cv_metrics['Accuracy CI'][i]
 
-        md_content += f"| **{cls}** | {f1_mean:.4f} ± {f1_ci:.4f} | {prec_mean:.4f} ± {prec_ci:.4f} | {rec_mean:.4f} ± {rec_ci:.4f} | {acc_mean:.4f} ± {acc_ci:.4f} |\n"
+        md_content += f"| **{cls}** | {f1_mean:.4f} ± {f1_ci:.4f} | {prec_mean:.4f} ± {prec_ci:.4f} | {rec_mean:.4f} ± {rec_ci:.4f} |\n"
 
     md_content += f"\n### Métricas Globais (CV)\n\n"
+    md_content += f"- **Acurácia (CV - Média ± IC):** {cv_metrics['Global Accuracy Mean']:.4f} ± {cv_metrics['Global Accuracy CI']:.4f}\n"
     md_content += f"- **Cohen's Kappa:** {kappa_mean:.4f} ± {kappa_ci:.4f}\n"
     md_content += f"\n---\n\n"
 
@@ -288,19 +287,22 @@ Resultados da validação cruzada com **intervalo de confiança de 95%** (IC 95%
     md_content += f"Resultados no conjunto de teste final (nunca visto durante o treinamento).\n\n"
     md_content += f"### Métricas por Classe\n\n"
 
-    # Tabela de métricas do teste
-    md_content += "| Classe | F1-Score | Precision | Recall | Accuracy |\n"
-    md_content += "|--------|----------|-----------|--------|----------|\n"
+    # Tabela de métricas do teste (sem acurácia por classe)
+    md_content += "| Classe | F1-Score | Precision | Recall |\n"
+    md_content += "|--------|----------|-----------|--------|\n"
 
     for i, cls in enumerate(class_names):
         f1 = test_metrics['F1-score'][i]
         prec = test_metrics['Precision'][i]
         rec = test_metrics['Recall'][i]
-        acc = test_metrics['Accuracy'][i]
 
-        md_content += f"| **{cls}** | {f1:.4f} | {prec:.4f} | {rec:.4f} | {acc:.4f} |\n"
+        md_content += f"| **{cls}** | {f1:.4f} | {prec:.4f} | {rec:.4f} |\n"
+
+    # Calcula acurácia global do teste a partir da matriz de confusão
+    test_acc = test_cm.diagonal().sum() / test_cm.sum() if test_cm.sum() > 0 else 0.0
 
     md_content += f"\n### Métricas Globais (Teste)\n\n"
+    md_content += f"- **Acurácia (Teste):** {test_acc:.4f}\n"
     md_content += f"- **Cohen's Kappa:** {test_kappa:.4f}\n\n"
 
     # Matriz de confusão
@@ -380,9 +382,9 @@ VALIDAÇÃO CRUZADA (K-Fold) - Média ± IC 95%
         log_content += f"  F1-Score:  {cv_metrics['F1-score Mean'][i]:.4f} ± {cv_metrics['F1-score CI'][i]:.4f}\n"
         log_content += f"  Precision: {cv_metrics['Precision Mean'][i]:.4f} ± {cv_metrics['Precision CI'][i]:.4f}\n"
         log_content += f"  Recall:    {cv_metrics['Recall Mean'][i]:.4f} ± {cv_metrics['Recall CI'][i]:.4f}\n"
-        log_content += f"  Accuracy:  {cv_metrics['Accuracy Mean'][i]:.4f} ± {cv_metrics['Accuracy CI'][i]:.4f}\n"
 
     log_content += f"\nCohen's Kappa (CV): {kappa_mean:.4f} ± {kappa_ci:.4f}\n"
+    log_content += f"Acurácia (CV - Média ± IC): {cv_metrics['Global Accuracy Mean']:.4f} ± {cv_metrics['Global Accuracy CI']:.4f}\n"
 
     # Inclui matriz de confusão agregada da CV, se disponível
     if cv_total_cm is not None:
@@ -414,9 +416,10 @@ VALIDAÇÃO CRUZADA (K-Fold) - Média ± IC 95%
         log_content += f"  F1-Score:  {test_metrics['F1-score'][i]:.4f}\n"
         log_content += f"  Precision: {test_metrics['Precision'][i]:.4f}\n"
         log_content += f"  Recall:    {test_metrics['Recall'][i]:.4f}\n"
-        log_content += f"  Accuracy:  {test_metrics['Accuracy'][i]:.4f}\n"
 
     log_content += f"\nCohen's Kappa (Teste): {test_kappa:.4f}\n"
+    test_acc = test_cm.diagonal().sum() / test_cm.sum() if test_cm.sum() > 0 else 0.0
+    log_content += f"Acurácia (Teste): {test_acc:.4f}\n"
 
     # Matriz de confusão
     log_content += f"\n{'-'*80}\n"

@@ -117,7 +117,10 @@ def main():
         print(f"  F1-score:  {cv_metrics['F1-score Mean'][i]:.4f} ± {cv_metrics['F1-score CI'][i]:.4f}")
         print(f"  Precision: {cv_metrics['Precision Mean'][i]:.4f} ± {cv_metrics['Precision CI'][i]:.4f}")
         print(f"  Recall:    {cv_metrics['Recall Mean'][i]:.4f} ± {cv_metrics['Recall CI'][i]:.4f}")
-        print(f"  Accuracy:  {cv_metrics['Accuracy Mean'][i]:.4f} ± {cv_metrics['Accuracy CI'][i]:.4f}")
+
+    # Mostra acurácia global da CV (média ± IC)
+    if 'Global Accuracy Mean' in cv_metrics and 'Global Accuracy CI' in cv_metrics:
+        print(f"\nAcurácia (CV): {cv_metrics['Global Accuracy Mean']:.4f} ± {cv_metrics['Global Accuracy CI']:.4f}")
 
     print(f"\nCohen's Kappa (CV): {kappa_mean:.4f} ± {kappa_ci:.4f}")
     print()
@@ -129,7 +132,13 @@ def main():
         print(f"  F1-score:  {test_metrics['F1-score'][i]:.4f}")
         print(f"  Precision: {test_metrics['Precision'][i]:.4f}")
         print(f"  Recall:    {test_metrics['Recall'][i]:.4f}")
-        print(f"  Accuracy:  {test_metrics['Accuracy'][i]:.4f}")
+
+    # Calcula e mostra acurácia global do teste a partir da matriz de confusão retornada
+    try:
+        test_acc = test_cm.diagonal().sum() / test_cm.sum()
+    except Exception:
+        test_acc = 0.0
+    print(f"\nAcurácia (Teste): {test_acc:.4f}")
 
     print(f"\nCohen's Kappa (Teste): {test_kappa:.4f}")
     print()
@@ -171,6 +180,8 @@ def main():
     print("    Pra habilitar, descomente as linhas no final do main.py")
     print("    (pode demorar vários minutos dependendo do dataset!)")
     print()
+    
+    print("conteúdo presente no xtest:", X_test.columns.tolist())
 
     # Descomenta as linhas abaixo pra rodar o SHAP:
     # run_shap(

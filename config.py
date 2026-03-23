@@ -44,7 +44,7 @@ PATH_BASE="./results_with_consistency_features"
 #   - 'mlp' (aliases: 'neural_network', 'multilayer_perceptron')
 #   - 'decision_tree' (aliases: 'dt', 'decisiontree')
 #   - 'logistic_regression' (aliases: 'lr', 'logisticregression')
-MODEL_TYPE = "mlp"
+MODEL_TYPE = "xgboost"
 
 # Mapa de aliases para facilitar a escrita de nomes dos modelos
 MODEL_NAME_ALIASES = {
@@ -191,7 +191,7 @@ if WITHOUT_CONSISTENCY_FEATURES:
 
 # Nomes das classes pro problema de classificação
 # A ordem importa! Deve corresponder à ordem do LabelEncoder
-CLASS_NAMES = ["SOG.DB", "FRG", "SOG.PB", "SOG.PBM", "Normal"]
+CLASS_NAMES = ["SAG.DB", "FRG", "SAG.PB", "SAG.PBM", "Normal"]
 
 # Caminho pro dataset
 DATASET_PATH = "./data/CSV files/dataset_downsampled.csv"
@@ -204,7 +204,7 @@ DATASET_PATH = "./data/CSV files/dataset_downsampled.csv"
 # Cada gráfico dá uma perspectiva diferente da explicabilidade
 GRAPHICS = [
     # "Violin Summary Plot",      # Mostra distribuição dos valores SHAP
-    # "Bar Plot",                  # Importância média das features
+    "Bar Plot",                  # Importância média das features
     # "Beeswarm Summary Plot",     # Visualização densa dos valores SHAP
     # "Waterfall Summary Plot",     # Contribuição individual de cada feature
     # "Force Plot"                # Contribuição detalhada para uma predição específica
