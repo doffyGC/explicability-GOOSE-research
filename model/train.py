@@ -12,22 +12,23 @@ import gc
 
 def _get_classifier(model_type, params):
     """
-    Retorna o classificador configurado com base no tipo informado.
-    
-    Suporta aliases de nomes (ex: 'xgb' -> 'xgboost', 'rf' -> 'random_forest', etc).
+    Return the configured classifier based on the provided model type and parameters.
+    Args:
+        model_type (str): The type of classifier to create (e.g., 'xgboost', 'random_forest', 'svm', 'mlp', 'decision_tree', 'logistic_regression').
+        params (dict): A dictionary of parameters to initialize the classifier.
     """
     from config import MODEL_NAME_ALIASES
     
-    # Normaliza o nome: lowercase e remove espaços
+    # Normaliza the name: remove leading/trailing whitespace and convert to lowercase
     model_type_normalized = str(model_type).strip().lower()
     
-    # Resolve o alias pro nome canônico
+    # Resolve the alias to get the canonical model name
     if model_type_normalized in MODEL_NAME_ALIASES:
         model_type_canonical = MODEL_NAME_ALIASES[model_type_normalized]
     else:
         raise ValueError(
-            f"Modelo não suportado: '{model_type}'. "
-            f"Modelos disponíveis: {', '.join(MODEL_NAME_ALIASES.values())}"
+            f"Model not supported: '{model_type}'. "
+            f"Supported models: {', '.join(MODEL_NAME_ALIASES.values())}"
         )
     
     match model_type_canonical:
@@ -36,13 +37,13 @@ def _get_classifier(model_type, params):
         case "random_forest":
             return RandomForestClassifier(**params)
         case "svm":
-            # SVM é sensível à escala: usa StandardScaler no pipeline
+            # SVM is sensable at scale, so we use a pipeline with StandardScaler
             return Pipeline([
                 ("scaler", StandardScaler()),
                 ("clf", SVC(**params))
             ])
         case "mlp":
-            # MLP também se beneficia de normalização
+            # MLP is sensable at scale, so we use a pipeline with StandardScaler too
             return Pipeline([
                 ("scaler", StandardScaler()),
                 ("clf", MLPClassifier(**params))
@@ -50,81 +51,75 @@ def _get_classifier(model_type, params):
         case "decision_tree":
             return DecisionTreeClassifier(**params)
         case "logistic_regression":
-            # LR (multinomial) também é sensível à escala
+            # LR is sensable at scale, so we use a pipeline with StandardScaler too
             return Pipeline([
                 ("scaler", StandardScaler()),
                 ("clf", LogisticRegression(**params))
             ])
         case _:
-            raise ValueError(f"Modelo não suportado: {model_type_canonical}")
+            raise ValueError(f"Model not supported: {model_type_canonical}")
 
 def train_model(X, y, model_type, params, n_splits, seed):
     """
-    Treina um classificador (XGBoost ou baseline escolhido) usando validação cruzada K-Fold.
-
-    IMPORTANTE: Segue boas práticas acadêmicas!
-    1. Usa Validação Cruzada K-Fold em todo o conjunto de dados
+    Train a classifier (XGBoost or chosen baseline) using K-Fold Cross-Validation.
 
     Args:
-        X (pd.DataFrame): DataFrame com as features.
-        y (np.array): Array com a variável target (já codificada).
-        model_type (str): Tipo de classificador (xgboost, random_forest, svm, mlp, decision_tree, logistic_regression).
-        params (dict): Dicionário com os parâmetros do classificador escolhido.
-        n_splits (int): Número de folds pra validação cruzada.
-        seed (int): Seed pra reprodutibilidade.
-        test_size (float): Proporção do dataset reservada pro teste final (padrão: 0.2 = 20%).
+        X (pd.DataFrame): DataFrame with the features.
+        y (np.array): Array with the target variable (already encoded).
+        model_type (str): Type of classifier (xgboost, random_forest, svm, mlp, decision_tree, logistic_regression).
+        params (dict): Dictionary with the parameters of the chosen classifier.
+        n_splits (int): NNumber of folds for cross-validation.
+        seed (int): Seed for reproducibility.
+        test_size (float): Proportion of the dataset reserved for the final test (default: 0.2 = 20%).
 
     Returns:
         tuple: (cv_models, final_model)
-            - cv_models: Lista de tuplas (model, X_val, y_val) dos folds de validação
-            - final_model: Modelo final treinado em TODOS os dados
+            - cv_models: List of tuples (model, X_val, y_val) of the validation folds
+            - final_model: Final model trained on all the data
     """
     print("=" * 60)
-    print(f"ETAPA: Validação cruzada K-Fold ({n_splits} folds)")
+    print(f"STEP: K-Fold Cross-Validation ({n_splits} folds)")
     print("=" * 60)
 
-    # Faz K-Fold em TODO o conjunto de dados
+    # Make K-fold split with stratification to maintain class distribution in each fold
     kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     cv_models = []
 
     for fold_num, (train_idx, val_idx) in enumerate(kf.split(X, y), 1):
-        # Divide o conjunto em treino e validação desse fold
+        # Split the data for this fold
         X_train_fold = X.iloc[train_idx]
         X_val_fold = X.iloc[val_idx]
         y_train_fold = y[train_idx]
         y_val_fold = y[val_idx]
 
-        print(f"\nTreinando fold {fold_num}/{n_splits}...")
-        print(f"  - Treino: {len(X_train_fold)} amostras")
-        print(f"  - Validação: {len(X_val_fold)} amostras")
+        print(f"\nTraining fold {fold_num}/{n_splits}...")
+        print(f"  - Training: {len(X_train_fold)} samples")
+        print(f"  - Validation: {len(X_val_fold)} samples")
 
-        # Treina o modelo nesse fold
+        # Train the model for this fold
         model = _get_classifier(model_type, params)
         
-        print("  - Treinando modelo...")
+        print("  - Training model...")
         model.fit(X_train_fold, y_train_fold)
 
-        # Guarda o modelo e os dados de validação pra calcular métricas depois
+        # Put the model and validation data in the list for later evaluation
         cv_models.append((model, X_val_fold, y_val_fold))
 
-        # Limpa memória pra não estourar em datasets grandes
+        # Clean up memory after each fold
         del X_train_fold, y_train_fold
         gc.collect()
 
-    print("\n✓ Validação cruzada concluída!")
+    print("\n✓ Cross-Validation completed!")
     print()
 
     print("=" * 60)
-    print("ETAPA 3: Treinando modelo final")
+    print("STEP 3: Final model training with all data (to shap values and production)")
     print("=" * 60)
-
-    # PASSO 3: Treina modelo final usando TODOS os dados de treino
-    # Esse modelo vai ser usado pro SHAP e pra produção
-    print(f"Treinando modelo final com TODOS os {len(X)} dados...")
+    
+    print(f"Training final model with all {len(X)} samples...")
     final_model = _get_classifier(model_type, params)
     final_model.fit(X, y)
-    print("✓ Modelo final treinado!")
+    print("✓ Final model trained!")
     print()
 
-    # Retorna cv_models (para métricas) e final_model (para SHAP)
     return cv_models, final_model

@@ -1,12 +1,12 @@
 """
-Pipeline completo de treinamento e avaliação de modelo XGBoost.
+Complete training and evaluation pipeline for ML model
 
-Este script implementa as melhores práticas acadêmicas:
-1. Separação correta de treino/teste (hold-out)
-2. Validação cruzada K-Fold estratificada
-3. Cálculo de métricas com intervalos de confiança
-4. Análise de explicabilidade com SHAP
-5. Otimizações pra lidar com datasets grandes
+This script implements the best academic practices:
+1. Stratified K-Fold cross-validation
+2. Metric calculation with confidence intervals
+3. Comprehensive reporting (Markdown + Log)
+4. SHAP explainability analysis
+5. Optimizations for handling large datasets
 """
 
 import os
@@ -19,70 +19,70 @@ from explainability.shap_analysis import run_shap
 
 def main():
     """
-    Função principal que executa todo o pipeline.
+    Main function that orchestrates the entire pipeline:
     """
 
     print("\n" + "=" * 60)
-    print(f"PIPELINE DE TREINAMENTO E AVALIAÇÃO - {MODEL_TYPE.upper()}")
+    print(f"TRAINING AND EVALUATION PIPELINE - {MODEL_TYPE.upper()}")
     print("=" * 60)
     print()
 
     # ========================================
-    # ETAPA 1: Carregamento dos Dados
+    # STEP 1: Dataset Loading
     # ========================================
 
     print("=" * 60)
-    print("ETAPA 1: Carregamento dos Dados")
+    print("STEP 1: Dataset Loading")
     print("=" * 60)
 
     if not os.path.exists(DATASET_PATH):
-        raise FileNotFoundError(f"Dataset não encontrado: {DATASET_PATH}")
+        raise FileNotFoundError(f"Dataset not found: {DATASET_PATH}")
 
-    print(f"Carregando dataset: {DATASET_PATH}")
+    print(f"Dataset loading: {DATASET_PATH}")
     df = load_dataset(DATASET_PATH, sample_size=SAMPLE_SIZE, random_state=RANDOM_STATE)
-    print(f"✓ Dataset carregado: {df.shape[0]} linhas × {df.shape[1]} colunas")
+    print(f"✓ Dataset load: {df.shape[0]} lines × {df.shape[1]} columns")
     print()
 
     # ========================================
-    # ETAPA 2: Pré-processamento
+    # STEP 2: Pré-processing
     # ========================================
 
     print("=" * 60)
-    print("ETAPA 2: Pré-processamento")
+    print("STEP 2: Pré-processing")
     print("=" * 60)
 
-    # Separa features (X) e target (y)
+    # Separate features (X) and target (y)
     X, y, encoder = preprocess(df, target_column="class", discarted_columns=DISCARTED_COLUMNS)
 
-    print(f"✓ Features: {X.shape[1]} colunas")
-    print(f"✓ Amostras: {len(y)}")
+    print(f"✓ Features: {X.shape[1]} columns")
+    print(f"✓ Samples: {len(y)}")
     print(f"✓ Classes: {CLASS_NAMES}")
-    print(f"✓ Distribuição de classes:")
+    print(f"✓ Class Distribution:")
 
-    # Mostra a distribuição de classes (importante pra detectar desbalanceamento)
+    # Show the class distribution
     for i, cls in enumerate(CLASS_NAMES):
         count = (y == i).sum()
         percentage = (count / len(y)) * 100
-        print(f"    - {cls}: {count} amostras ({percentage:.1f}%)")
+        print(f"    - {cls}: {count} samples ({percentage:.1f}%)")
     print()
 
-    # Libera memória do DataFrame original
+    # Free memory by deleting the original dataframe
     del df
 
     # ========================================
-    # ETAPA 3: Treinamento
+    # STEP 3: Training
     # ========================================
 
-    # Exibe qual modelo foi escolhido
+    # Show the chosen model and its description
     model_desc = MODEL_DESCRIPTIONS.get(MODEL_PARAMS.__class__.__name__, "")
     canonical_model = MODEL_NAME_ALIASES.get(MODEL_TYPE.lower(), MODEL_TYPE)
     print("=" * 60)
-    print(f"MODELO ESCOLHIDO: {canonical_model.upper()}")
+    print(f"CHOOSEN MODEL: {canonical_model.upper()}")
     print(f"Description: {MODEL_DESCRIPTIONS.get(canonical_model, canonical_model)}")
     print("=" * 60)
     print()
 
-    # Treina modelos usando apenas Validação Cruzada K-Fold (sem hold-out)
+    # Train models using Cross-Validation K-Fold 
     cv_models, final_model = train_model(
         X, y,
         model_type=MODEL_TYPE,
@@ -92,24 +92,24 @@ def main():
     )
 
     # ========================================
-    # ETAPA 4: Avaliação
+    # STEP 4: Evaluation
     # ========================================
 
-    # Avalia modelos da CV (sem hold-out)
-    cv_metrics, kappa_mean, kappa_ci, cv_total_cm = evaluate_models(
-        cv_models, final_model, CLASS_NAMES
+    # Evaluate models in CV
+    cv_metrics, kappa_mean, kappa_ci, cv_total_cm, all_y_true, all_y_pred = evaluate_models(
+        cv_models, CLASS_NAMES
     )
 
     # ========================================
-    # ETAPA 5: Resultados Finais
+    # STEP 5: Final Results Summary
     # ========================================
 
     print("=" * 60)
-    print("RESULTADOS FINAIS")
+    print("FINAL RESULTS")
     print("=" * 60)
     print()
 
-    print("📊 VALIDAÇÃO CRUZADA (Média ± IC 95%):")
+    print("📊 CROSS-VALIDATION (Mean ± 95% CI):")
     print("-" * 60)
     for i, cls in enumerate(CLASS_NAMES):
         print(f"\n{cls}:")
@@ -117,28 +117,29 @@ def main():
         print(f"  Precision: {cv_metrics['Precision Mean'][i]:.4f} ± {cv_metrics['Precision CI'][i]:.4f}")
         print(f"  Recall:    {cv_metrics['Recall Mean'][i]:.4f} ± {cv_metrics['Recall CI'][i]:.4f}")
 
-    # Mostra acurácia global da CV (média ± IC)
+    # Show the global accuracy  and Cohen's Kappa metrics (Mean ± IC)
     if 'Global Accuracy Mean' in cv_metrics and 'Global Accuracy CI' in cv_metrics:
-        print(f"\nAcurácia (CV): {cv_metrics['Global Accuracy Mean']:.4f} ± {cv_metrics['Global Accuracy CI']:.4f}")
+        print(f"\nGlobal Accuracy (CV): {cv_metrics['Global Accuracy Mean']:.4f} ± {cv_metrics['Global Accuracy CI']:.4f}")
 
     print(f"\nCohen's Kappa (CV): {kappa_mean:.4f} ± {kappa_ci:.4f}")
     print()
 
     # ========================================
-    # ETAPA 5.1: Salvar Relatório de Métricas
+    # STEP 5.1: Save Metrics Report
     # ========================================
 
     print("=" * 60)
-    print("SALVANDO RELATÓRIOS")
+    print("SAVING REPORTS")
     print("=" * 60)
     print()
 
-    # Extrai o nome do dataset do caminho
+    # Extract the dataset name from the path
     dataset_name = os.path.basename(DATASET_PATH).replace(".csv", "").replace(".parquet", "")
 
-    # Salva relatórios em Markdown e Log
+    # Save reports in Markdown and Log
     md_path, log_path = save_metrics_report(
-        cv_metrics, kappa_mean, kappa_ci, CLASS_NAMES, dataset_name, output_dir=PATH_BASE, cv_total_cm=cv_total_cm
+        cv_metrics, kappa_mean, kappa_ci, CLASS_NAMES, dataset_name, output_dir=PATH_BASE, cv_total_cm=cv_total_cm,
+        all_y_true=all_y_true, all_y_pred=all_y_pred
     )
 
     print(f"✓ Relatório Markdown salvo: {md_path}")
@@ -146,19 +147,12 @@ def main():
     print()
 
     # ========================================
-    # ETAPA 6: Explicabilidade (SHAP)
+    # STEP 6: Explainability (SHAP)
     # ========================================
 
-    # Descomenta abaixo pra gerar os gráficos SHAP
-    # ATENÇÃO: pode demorar bastante dependendo do tamanho do dataset!
-
     print("=" * 60)
-    print("ETAPA 6: Análise de Explicabilidade (SHAP)")
+    print("STEP 6: Explainability Analysis (SHAP)")
     print("=" * 60)
-    print()
-    print("⚠️  A análise SHAP está DESABILITADA por padrão.")
-    print("    Pra habilitar, descomente as linhas no final do main.py")
-    print("    (pode demorar vários minutos dependendo do dataset!)")
     print()
     
 
@@ -166,26 +160,23 @@ def main():
     if cv_models and len(cv_models) > 0:
         # cv_models é lista de tuplas (model, X_val, y_val)
         _, shap_X, _ = cv_models[-1]
-        print(f"Usando último fold de validação para SHAP: {len(shap_X)} amostras")
+        print(f"Using last fold  to validate to SHAP: {len(shap_X)} samples")
     else:
         shap_X = X
-        print("Aviso: cv_models vazio — usando todo o conjunto X como fallback para SHAP")
-
-    # Descomente a chamada abaixo para gerar os gráficos SHAP usando `shap_X`.
-    # ATENÇÃO: pode demorar dependendo do tamanho do conjunto selecionado.
+        print("Warning: cv_models is empty, using entire dataset for SHAP (not recommended for large datasets)")
+        
+    # This function runs the SHAP analysis and saves the plots in the specified path.
     run_shap(
         final_model,
         shap_X,
         CLASS_NAMES,
         dataset_name=dataset_name,
         path_base=PATH_BASE,
-        graphics=GRAPHICS,
-        sample_percentage=SHAP_SAMPLE_PERCENTAGE,
-        random_state=RANDOM_STATE
+        graphics=GRAPHICS
     )
 
     print("=" * 60)
-    print("✓ PIPELINE CONCLUÍDO COM SUCESSO!")
+    print("✓ SUCCESSFULLY PIPELINE COMPLETED!")
     print("=" * 60)
     print()
 
