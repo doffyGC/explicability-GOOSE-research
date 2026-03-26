@@ -39,7 +39,7 @@ def main():
         raise FileNotFoundError(f"Dataset not found: {DATASET_PATH}")
 
     print(f"Dataset loading: {DATASET_PATH}")
-    df = load_dataset(DATASET_PATH, sample_size=SAMPLE_SIZE, random_state=RANDOM_STATE)
+    df = load_dataset(DATASET_PATH)
     print(f"✓ Dataset load: {df.shape[0]} lines × {df.shape[1]} columns")
     print()
 
