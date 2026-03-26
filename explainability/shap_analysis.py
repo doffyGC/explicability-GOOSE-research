@@ -7,16 +7,20 @@ import gc
 
 def get_ten_most_important_features(shap_values, X):
     """
-    Retorna as top 10 features mais importantes com base nos valores SHAP.
+    Returns the top 10 most important features based on SHAP values.
+    
+    args:
+    - shap_values: SHAP values calculated for the test set 
+    - X: DataFrame with the test features (used to get feature names)
     """
 
-    # Extrai o array NumPy REAL de valores shap
+    # Extract the SHAP values as a numpy array
     if hasattr(shap_values, "values"):
         shap_array = shap_values.values
     else:
-        shap_array = shap_values  # compatibilidade caso já seja array
+        shap_array = shap_values  # If it's already a numpy array
 
-    # Se for multiclasse → média entre classes
+    # If its multiclass problem → mean across
     if shap_array.ndim == 3:
         shap_array = np.mean(np.abs(shap_array), axis=2)
     else:
@@ -36,102 +40,87 @@ def get_ten_most_important_features(shap_values, X):
     print(top_10)
 
 
-def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, sample_percentage=0.20, random_state=42):
+def run_shap(model, X_test, class_names, dataset_name, path_base, graphics):
     """
-    Executa análise SHAP pra explicar as predições do modelo.
+    Execute SHAP analysis to explain the model's predictions.
 
-    IMPORTANTE: SHAP é MUITO pesado computacionalmente!
-    - Pra datasets grandes, usa amostragem baseada em porcentagem
-    - Mesmo com 10-20% do dataset, os resultados são representativos
-    - Gera gráficos pra cada classe e salva em arquivos PNG
+    IMPORTANT: SHAP is TOO SLOW for large datasets. For real use cases, consider:
+    - Using a smaller sample of the test set (e.g., 10-20%) for SHAP analysis
+    - Using SHAP's TreeExplainer which is optimized for tree-based models like XGBoost
 
     Args:
-        model: Modelo XGBoost treinado.
-        X_test (pd.DataFrame): Conjunto de teste (ou validação) pra explicar.
-        class_names (list): Lista com os nomes das classes.
-        dataset_name (str): Nome do dataset (usado no nome dos arquivos).
-        path_base (str): Diretório base pra salvar os gráficos.
-        graphics (list): Lista com os tipos de gráficos SHAP pra gerar.
-        sample_percentage (float): Porcentagem do dataset pra usar no SHAP (padrão: 0.20 = 20%).
-                                   Usa None pra processar todo o dataset.
-        random_state (int): Seed pra reprodutibilidade da amostragem.
+        model: XGBoost model trained.
+        X_test (pd.DataFrame): Test set to explain.
+        class_names (list): List with the names of the classes.
+        dataset_name (str): Name of the dataset (used in the file names).
+        path_base (str): Base directory to save the plots.
+        graphics (list): List with the types of SHAP plots to generate.
 
     Returns:
-        None (salva os gráficos em arquivos)
+        None (saves the plots to files)
     """
 
     print("=" * 60)
-    print("EXPLICABILIDADE: Análise SHAP")
+    print("EXPLAINABILITY: SHAP Analysis")
     print("=" * 60)
 
-    # Calcula o número de amostras baseado na porcentagem
-    # SHAP é O(n²) em complexidade, então fica impraticável com muitos dados
-    if sample_percentage is not None and sample_percentage < 1.0:
-        n_samples = int(len(X_test) * sample_percentage)
-        print(f"⚠️  Conjunto de teste tem {len(X_test)} amostras.")
-        print(f"    Fazendo amostragem de {n_samples} amostras ({sample_percentage*100:.0f}% do dataset) pro SHAP...")
-        print(f"    (isso é normal e recomendado pra economizar tempo!)")
-        X_test_sample = X_test.sample(n=n_samples, random_state=random_state)
-    else:
-        print(f"✓ Usando todo o conjunto de teste ({len(X_test)} amostras) pro SHAP.")
-        X_test_sample = X_test
+    print(f"✓ Using test set ({len(X_test)} samples) for SHAP.")
+    X_test_sample = X_test
 
-    # Cria o explainer SHAP
-    # TreeExplainer é otimizado pra modelos baseados em árvores (XGBoost, RF, etc)
-    print("\nCriando explainer SHAP...")
+    # Create the SHAP explainer
+    # TreeExplainer is otimized to tree-based models (XGBoost, RF, etc)
+    print("\nCreating SHAP explainer...")
     explainer = shap.Explainer(model)
 
-    # Calcula os valores SHAP
-    # Isso pode demorar alguns minutos dependendo do tamanho do dataset!
-    print(f"Calculando valores SHAP pra {len(X_test_sample)} amostras...")
-    print("(pode demorar um pouco...)")
+    # Calculate the SHAP values
+    print(f"Calculating SHAP values for {len(X_test_sample)} samples...")
+    print("(this might take a while...)")
     shap_values = explainer(X_test_sample)
-    print("✓ Valores SHAP calculados!")
+    print("✓ SHAP values calculated!")
     print()
     
-    # Verifica as 10 features mais importantes
-    print("Calculando as 10 features mais importantes baseado nos valores SHAP médios absolutos...")
+    # Verify the 10 most important features
+    print("Calculating the 10 most important features based on mean absolute SHAP values...")
     get_ten_most_important_features(shap_values, X_test_sample)
 
-    # Detecta se é classificação binária ou multiclasse
-    # Binária: shap_values tem shape (n_samples, n_features)
-    # Multiclasse: shap_values tem shape (n_samples, n_features, n_classes)
+    # Detect if it's binary or multiclass classification based on the shape of SHAP values
+    # Binary: shap_values has shape (n_samples, n_features)
+    # Multiclass: shap_values has shape (n_samples, n_features, n_classes)
     is_binary = len(shap_values.shape) == 2 or (hasattr(shap_values, 'values') and len(shap_values.values.shape) == 2)
 
     if is_binary:
-        print("✓ Classificação binária detectada (SHAP em 2D)")
-        print("  Gerando gráficos apenas pra classe positiva (mais comum)")
+        print("✓ Binary classification detected (SHAP in 2D)")
+        print("  Generating plots only for the positive class (most common)")
         print()
     else:
-        print("✓ Classificação multiclasse detectada (SHAP em 3D)")
+        print("✓ Multiclass classification detected (SHAP in 3D)")
         print()
 
-    # Gera os gráficos
-    print("Gerando gráficos SHAP...")
+    # Generate the plots
+    print("Generating SHAP plots...")
 
     if is_binary:
         # ========================================
-        # CLASSIFICAÇÃO BINÁRIA - GRÁFICOS PRA AMBAS AS CLASSES
+        # BINARY CLASSIFICATION - GRAPHS TO BOTH CLASSES
         # ========================================
-        # Em binário, SHAP retorna valores pra classe positiva (índice 1)
-        # Mas podemos gerar gráficos pras DUAS classes:
-        #   1. Classe Positiva: usa os valores SHAP como estão
-        #   2. Classe Negativa: inverte os valores SHAP (multiplica por -1)
+        # In binary classification, SHAP returns values for the positive class (index 1)
+        # But we can generate plots for BOTH classes:
+        #   1. Positive Class: use the SHAP values as they are
+        #   2. Negative Class: invert the SHAP values (multiply by -1)
         #
-        # EXCEÇÃO: Bar Plot mostra |SHAP| (valor absoluto), então é igual pras duas classes
-        #          Vamos gerar apenas UMA VEZ
+        # EXCEPTION: Bar Plot shows |SHAP| (absolute value), so it doesn't matter if we invert or not.
 
-        # Conta quantos gráficos vão ser gerados
+        # Count how many graphics we will generate to show progress
         bar_plot_in_graphics = "Bar Plot" in graphics
-        total_graphics = len(graphics) * 2  # Gráficos direcionais pras duas classes
+        total_graphics = len(graphics) * 2  # Graphics for both classes
         if bar_plot_in_graphics:
-            total_graphics -= 1  # Bar Plot só uma vez
+            total_graphics -= 1  # Bar Plot is generated only once
         current = 0
 
-        # PRIMEIRO: Gera o Bar Plot UMA VEZ (importância geral, não depende de classe)
+        # FIRST: Generate the Bar Plot at ONCE
         if bar_plot_in_graphics:
             current += 1
-            print(f"  [{current}/{total_graphics}] Gerando Bar Plot (importância geral das features)...")
+            print(f"  [{current}/{total_graphics}] Generating Bar Plot (general feature importance)...")
 
             save_path = os.path.join(path_base, "Bar Plot")
             os.makedirs(save_path, exist_ok=True)
@@ -139,7 +128,6 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
             plt.figure(figsize=(12, 8))
             plt.title(f"Bar Plot - Features General Importance\n(mean(|SHAP|))")
 
-            # Bar plot usa valor absoluto, então não importa inverter
             shap.plots.bar(shap_values, max_display=20, show=False)
 
             filename = f"Bar Plot dataset {dataset_name} (geral).png"
@@ -148,66 +136,52 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
             plt.close()
             gc.collect()
 
-        # SEGUNDO: Gera os gráficos DIRECIONAIS pra cada classe
-        # (Violin, Beeswarm, Waterfall mostram direção dos valores SHAP)
+        # SECOND: Generate the DIRECTIONAL plots for each class
         for class_idx, cls in enumerate(class_names):
             for graphic in graphics:
-                # Pula o Bar Plot (já foi gerado acima)
-                if graphic == "Bar Plot":
-                    continue
-
                 current += 1
-                print(f"  [{current}/{total_graphics}] Gerando {graphic} pra classe '{cls}'...")
+                print(f"  [{current}/{total_graphics}] Generating {graphic} for class '{cls}'...")
 
-                # Cria o diretório pro tipo de gráfico
+                # Create the directory for this type of graphic
                 save_path = os.path.join(path_base, graphic)
                 os.makedirs(save_path, exist_ok=True)
 
-                # Configura a figura
+                # Configure the figure
                 plt.figure(figsize=(12, 8))
 
-                # IMPORTANTE: Inverte os valores SHAP pra classe negativa (índice 0)
-                # Isso mostra "o que contribui pra prever essa classe"
+                # IMPORTANT: Invert the SHAP values for the negative class to show the correct direction of contribution
+                # This way, for the negative class (e.g., Attack), positive SHAP values will indicate features that contribute to that class, and negative SHAP values will indicate features that contribute to the opposite class (Normal).
                 if class_idx == 0:
-                    # Classe negativa (FRG/Maligno): inverte os valores
-                    # Agora valores POSITIVOS = contribuem pra FRG
+                    # Negative Class (Attack): invert the values
+                    # Now the positive values = help to predict Attack
                     shap_values_class = shap_values * -1
                     plt.title(f"{graphic} - {cls} (Negative class)\nPositive values = contribute to {cls}")
                 else:
-                    # Classe positiva (Normal): usa valores originais
-                    # Valores POSITIVOS = contribuem pra Normal
+                    # Positive Class (Normal): use original values
+                    # Positive values = contribute to Normal
                     shap_values_class = shap_values
                     plt.title(f"{graphic} - {cls} (Positive class)\nPositive values = contribute to {cls}")
 
-                # Gera o tipo de gráfico apropriado
+                # Generate the appropriate type of graphic
                 match graphic:
-                    case "Violin Summary Plot":
-                        # Mostra a distribuição dos valores SHAP pra cada feature
-                        shap.plots.violin(shap_values_class, max_display=20, show=False)
-
                     case "Beeswarm Summary Plot":
-                        # Visualização densa mostrando valor SHAP vs valor da feature
+                        # View showing SHAP value vs feature value for each feature and sample
                         shap.plots.beeswarm(shap_values_class, max_display=20, show=False)
-
-                    case "Waterfall Summary Plot":
-                        # Mostra a contribuição de cada feature numa ÚNICA predição
-                        # Usa a primeira amostra como exemplo
-                        shap.plots.waterfall(shap_values_class[0], max_display=20, show=False)
-
-                # Salva o gráfico em alta resolução
-                filename = f"{graphic} dataset {dataset_name} class {cls}.png"
+                        
+                # Save the graph in high resolution
+                filename = f"{dataset_name}: {graphic} - {cls}.png"
                 full_path = os.path.join(save_path, filename)
                 plt.savefig(full_path, dpi=300, bbox_inches='tight')
                 plt.close()
 
-                # Limpa memória pra não estourar
+                # Clean memory to avoid crashes with large datasets
                 gc.collect()
 
-        print(f"\n✓ {total_graphics} gráficos SHAP salvos em: {path_base}")
+        print(f"\n✓ {total_graphics} SHAP plots generated in: {path_base}")
 
     else:
         # ========================================
-        # CLASSIFICAÇÃO MULTICLASSE
+        # MULTICLASS CLASSIFICATION
         # ========================================
         total_graphics = len(graphics) * len(class_names)
         current = 0
@@ -215,53 +189,38 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics, samp
         for graphic in graphics:
             for i, cls in enumerate(class_names):
                 current += 1
-                print(f"  [{current}/{total_graphics}] Gerando {graphic} pra classe '{cls}'...")
+                print(f"  [{current}/{total_graphics}] Generating {graphic} for class '{cls}'...")
 
-                # Cria o diretório pro tipo de gráfico
+                # Create the directory for this type of graphic
                 save_path = os.path.join(path_base, graphic)
                 os.makedirs(save_path, exist_ok=True)
 
-                # Configura a figura
+                # Configure the figure
                 plt.figure(figsize=(12, 8))
                 if graphic == "Bar Plot":
                     plt.title(f"Summary {graphic}")
                 else:
                     plt.title(f"{cls} Class {graphic}")
 
-                # Gera o tipo de gráfico apropriado
+                # Generate the appropriate type of graphic
                 match graphic:
-                    case "Violin Summary Plot":
-                        # Mostra a distribuição dos valores SHAP pra cada feature
-                        shap.plots.violin(shap_values[:,:, i], max_display=20, feature_names=X_test_sample.columns, show=False)
-
                     case "Bar Plot":
-                        # Mostra a importância média (|SHAP|) de cada feature
-                        # shap.plots.bar(shap_values[:,:, i], max_display=20, show=False)
+                        # Show the average importance (|SHAP|) of each feature
                         shap.summary_plot(shap_values, X_test, plot_type="bar", class_names=class_names, show=False)
 
                     case "Beeswarm Summary Plot":
-                        # Visualização densa mostrando valor SHAP vs valor da feature
+                        # Dense visualization showing SHAP value vs feature value
                         shap.plots.beeswarm(shap_values[:,:, i], max_display=20, show=False)
-
-                    case "Waterfall Summary Plot":
-                        # Mostra a contribuição de cada feature numa ÚNICA predição
-                        # Usa a primeira amostra como exemplo
-                        shap.plots.waterfall(shap_values[0,:, i], max_display=20, show=False)
                         
-                    case "Force Plot":
-                        # Mostra a contribuição das features pra uma predição específica
-                        plt.figure(figsize=(30, 4))
-                        shap.plots.force(shap_values[0,:, i], matplotlib=True, show=False)
-                        
-                # Salva o gráfico em alta resolução
-                filename = f"{graphic} dataset {dataset_name} class {cls}.png"
+                # Save the graph in high resolution
+                filename = f"{dataset_name}: {graphic} - {cls}.png"
                 full_path = os.path.join(save_path, filename)
                 plt.savefig(full_path, dpi=300, bbox_inches='tight')
                 plt.close()
 
-                # Limpa memória pra não estourar
+                # Clean memory to avoid crashes with large datasets
                 gc.collect()
 
-        print(f"\n✓ {total_graphics} gráficos SHAP salvos em: {path_base}")
+        print(f"\n✓ {total_graphics} SHAP plots generated in: {path_base}")
 
     print()

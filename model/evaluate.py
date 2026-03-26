@@ -3,7 +3,7 @@ from sklearn.metrics import classification_report, confusion_matrix, cohen_kappa
 from scipy.stats import sem, t
 from datetime import datetime
 import os
-from config import MODEL_TYPE, WITHOUT_CONSISTENCY_FEATURES
+from config import MODEL_TYPE, WITHOUT_DELTA_FEATURES
 from model.matrix_confusion import plot_confusion_matrix
 
 
@@ -137,7 +137,7 @@ def save_metrics_report(cv_metrics, kappa_mean, kappa_ci, class_names, dataset_n
 
     # Save the true and predicted labels for McNemar test 
     if all_y_true is not None and all_y_pred is not None:
-        scenario = "without_delta" if WITHOUT_CONSISTENCY_FEATURES else "with_delta"
+        scenario = "without_delta" if WITHOUT_DELTA_FEATURES else "with_delta"
         npy_true_path = os.path.join(output_dir, f"y_true_{dataset_name}.npy")
         npy_pred_path = os.path.join(output_dir, f"y_pred_{scenario}_{dataset_name}.npy")
 
@@ -274,7 +274,7 @@ CROSS-VALIDATION (K-Fold) - Mean ± 95% CI
         try:
             svg_filename = f"confusion_matrix_{dataset_name}_{timestamp}.svg"
             svg_path = os.path.join(output_dir, svg_filename)
-            delta_flag = not WITHOUT_CONSISTENCY_FEATURES
+            delta_flag = not WITHOUT_DELTA_FEATURES
             plot_confusion_matrix(cv_total_cm, class_names, svg_path, delta_features=delta_flag)
             print(f"Saved confusion matrix SVG: {svg_path}")
         except Exception as e:

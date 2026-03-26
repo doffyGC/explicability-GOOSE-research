@@ -142,8 +142,8 @@ def main():
         all_y_true=all_y_true, all_y_pred=all_y_pred
     )
 
-    print(f"✓ Relatório Markdown salvo: {md_path}")
-    print(f"✓ Relatório Log salvo: {log_path}")
+    print(f"✓ Markdown report saved: {md_path}")
+    print(f"✓ Log report saved: {log_path}")
     print()
 
     # ========================================
