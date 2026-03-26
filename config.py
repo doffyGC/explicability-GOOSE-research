@@ -20,40 +20,14 @@ PATH_BASE="./results_with_consistency_features"
 # XGBOOST MODEL CONFIGURATIONS
 # ============================================
 
-# Type of model to train. You can choose between:
+# Type of model to train.
 #   - 'xgboost' (aliases: 'xgb')
-#   - 'random_forest' (aliases: 'rf', 'randomforest')
-#   - 'svm' (aliases: 'support_vector_machine', 'supportvectormachine')
-#   - 'mlp' (aliases: 'neural_network', 'multilayer_perceptron')
-#   - 'decision_tree' (aliases: 'dt', 'decisiontree')
-#   - 'logistic_regression' (aliases: 'lr', 'logisticregression')
 MODEL_TYPE = "xgboost"
 
-# Map of aliases to facilitate writing model names
+# Map of aliases to facilitate writing model
 MODEL_NAME_ALIASES = {
-    # XGBoost
     "xgboost": "xgboost",
     "xgb": "xgboost",
-    # Random Forest
-    "random_forest": "random_forest",
-    "rf": "random_forest",
-    "randomforest": "random_forest",
-    # SVM
-    "svm": "svm",
-    "support_vector_machine": "svm",
-    "supportvectormachine": "svm",
-    # MLP
-    "mlp": "mlp",
-    "neural_network": "mlp",
-    "multilayer_perceptron": "mlp",
-    # Decision Tree
-    "decision_tree": "decision_tree",
-    "dt": "decision_tree",
-    "decisiontree": "decision_tree",
-    # Logistic Regression
-    "logistic_regression": "logistic_regression",
-    "lr": "logistic_regression",
-    "logisticregression": "logistic_regression",
 }
 
 # XGBoost Params (these are the default params - defined in the paper) 
@@ -63,74 +37,14 @@ XGBOOST_PARAMS = {
     "random_state": RANDOM_STATE,
 }
 
-# Random Forest Params
-RF_PARAMS = {
-    "n_estimators": 200,
-    "max_depth": None,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
-    "n_jobs": -1,
-    "random_state": RANDOM_STATE,
-}
-
-# SVM Params
-SVM_PARAMS = {
-    "C": 1.0,
-    "kernel": "rbf",
-    "gamma": "scale",
-    "probability": True,  
-    "random_state": RANDOM_STATE,
-}
-
-# MLP params
-MLP_PARAMS = {
-    "hidden_layer_sizes": (100,),
-    "activation": "relu",
-    "solver": "adam",
-    "alpha": 0.0001,
-    "learning_rate": "constant",
-    "max_iter": 200,
-    "random_state": RANDOM_STATE,
-}
-
-# DT Params
-DT_PARAMS = {
-    "criterion": "gini",
-    "max_depth": None,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
-    "random_state": RANDOM_STATE,
-}
-
-# Logistic Regression Params
-LR_PARAMS = {
-    "penalty": "l2",
-    "C": 1.0,
-    "solver": "lbfgs",
-    "max_iter": 500,
-    "multi_class": "multinomial",
-    "random_state": RANDOM_STATE,
-    "n_jobs": -1,
-}
-
-# Map the parameters to their respective model types for easy access during training
+# Map the parameters to the xgboost
 MODEL_PARAMS = {
     "xgboost": XGBOOST_PARAMS,
-    "random_forest": RF_PARAMS,
-    "svm": SVM_PARAMS,
-    "mlp": MLP_PARAMS,
-    "decision_tree": DT_PARAMS,
-    "logistic_regression": LR_PARAMS,
 }
 
-# Description for each model type, used in the final report
+# Description for the model to the report
 MODEL_DESCRIPTIONS = {
     "xgboost": "XGBoost (Gradient Boosting)",
-    "random_forest": "Random Forest (Ensemble - Baseline Clássico)",
-    "svm": "SVM com kernel RBF (Tradicional em IDS)",
-    "mlp": "MLP - Neural Network (Baseline Deep Learning)",
-    "decision_tree": "Decision Tree (Baseline Interpretável)",
-    "logistic_regression": "Logistic Regression (Baseline Linear)",
 }
 
 # ============================================

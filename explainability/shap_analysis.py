@@ -169,7 +169,7 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics):
                         shap.plots.beeswarm(shap_values_class, max_display=20, show=False)
                         
                 # Save the graph in high resolution
-                filename = f"{dataset_name}: {graphic} - {cls}.png"
+                filename = f"{graphic} - {cls}.png"
                 full_path = os.path.join(save_path, filename)
                 plt.savefig(full_path, dpi=300, bbox_inches='tight')
                 plt.close()
@@ -180,45 +180,66 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics):
         print(f"\n✓ {total_graphics} SHAP plots generated in: {path_base}")
 
     else:
-        # ========================================
-        # MULTICLASS CLASSIFICATION
-        # ========================================
+    # ========================================
+    # MULTICLASS CLASSIFICATION
+    # ========================================
+
+        bar_plot_in_graphics = "Bar Plot" in graphics
+
+        # Total correto de gráficos
         total_graphics = len(graphics) * len(class_names)
+        if bar_plot_in_graphics:
+            total_graphics -= (len(class_names) - 1)  # Bar plot só uma vez
+
         current = 0
 
+        # ========================================
+        # 1. BAR PLOT (APENAS UMA VEZ)
+        # ========================================
+        if bar_plot_in_graphics:
+            current += 1
+            print(f"  [{current}/{total_graphics}] Generating Bar Plot (global feature importance)...")
+
+            save_path = os.path.join(path_base, "Bar Plot")
+            os.makedirs(save_path, exist_ok=True)
+
+            shap.summary_plot(
+                shap_values,
+                X_test,
+                plot_type="bar",
+                class_names=class_names,
+                show=False
+            )
+
+            filename = f"Bar_Plot - {dataset_name}.png"
+            full_path = os.path.join(save_path, filename)
+
+            plt.savefig(full_path, dpi=300, bbox_inches='tight')
+            plt.close('all')
+            gc.collect()
+
+        # ========================================
+        # 2. OUTROS GRÁFICOS (POR CLASSE)
+        # ========================================
         for graphic in graphics:
+            if graphic == "Bar Plot":
+                continue  # já foi gerado
+
             for i, cls in enumerate(class_names):
                 current += 1
                 print(f"  [{current}/{total_graphics}] Generating {graphic} for class '{cls}'...")
 
-                # Create the directory for this type of graphic
                 save_path = os.path.join(path_base, graphic)
                 os.makedirs(save_path, exist_ok=True)
 
-                # Configure the figure
-                plt.figure(figsize=(12, 8))
-                if graphic == "Bar Plot":
-                    plt.title(f"Summary {graphic}")
-                else:
-                    plt.title(f"{cls} Class {graphic}")
+                if graphic == "Beeswarm Summary Plot":
+                    shap.plots.beeswarm(shap_values[..., i], max_display=20, show=False)
 
-                # Generate the appropriate type of graphic
-                match graphic:
-                    case "Bar Plot":
-                        # Show the average importance (|SHAP|) of each feature
-                        shap.summary_plot(shap_values, X_test, plot_type="bar", class_names=class_names, show=False)
-
-                    case "Beeswarm Summary Plot":
-                        # Dense visualization showing SHAP value vs feature value
-                        shap.plots.beeswarm(shap_values[:,:, i], max_display=20, show=False)
-                        
-                # Save the graph in high resolution
-                filename = f"{dataset_name}: {graphic} - {cls}.png"
+                filename = f"{graphic} - {cls}.png".replace(" ", "_")
                 full_path = os.path.join(save_path, filename)
-                plt.savefig(full_path, dpi=300, bbox_inches='tight')
-                plt.close()
 
-                # Clean memory to avoid crashes with large datasets
+                plt.savefig(full_path, dpi=300, bbox_inches='tight')
+                plt.close('all')
                 gc.collect()
 
         print(f"\n✓ {total_graphics} SHAP plots generated in: {path_base}")

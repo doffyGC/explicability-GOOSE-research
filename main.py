@@ -167,9 +167,9 @@ def main():
         
     # This function runs the SHAP analysis and saves the plots in the specified path.
     run_shap(
-        final_model,
-        shap_X,
-        CLASS_NAMES,
+        model=final_model,
+        X_test=shap_X,
+        class_names=CLASS_NAMES,
         dataset_name=dataset_name,
         path_base=PATH_BASE,
         graphics=GRAPHICS
