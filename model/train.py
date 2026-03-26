@@ -70,7 +70,6 @@ def train_model(X, y, model_type, params, n_splits, seed):
         params (dict): Dictionary with the parameters of the chosen classifier.
         n_splits (int): NNumber of folds for cross-validation.
         seed (int): Seed for reproducibility.
-        test_size (float): Proportion of the dataset reserved for the final test (default: 0.2 = 20%).
 
     Returns:
         tuple: (cv_models, final_model)

@@ -1,43 +1,26 @@
 # ============================================
-# CONFIGURAÇÕES GERAIS DO EXPERIMENTO
+# EXPERIMENTS GENERAL CONFIGURATIONS
 # ============================================
 
-# Seed pra reprodutibilidade - sempre usa o mesmo valor em tudo!
+# Seed to reproducibility (important for train/test split, K-Fold, model randomness, etc)
 RANDOM_STATE = 42
 
-# Número de folds pra validação cruzada (K-Fold)
-# 5 é o padrão acadêmico, mas pode aumentar pra 10 se quiser mais robustez
+# Number of folds for cross-validation (K-Fold)
 N_SPLITS = 5
 
-# Proporção do dataset reservada pro teste final
-# 20% é padrão, o resto (80%) vai ser usado no K-Fold
-TEST_SIZE = 0.2
-
 # ============================================
-# CONFIGURAÇÕES DE PERFORMANCE
+# PERFORMANCE CONFIGURATIONS
 # ============================================
 
-# Limite de linhas pro dataset (None = usa tudo)
-# Reduz isso se tiver problema de memória com datasets grandes
-# Ex: SAMPLE_SIZE = 100000 pra pegar só 100k linhas
-SAMPLE_SIZE = None
-
-# Porcentagem do dataset de teste usada pro cálculo do SHAP
-# SHAP é MUITO pesado! Recomendado: 10-20% do dataset de teste
-# Mesmo com amostragem, os resultados são bem representativos
-# Usa None pra processar todo o dataset de teste (não recomendado pra datasets grandes)
-SHAP_SAMPLE_PERCENTAGE = 1  # 20% do dataset de teste
-
-# Caminho base pra salvar os resultados dos experimentos
-# Cada experimento vai criar uma subpasta aqui
+# Base path to save the results (metrics, plots, etc)
+# Each experiment can have a different path to avoid overwriting results
 PATH_BASE="./results_with_consistency_features"
 
 # ============================================
-# PARÂMETROS DO MODELO XGBOOST
+# XGBOOST MODEL CONFIGURATIONS
 # ============================================
 
-# Tipo de modelo/classificador a ser usado.
-# Opções completas:
+# Type of model to train. You can choose between:
 #   - 'xgboost' (aliases: 'xgb')
 #   - 'random_forest' (aliases: 'rf', 'randomforest')
 #   - 'svm' (aliases: 'support_vector_machine', 'supportvectormachine')
@@ -46,7 +29,7 @@ PATH_BASE="./results_with_consistency_features"
 #   - 'logistic_regression' (aliases: 'lr', 'logisticregression')
 MODEL_TYPE = "xgboost"
 
-# Mapa de aliases para facilitar a escrita de nomes dos modelos
+# Map of aliases to facilitate writing model names
 MODEL_NAME_ALIASES = {
     # XGBoost
     "xgboost": "xgboost",
@@ -73,28 +56,14 @@ MODEL_NAME_ALIASES = {
     "logisticregression": "logistic_regression",
 }
 
+# XGBoost Params (these are the default params - defined in the paper) 
 XGBOOST_PARAMS = {
-    # Função objetivo: binary:logistic pra classificação binária
-    "objective": 'multi:softprob',  # multi:softprob pra multi-class
-
-    # Métrica de avaliação: logloss (correto pra binary:logistic)
-    # Obs: mlogloss é pra multi-class, logloss é pra binário
+    "objective": 'multi:softprob',  # multi:softprob to multiclass problem
     "eval_metric": 'mlogloss',
-    # Seed pra reprodutibilidade
     "random_state": RANDOM_STATE,
-
-    # Parâmetros de regularização pra evitar overfitting
-    # Descomenta e ajusta esses se quiser fazer tuning:
-    # "max_depth": 6,              # Profundidade máxima das árvores
-    # "learning_rate": 0.1,        # Taxa de aprendizado (eta)
-    # "n_estimators": 100,         # Número de árvores
-    # "min_child_weight": 1,       # Peso mínimo necessário em uma folha
-    # "subsample": 0.8,            # Proporção de amostras usadas por árvore
-    # "colsample_bytree": 0.8,     # Proporção de features usadas por árvore
-    # "scale_pos_weight": 1,       # Peso pra classe positiva (útil em desbalanceamento)
 }
 
-# Parâmetros para Random Forest (baseline ensemble)
+# Random Forest Params
 RF_PARAMS = {
     "n_estimators": 200,
     "max_depth": None,
@@ -104,16 +73,16 @@ RF_PARAMS = {
     "random_state": RANDOM_STATE,
 }
 
-# Parâmetros para SVM com kernel RBF (tradicional em IDS)
+# SVM Params
 SVM_PARAMS = {
     "C": 1.0,
     "kernel": "rbf",
     "gamma": "scale",
-    "probability": True,  # habilita predict_proba
+    "probability": True,  
     "random_state": RANDOM_STATE,
 }
 
-# Parâmetros para MLP (baseline deep learning)
+# MLP params
 MLP_PARAMS = {
     "hidden_layer_sizes": (100,),
     "activation": "relu",
@@ -124,7 +93,7 @@ MLP_PARAMS = {
     "random_state": RANDOM_STATE,
 }
 
-# Parâmetros para Decision Tree (interpretável)
+# DT Params
 DT_PARAMS = {
     "criterion": "gini",
     "max_depth": None,
@@ -133,7 +102,7 @@ DT_PARAMS = {
     "random_state": RANDOM_STATE,
 }
 
-# Parâmetros para Logistic Regression (linear)
+# Logistic Regression Params
 LR_PARAMS = {
     "penalty": "l2",
     "C": 1.0,
@@ -144,7 +113,7 @@ LR_PARAMS = {
     "n_jobs": -1,
 }
 
-# Mapa para facilitar a escolha do modelo (usando nomes canônicos)
+# Map the parameters to their respective model types for easy access during training
 MODEL_PARAMS = {
     "xgboost": XGBOOST_PARAMS,
     "random_forest": RF_PARAMS,
@@ -154,7 +123,7 @@ MODEL_PARAMS = {
     "logistic_regression": LR_PARAMS,
 }
 
-# Descrição dos modelos pra logging
+# Description for each model type, used in the final report
 MODEL_DESCRIPTIONS = {
     "xgboost": "XGBoost (Gradient Boosting)",
     "random_forest": "Random Forest (Ensemble - Baseline Clássico)",
@@ -165,47 +134,42 @@ MODEL_DESCRIPTIONS = {
 }
 
 # ============================================
-# CONFIGURAÇÕES DO DATASET
+# DATASET CONFIGURATIONS
 # ============================================
 
-# Colunas que não devem ser usadas como features
-# A coluna 'class' é o target, então tem que ser removida
+# Columns to discard from the dataset (non-informative or potentially leaking features)
+# The class column is also discarded from features and used as target (y)
 DISCARTED_COLUMNS = [
     'ethDst', 'ethSrc', 'gocbRef', 'datSet', 'goID', 'test',
     'ndsCom', 'protocol', 'ethType', 'TPID', 'gooseAppid', 'class'
 ]
 
-# Remove features de consistência (baseadas em temporização)
-# Essas features podem vazar informação do alvo
-# Pro caso de uso real, é melhor não usar essas features
-WITHOUT_CONSISTENCY_FEATURES = True
+# Remove delta features
+# This features can leak attack informations
+WITHOUT_DELTA_FEATURES = True
 
-# Se for pra remover, adiciona elas na lista de descartadas
-if WITHOUT_CONSISTENCY_FEATURES:
-    CONSISTENCY_FEATURES = [
-        'stDiff', 'sqDiff', 'gooseLengthDiff', 'cbStatusDiff', 'apduSizeDiff', 
-        'frameLengthDiff', 'timestampDiff', 'tDiff', 'timeFromLastChange'
-    ]
-    PATH_BASE="./results_without_consistency_features"
-    DISCARTED_COLUMNS.extend(CONSISTENCY_FEATURES)
+# If True, the delta features will be discarded from the dataset and not used for training or SHAP analysis
+if WITHOUT_DELTA_FEATURES:
+    DISCARD_FEATURES = [
+    'stDiff', 'sqDiff', 'gooseLengthDiff', 'cbStatusDiff', 'apduSizeDiff',
+    'frameLengthDiff', 'timestampDiff', 'tDiff', 'timeFromLastChange',
+]
+    PATH_BASE="./results_without_delta_features"
+    DISCARTED_COLUMNS.extend(DISCARD_FEATURES)
 
-# Nomes das classes pro problema de classificação
-# A ordem importa! Deve corresponder à ordem do LabelEncoder
+# Classes names (these should correspond to the encoded classes in the target variable y)
+# The order of the class names should match the order of the encoded classes (0, 1, 2, etc.)
 CLASS_NAMES = ["SAG.DB", "FRG", "SAG.PB", "SAG.PBM", "Normal"]
 
-# Caminho pro dataset
+# Dataset path
 DATASET_PATH = "./data/CSV files/dataset_downsampled.csv"
 
 # ============================================
-# CONFIGURAÇÕES DE VISUALIZAÇÃO (SHAP)
+# VIEW CONFIGURATION (SHAP)
 # ============================================
 
-# Tipos de gráficos SHAP pra gerar
-# Cada gráfico dá uma perspectiva diferente da explicabilidade
+# SHAP graphs types to generate for explainability analysis.
 GRAPHICS = [
-    # "Violin Summary Plot",      # Mostra distribuição dos valores SHAP
-    "Bar Plot",                  # Importância média das features
-    "Beeswarm Summary Plot",     # Visualização densa dos valores SHAP
-    # "Waterfall Summary Plot",     # Contribuição individual de cada feature
-    # "Force Plot"                # Contribuição detalhada para uma predição específica
+    "Bar Plot",                  # Features mean importance (|SHAP|)
+    "Beeswarm Summary Plot",     # Dense visualization showing SHAP value vs feature value for each sample
 ]
