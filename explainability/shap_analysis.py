@@ -186,16 +186,13 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics):
 
         bar_plot_in_graphics = "Bar Plot" in graphics
 
-        # Total correto de gráficos
+        # Correct total of graphs
         total_graphics = len(graphics) * len(class_names)
         if bar_plot_in_graphics:
-            total_graphics -= (len(class_names) - 1)  # Bar plot só uma vez
+            total_graphics -= (len(class_names) - 1)  # Bar plot only once
 
         current = 0
 
-        # ========================================
-        # 1. BAR PLOT (APENAS UMA VEZ)
-        # ========================================
         if bar_plot_in_graphics:
             current += 1
             print(f"  [{current}/{total_graphics}] Generating Bar Plot (global feature importance)...")
@@ -218,12 +215,9 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics):
             plt.close('all')
             gc.collect()
 
-        # ========================================
-        # 2. OUTROS GRÁFICOS (POR CLASSE)
-        # ========================================
         for graphic in graphics:
             if graphic == "Bar Plot":
-                continue  # já foi gerado
+                continue 
 
             for i, cls in enumerate(class_names):
                 current += 1

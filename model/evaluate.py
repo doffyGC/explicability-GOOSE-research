@@ -228,17 +228,17 @@ Results of cross-validation with **95% confidence intervals** (CI 95%).
     # ==============================
 
     log_content = f"""{'='*80}
-REPORT OF METRICS - {MODEL_TYPE.upper()}
-{'='*80}
+    REPORT OF METRICS - {MODEL_TYPE.upper()}
+    {'='*80}
 
-Dataset: {dataset_name}
-Date/Time: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
+    Dataset: {dataset_name}
+    Date/Time: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
 
-{'='*80}
-CROSS-VALIDATION (K-Fold) - Mean ± 95% CI
-{'='*80}
+    {'='*80}
+    CROSS-VALIDATION (K-Fold) - Mean ± 95% CI
+    {'='*80}
 
-"""
+    """
     for i, cls in enumerate(class_names):
         log_content += f"\nClass: {cls}\n"
         log_content += f"  F1-Score:  {cv_metrics['F1-score Mean'][i]:.4f} ± {cv_metrics['F1-score CI'][i]:.4f}\n"
