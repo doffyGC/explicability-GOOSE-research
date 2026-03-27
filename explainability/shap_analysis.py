@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import gc
+from config import MODEL_TYPE
 
 def get_ten_most_important_features(shap_values, X):
     """
