@@ -14,7 +14,7 @@ N_SPLITS = 5
 
 # Base path to save the results (metrics, plots, etc)
 # Each experiment can have a different path to avoid overwriting results
-PATH_BASE="./results_with_consistency_features"
+PATH_BASE="./results_with_delta_features"
 
 # ============================================
 # XGBOOST MODEL CONFIGURATIONS
@@ -60,7 +60,7 @@ DISCARTED_COLUMNS = [
 
 # Remove delta features
 # This features can leak attack informations
-WITHOUT_DELTA_FEATURES = True
+WITHOUT_DELTA_FEATURES = False
 
 # If True, the delta features will be discarded from the dataset and not used for training or SHAP analysis
 if WITHOUT_DELTA_FEATURES:
@@ -76,7 +76,7 @@ if WITHOUT_DELTA_FEATURES:
 CLASS_NAMES = ["SAG.DB", "FRG", "SAG.PB", "SAG.PBM", "Normal"]
 
 # Dataset path
-DATASET_PATH = "./data/CSV files/dataset_downsampled.csv"
+DATASET_PATH = "./data/CSV files/gray-GOOSE.csv"
 
 # ============================================
 # VIEW CONFIGURATION (SHAP)

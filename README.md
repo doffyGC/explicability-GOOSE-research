@@ -1,4 +1,4 @@
-# README — Models ML Evaluation with Explainability in IEC 61850
+# Gray-GOOSE: Models ML Evaluation with Explainability in IEC 61850
 
 ## System Objective
 
@@ -45,19 +45,19 @@ This is the most robust way to ensure reproducibility, as Docker encapsulates th
 ### 1.1 Build the image
 
 ```bash
-docker build -t ml-evaluation .
+docker build -t gray-goose .
 ```
 
 ### 1.2 Execute the complete pipeline 
 
 ```bash
-docker run --rm ml-evaluation python main.py
+docker run --rm gray-goose python main.py
 ```
 
 ### 1.3 Execute the Jupyter Notebook interactively
 
 ```bash
-docker run --rm -p 8888:8888 -v $(pwd)/notebooks:/app/notebooks ml-evaluation \
+docker run --rm -p 8888:8888 -v $(pwd)/notebooks:/app/notebooks gray-goose \
     jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
 ```
 

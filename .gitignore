@@ -1,6 +1,3 @@
-# Ignorar arquivos de dados e resultados gerados
-CSV files/
-
 # Pasta para salvar os resultados dos experimentos
 results_with_delta_features/
 results_without_delta_features/
