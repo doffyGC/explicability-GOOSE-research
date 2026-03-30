@@ -51,7 +51,7 @@ docker build -t gray-goose .
 ### 1.2 Execute the complete pipeline 
 
 ```bash
-docker run --rm gray-goose python main.py
+docker run --rm -v ${PWD}/results_with_delta_features:/app/results_with_delta_features -v ${PWD}/results_without_delta_features:/app/results_without_delta_features gray-goose
 ```
 
 ### 1.3 Execute the Jupyter Notebook interactively
