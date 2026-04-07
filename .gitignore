@@ -1,12 +1,2 @@
-# Pasta para salvar os resultados dos experimentos
-results_with_delta_features/
-results_without_delta_features/
-
-# Ignorar arquivos temporários e de cache
+# Ignore cache files
 __pycache__/
-
-# ignorar arquivos dentro da confusão de matriz
-confusion_matrix/
-
-# ignorar o arquivo da matriz de confusão
-matrix_confusion.py

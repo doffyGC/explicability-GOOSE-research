@@ -274,7 +274,10 @@ Results of cross-validation with **95% confidence intervals** (CI 95%).
         try:
             svg_filename = f"confusion_matrix_{dataset_name}_{timestamp}.svg"
             svg_path = os.path.join(output_dir, svg_filename)
-            delta_flag = not WITHOUT_DELTA_FEATURES
+            if WITHOUT_DELTA_FEATURES == True:
+                delta_flag = True
+            else:
+                delta_flag = False
             plot_confusion_matrix(cv_total_cm, class_names, svg_path, delta_features=delta_flag)
             print(f"Saved confusion matrix SVG: {svg_path}")
         except Exception as e:
