@@ -6,7 +6,6 @@ import os
 from config import MODEL_TYPE, WITHOUT_DELTA_FEATURES
 from model.matrix_confusion import plot_confusion_matrix
 
-
 def mean_confidence_interval(data, confidence=0.95):
     """
     Calculate the mean and confidence interval of a dataset.
