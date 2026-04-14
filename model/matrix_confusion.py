@@ -6,21 +6,21 @@ import os
 
 def plot_confusion_matrix(cm, labels, out_path, delta_features=False, figsize=(10, 7)):
     """
-    Plota e salva uma matriz de confusão com escala logarítmica suave, mantendo o
-    esquema visual usado anteriormente (cmap cividis, anotações com cor dinâmica).
+    Plot and save a confusion matrix with a smooth logarithmic scale, 
+    maintaining the visual scheme used previously (cividis cmap, annotations with dynamic color).
 
     Args:
-        cm (array-like): Matriz de confusão (2D).
-        labels (list): Lista de rótulos das classes (ordem importa).
-        out_path (str): Caminho para salvar o SVG (diretório será criado se necessário).
-        delta_features (bool): Se True, título indica "With Delta Features", caso contrário "Without".
-        figsize (tuple): Tamanho da figura.
+        cm (array-like): Confusion matrix (2D).
+        labels (list): List of class labels (order matters).
+        out_path (str): Path to save the SVG (directory will be created if necessary).
+        delta_features (bool): If True, title indicates "With Delta Features", otherwise "Without".
+        figsize (tuple): Figure size.
     """
 
-    # Garantir DataFrame padronizado
+    # Generate a DataFrame for better handling of labels and values
     df = pd.DataFrame(cm, index=labels, columns=labels)
 
-    # Preparar diretório
+    # Prepare output directory
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
 
     # Plot
@@ -38,7 +38,7 @@ def plot_confusion_matrix(cm, labels, out_path, delta_features=False, figsize=(1
     plt.yticks(range(len(labels)), labels, fontsize=tick_label_fontsize)
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
-    title = "Confusion Matrix With Delta Features" if delta_features else "Confusion Matrix Without Delta Features"
+    title = "Confusion Matrix With Delta Features" if not delta_features else "Confusion Matrix Without Delta Features"
     plt.title(title)
 
     # Annotate values with dynamic text color for visibility
