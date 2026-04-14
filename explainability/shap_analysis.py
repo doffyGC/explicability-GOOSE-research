@@ -170,7 +170,7 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics):
                         shap.plots.beeswarm(shap_values_class, max_display=20, show=False)
                         
                 # Save the graph in high resolution
-                filename = f"{graphic} - {cls}.png"
+                filename = f"{graphic} - {cls}.pdf"
                 full_path = os.path.join(save_path, filename)
                 plt.savefig(full_path, dpi=300, bbox_inches='tight')
                 plt.close()
@@ -206,10 +206,11 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics):
                 X_test,
                 plot_type="bar",
                 class_names=class_names,
+                max_display=15,
                 show=False
             )
 
-            filename = f"Bar_Plot - {dataset_name}.png"
+            filename = f"Bar_Plot - {dataset_name}.pdf"
             full_path = os.path.join(save_path, filename)
 
             plt.savefig(full_path, dpi=300, bbox_inches='tight')
@@ -228,11 +229,10 @@ def run_shap(model, X_test, class_names, dataset_name, path_base, graphics):
                 os.makedirs(save_path, exist_ok=True)
 
                 if graphic == "Beeswarm Summary Plot":
-                    shap.plots.beeswarm(shap_values[..., i], max_display=20, show=False)
+                    shap.plots.beeswarm(shap_values[..., i], max_display=10, show=False, group_remaining_features=False)
 
-                filename = f"{graphic} - {cls}.png".replace(" ", "_")
+                filename = f"{graphic} - {cls}.pdf".replace(" ", "_")
                 full_path = os.path.join(save_path, filename)
-
                 plt.savefig(full_path, dpi=300, bbox_inches='tight')
                 plt.close('all')
                 gc.collect()
