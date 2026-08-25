@@ -1,0 +1,78 @@
+{
+  "_README": "Generation parameters for the Gray-GOOSE dataset. These come from the ERENO run configuration, NOT from the message table. Fill every null from the generator config/scripts, or regenerate the dataset so the values are emitted directly. Keys under 'scenarios' are the scenario a trace was generated under; keys under 'traces' override per trace_id.",
+  "substation_config": null,
+  "scenarios": {
+    "SAG.DB": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    },
+    "FRG": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    },
+    "SAG.PB": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    },
+    "SAG.PBM": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    },
+    "UNRESOLVED": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    }
+  },
+  "traces": {
+    "T00-SAG.DB": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    },
+    "T01-FRG": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    },
+    "T02-SAG.PB": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    },
+    "T03-SAG.PBM": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    },
+    "T-UNRESOLVED": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    }
+  }
+}

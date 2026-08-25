@@ -1,0 +1,70 @@
+{
+  "_README": "Generation parameters recovered by reading the ERENO source that produced gray-GOOSE.csv (repo: ../ereno, sibling of this one). Every value below is traced to a file and line in '_provenance'. 'seed' is null on purpose and CANNOT be filled: ERENO never seeds its RNG. See metadata_audit.md and the README in this folder.",
+
+  "_provenance": {
+    "loss_rate": "OrientedGrayHoleCreator.java:27 -> this.discardRate = 15. Hardcoded field, percent. The 'discardRate' argument of OrientedGrayHoleIED.run() is NOT this value: it is numberOfMessages, misnamed at the call site (OrientedGrayHoleIED.java:18-24).",
+    "burst_size": "OrientedGrayHoleCreator.java:28 -> this.toDiscardPackets = 5. Consecutive messages dropped per triggered burst. Not used by FULLY_RANDOMIZED, which evaluates every message independently.",
+    "traffic_rate": "params.properties -> goose.timing.maxTime=1000 ms. Steady-state periodic GOOSE republication, so 1.0 msg/s. Event bursts use exponential backoff from goose.timing.minTime=100 ms with multiplier 6.33 (LegitimateProtectionIED.initialBackoffInterval), and each message adds a uniform network delay of 1-31 ms (GooseCreator.getNetworkDelay).",
+    "substation_config": "params.properties -> goose.protocol.gocbRef/datSet/goID/appId and goose.network.ethSrc/ethDst. Matches gray-GOOSE.csv exactly. A single publisher for every scenario.",
+    "scenario_id": "OrientedGrayHoleCreator.java:29 -> this.approaches = attackApproaches.<VARIANT>. Hardcoded: each variant required editing this line and rebuilding, so one variant = one run = one build.",
+    "seed": "NOT RECOVERABLE. IED.java:45 and IED.java:56 build a new Random(System.nanoTime()) on every single call, so no seed exists anywhere and no run is reproducible. Verified empirically: re-running the same FULLY_RANDOMIZED config produced ereno/src/datasets/todos_os_ataques.csv, which shares only 14 of 102,236 (StNum, t) keys with the FRG trace in gray-GOOSE.csv - statistically identical, element-wise unrelated."
+  },
+
+  "_generation_context": {
+    "scenario_class": "BalancedSamambaiaScenario",
+    "target_malicious_messages": 100000,
+    "batch_size": 90000,
+    "max_iterations": 1000,
+    "fault_probability_percent": 5,
+    "note": "The scenario loops runDevicesBatch(batchSize) until targetMaliciousMessages is reached, so each run is many batches. The batch index is a real run boundary but CSVWritter never emits it, so it cannot be recovered from the delivered CSV."
+  },
+
+  "substation_config": "SUB-SAMAMBAIA-gcbA",
+
+  "scenarios": {
+    "SAG.DB": {
+      "scenario_id": "SC-SAG.DB-DETERMINISTIC_BURST",
+      "seed": null,
+      "loss_rate": 100.0,
+      "burst_size": 5,
+      "traffic_rate": 1.0
+    },
+    "FRG": {
+      "scenario_id": "SC-FRG-FULLY_RANDOMIZED",
+      "seed": null,
+      "loss_rate": 15.0,
+      "burst_size": 1,
+      "traffic_rate": 1.0
+    },
+    "SAG.PB": {
+      "scenario_id": "SC-SAG.PB-RANDOMIC_BURST",
+      "seed": null,
+      "loss_rate": 15.0,
+      "burst_size": 5,
+      "traffic_rate": 1.0
+    },
+    "SAG.PBM": {
+      "scenario_id": "SC-SAG.PBM-RANDOMIC_MESSAGE",
+      "seed": null,
+      "loss_rate": 15.0,
+      "burst_size": 5,
+      "traffic_rate": 1.0
+    },
+    "UNRESOLVED": {
+      "scenario_id": null,
+      "seed": null,
+      "loss_rate": null,
+      "burst_size": null,
+      "traffic_rate": null
+    }
+  },
+
+  "_scenario_notes": {
+    "SAG.DB": "DETERMINISTIC_BURST drops unconditionally on every state change - there is no random draw, so its effective loss_rate is 100% of triggered bursts, not the 15% discardRate field. Recorded as 100.0 to describe the behaviour actually implemented.",
+    "FRG": "FULLY_RANDOMIZED evaluates each message independently against discardRate and ignores state changes, so burst_size does not apply; recorded as 1 (single-message drops).",
+    "SAG.PB": "RANDOMIC_BURST draws once per state change against discardRate; on a hit it drops toDiscardPackets consecutive messages.",
+    "SAG.PBM": "RANDOMIC_MESSAGE draws per message within a window of toDiscardPackets after a state change, so burst_size bounds the window rather than the drop length."
+  },
+
+  "traces": {}
+}
