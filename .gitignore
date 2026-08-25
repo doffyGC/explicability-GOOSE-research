@@ -1,2 +1,7 @@
 # Ignore cache files
 __pycache__/
+
+# Generated experimental runs are large and reproducible from the versioned
+# matrix plan. Keep manifests/reports, not per-run CSVs and logs.
+/data/runs/
+/data/runs-matrix-smoke/
