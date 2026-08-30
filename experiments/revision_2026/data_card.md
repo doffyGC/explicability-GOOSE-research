@@ -140,7 +140,8 @@ The base table contains the following feature families:
 The revised metadata adds `run_id`, `trace_id`, `event_id`, `scenario_id`,
 `seed`, `attack_variant`, `loss_rate`, `burst_size`, `traffic_rate`,
 `substation_config` and `split_group`. Native regenerated CSVs additionally
-carry `batch_index`.
+carry `batch_index`; grouped preparation adds `message_index` to preserve the
+emitted sequence inside each trace.
 
 Delta features in the submitted table were generated before trustworthy trace
 boundaries existed. Revised experiments must recompute deltas after sorting
@@ -239,5 +240,6 @@ a new dataset version and requires new hashes and counts.
 - No benign degradation controls have been generated yet.
 - The current matrix still uses one publisher/substation configuration.
 - The legacy dataset license is undeclared.
-- No grouped model splits have been produced yet; `check_no_leakage.py` is ready
-  to validate them when section B writes the split artifact.
+- Grouped split generation and validation have passed on a six-run technical
+  smoke. Final five-fold splits have not been produced because the complete
+  120-run matrix does not exist yet.

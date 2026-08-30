@@ -39,6 +39,11 @@ the script's own docstring/comments, not in this file.
 | `check_no_leakage.py` | Validates versioned JSON/CSV grouped splits before training. Fails on train/test group overlap, unknown/omitted groups, duplicate assignments or invalid fold coverage; can write a machine-readable audit. | A.4 |
 | `test_check_no_leakage.py` | Positive and deliberately leaking fixtures for the split-integrity checker, including its command-line interface and exit codes. | A.4 |
 | `data_card.md` | Documents generation, labels, features, experimental units, legacy provenance limits, intended/prohibited uses, hashes and the release procedure for regenerated runs. | A.5 |
+| `prepare_grouped_dataset.py` | Sorts messages inside each trace and recomputes ERENO's delta features without crossing trace boundaries; drops the predecessor-less first row of every trace and writes a hash-bound audit. | B.2 |
+| `generate_grouped_splits.py` | Creates StratifiedGroupKFold, GroupKFold, LeaveOneGroupOut or LOETO folds; checks class coverage and persists exact groups as JSON plus CSV before invoking the independent leakage checker. | B.1, B.3, B.4 |
+| `run_grouped_validation.py` | Trains only from persisted, hash-bound grouped splits and writes fold metrics plus row/group-linked predictions. Supports a clearly marked capped technical smoke. | B.1, B.5 |
+| `test_validation_protocol.py` | Tests trace-boundary deltas, grouped split integrity, unseen-class blocking and dataset/report/split hash binding. | B.1–B.5 |
+| `validation_protocol.md` | Defines the canonical section B workflow, smoke evidence and the blockers separating implementation readiness from publishable evaluation. | B.1–B.5 |
 
 ```bash
 # what the delivered CSV can and cannot support, no files written
