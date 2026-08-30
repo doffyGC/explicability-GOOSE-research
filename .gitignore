@@ -5,3 +5,4 @@ __pycache__/
 # matrix plan. Keep manifests/reports, not per-run CSVs and logs.
 /data/runs/
 /data/runs-matrix-smoke/
+/data/validation-smoke/
