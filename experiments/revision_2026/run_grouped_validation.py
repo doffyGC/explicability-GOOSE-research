@@ -24,6 +24,12 @@ IDENTIFIER_COLUMNS = {
     "attack_variant", "loss_rate", "burst_size", "traffic_rate",
     "substation_config", "split_group", "batch_index",
     "message_index",
+    # Card-C benign-degradation provenance. impairment_mode is a trivial leak
+    # if it ever reached the feature matrix - it directly encodes whether a
+    # row is `benign_degradation` (see benign_controls.md SS6). The other two
+    # are its run-level config, discarded for the same reason loss_rate/
+    # burst_size are.
+    "impairment_mode", "impairment_rate", "impairment_intensity_ms",
 }
 BASE_DISCARD_COLUMNS = {
     "ethDst", "ethSrc", "gocbRef", "datSet", "goID", "test", "ndsCom",

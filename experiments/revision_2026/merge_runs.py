@@ -72,17 +72,22 @@ DEFAULT_RUNS_DIR = os.path.join(REPO_ROOT, "data", "runs")
 DEFAULT_BASENAME = "gray-GOOSE-runs"
 
 # Written into every row by RunContext; kept in sync with NATIVE_COLUMNS in
-# add_experiment_metadata.py.
+# add_experiment_metadata.py. impairment_mode/impairment_rate/
+# impairment_intensity_ms describe the card-C benign-degradation controls and
+# are, like loss_rate/burst_size, constant within a run rather than per-row -
+# a `normal` row inside a benign-impairment run still carries that run's mode.
 NATIVE_COLUMNS = [
     "run_id", "trace_id", "batch_index", "scenario_id", "seed",
     "attack_variant", "loss_rate", "burst_size", "traffic_rate", "substation_config",
+    "impairment_mode", "impairment_rate", "impairment_intensity_ms",
 ]
 
 # Constant within a run, so a second distinct value means two runs got pooled
 # into one file.
 PER_RUN_CONSTANT = ["run_id", "trace_id", "scenario_id", "seed",
                     "attack_variant", "loss_rate", "burst_size",
-                    "traffic_rate", "substation_config"]
+                    "traffic_rate", "substation_config",
+                    "impairment_mode", "impairment_rate", "impairment_intensity_ms"]
 
 
 class RunError(Exception):
@@ -192,9 +197,14 @@ def validate(df, csv_path, sidecar):
         "attack_variant": str(df["attack_variant"].iloc[0]),
         "loss_rate": float(df["loss_rate"].iloc[0]),
         "burst_size": int(df["burst_size"].iloc[0]),
+        "impairment_mode": str(df["impairment_mode"].iloc[0]) if "impairment_mode" in df.columns else "NONE",
         "batches": int(df["batch_index"].max()) if "batch_index" in df.columns else None,
         "rows": len(df),
-        "attack_rows": int((df["class"] != "normal").sum()) if "class" in df.columns else None,
+        # class-based, not attack_variant-based: attack_variant is "none" for
+        # both `normal` and `benign_degradation` rows, so this counts any
+        # labelled (non-normal) row - meaningful for attack and benign runs
+        # alike, unlike a strict count of "attack" rows.
+        "labelled_rows": int((df["class"] != "normal").sum()) if "class" in df.columns else None,
         "sidecar": sidecar is not None,
         "file": name,
     }
@@ -333,22 +343,30 @@ def build_report(runs_dir, out_path, summaries, problems, matrix, check_only):
     lines += [
         "## Runs",
         "",
-        "| run_id | seed | variant | loss_rate | burst_size | batches | rows | attack rows | payload |",
-        "|---|---:|---|---:|---:|---:|---:|---:|---|",
+        "| run_id | seed | variant | impairment_mode | loss_rate | burst_size | batches | rows | labelled rows | payload |",
+        "|---|---:|---|---|---:|---:|---:|---:|---:|---|",
     ]
-    for s in sorted(summaries, key=lambda r: (r["attack_variant"], r["loss_rate"], r["seed"])):
+    for s in sorted(summaries, key=lambda r: (r["attack_variant"], r["impairment_mode"], r["loss_rate"], r["seed"])):
         lines.append(
-            f"| {s['run_id']} | {s['seed']} | {s['attack_variant']} | {s['loss_rate']:g} | "
-            f"{s['burst_size']} | {s['batches'] if s['batches'] is not None else '-'} | "
+            f"| {s['run_id']} | {s['seed']} | {s['attack_variant']} | {s['impairment_mode']} | "
+            f"{s['loss_rate']:g} | {s['burst_size']} | "
+            f"{s['batches'] if s['batches'] is not None else '-'} | "
             f"{s['rows']:,} | "
-            f"{format(s['attack_rows'], ',') if s['attack_rows'] is not None else '-'} | "
+            f"{format(s['labelled_rows'], ',') if s['labelled_rows'] is not None else '-'} | "
             f"`{s['fingerprint']}` |"
         )
     lines.append("")
 
     if summaries:
         frame = pd.DataFrame(summaries)
-        per_variant = frame.groupby("attack_variant").agg(
+        # attack_variant is "NONE" for every benign-impairment run (it never
+        # ran an attack), so grouping by attack_variant alone would collapse
+        # all 7 benign mechanisms into one bucket. `family` picks whichever of
+        # the two axes actually varies for that run.
+        frame["family"] = frame["attack_variant"].where(
+            frame["attack_variant"] != "NONE", "BENIGN:" + frame["impairment_mode"]
+        )
+        per_variant = frame.groupby("family").agg(
             runs=("run_id", "nunique"), seeds=("seed", "nunique"), rows=("rows", "sum")
         ).reset_index()
 
@@ -356,14 +374,15 @@ def build_report(runs_dir, out_path, summaries, problems, matrix, check_only):
             "## Coverage per variant",
             "",
             "The variant each run was *configured* to perform, under ERENO's own enum",
-            "names. The annotation step rewrites `attack_variant` to the paper's names",
-            "and to a per-message reading, where benign rows are `none`.",
+            "names, or `BENIGN:<mode>` for a card-C benign-impairment run. The",
+            "annotation step rewrites `attack_variant` to the paper's names and to a",
+            "per-message reading, where both benign and normal rows are `none`.",
             "",
             "| variant | runs | distinct seeds | rows |",
             "|---|---:|---:|---:|",
         ]
         for _, r in per_variant.iterrows():
-            lines.append(f"| {r['attack_variant']} | {r['runs']} | {r['seeds']} | {r['rows']:,} |")
+            lines.append(f"| {r['family']} | {r['runs']} | {r['seeds']} | {r['rows']:,} |")
         lines.append("")
 
         weakest = int(per_variant["runs"].min())

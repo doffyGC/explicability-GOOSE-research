@@ -38,13 +38,29 @@ def sha256_file(path, chunk_size=8 * 1024 * 1024):
 
 
 def infer_event_type(value):
-    """Map a scenario/run identifier to the four attack mechanism families."""
+    """Map a scenario/run identifier to an event-type family.
+
+    Four attack mechanism families (DB/FRG/PB/PBM) plus, for card-C benign
+    runs (`SC-BENIGN_<MODE>-...`), one family per impairment mechanism. The
+    benign families give LOETO an event-type axis orthogonal to `class` -
+    every benign run carries both `normal` and `benign_degradation` rows, so
+    holding out one mechanism's runs no longer holds out a class the way
+    holding out an attack variant does (see validation_protocol.md, "Leave-
+    one-event-type-out status").
+    """
     text = str(value).upper()
     mappings = [
         ("DETERMINISTIC_BURST", "SAG.DB"),
         ("FULLY_RANDOMIZED", "FRG"),
         ("RANDOMIC_BURST", "SAG.PB"),
         ("RANDOMIC_MESSAGE", "SAG.PBM"),
+        ("BENIGN_CONGESTION_LOSS", "BENIGN.CONGESTION_LOSS"),
+        ("BENIGN_QUEUE_OVERLOAD_BURST", "BENIGN.QUEUE_OVERLOAD_BURST"),
+        ("BENIGN_JITTER", "BENIGN.JITTER"),
+        ("BENIGN_DELAY", "BENIGN.DELAY"),
+        ("BENIGN_LINK_FLAP", "BENIGN.LINK_FLAP"),
+        ("BENIGN_DUPLICATION", "BENIGN.DUPLICATION"),
+        ("BENIGN_REORDERING", "BENIGN.REORDERING"),
     ]
     for marker, label in mappings:
         if marker in text:

@@ -76,12 +76,20 @@ NORMAL_LABEL = "normal"
 # Raw ERENO class label -> short variant name used in the paper. The order
 # matches CLASS_NAMES in config.py: LabelEncoder sorts labels alphabetically
 # and lowercase "normal" sorts last.
+BENIGN_DEGRADATION_LABEL = "benign_degradation"
+
 VARIANT_OF_CLASS = {
     "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": "SAG.DB",
     "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": "FRG",
     "RANDOMIC_BURST_ORIENTEDGRAYHOLE": "SAG.PB",
     "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": "SAG.PBM",
     NORMAL_LABEL: "none",
+    # benign_degradation (card C) is not an attack - attack_variant answers
+    # "which attack is this message part of", so it reads "none" here exactly
+    # like `normal`. The mechanism that produced it lives in `impairment_mode`
+    # instead (see run_native): merging the two would make attack_variant lie
+    # about a run that never fired an attack.
+    BENIGN_DEGRADATION_LABEL: "none",
 }
 
 # Publisher identity. Constant in the submitted dataset, which is itself a
@@ -603,9 +611,13 @@ def build_report(args, df, stream_check, anchor_stats, n_conflicts, trace_ids,
 # --------------------------------------------------------------------------
 
 # Columns the patched ERENO writes into every row (RunContext.csvHeader).
+# impairment_mode/impairment_rate/impairment_intensity_ms describe the card-C
+# benign-degradation controls; they are run-level constants exactly like
+# loss_rate/burst_size (see BENIGN_DEGRADATION_LABEL handling below).
 NATIVE_COLUMNS = [
     "run_id", "trace_id", "batch_index", "scenario_id", "seed",
     "attack_variant", "loss_rate", "burst_size", "traffic_rate", "substation_config",
+    "impairment_mode", "impairment_rate", "impairment_intensity_ms",
 ]
 
 # Enough of them to trust the row's own provenance over anything we could infer.
@@ -681,18 +693,33 @@ def run_native(args, df, out_path, report_path):
         axis=1,
     )
 
-    runs = df.groupby("run_id").agg(
+    has_impairment = "impairment_mode" in df.columns
+    runs_agg = dict(
         rows=("run_id", "size"),
         scenario=("scenario_id", "first"),
         seed=("seed", "first"),
         loss_rate=("loss_rate", "first"),
         burst_size=("burst_size", "first"),
-    ).reset_index()
+    )
+    if has_impairment:
+        runs_agg["impairment_mode"] = ("impairment_mode", "first")
+    runs = df.groupby("run_id").agg(**runs_agg).reset_index()
     # From the generator's own column, not from the rows: `attack_variant` is
-    # row-level now, and most rows in any run are benign.
+    # row-level now, and most rows in any run are benign. A benign-impairment
+    # run's raw attack_variant is the constant "NONE" (it never ran an
+    # attack), which would make every benign run indistinguishable in this
+    # table - impairment_mode carries the mechanism instead, so prefer it.
     runs["variant"] = runs["run_id"].map(run_variant)
-    runs["attack_rows"] = runs["run_id"].map(
-        df[df["attack_variant"] != "none"].groupby("run_id").size()
+    if has_impairment:
+        benign = runs["impairment_mode"].notna() & (runs["impairment_mode"] != "NONE")
+        runs.loc[benign, "variant"] = "BENIGN:" + runs.loc[benign, "impairment_mode"]
+    # class-based, not attack_variant-based: attack_variant is "none" for both
+    # `normal` and `benign_degradation` rows (neither is an attack), so this
+    # counts any labelled (non-normal) row - the same quantity that balances
+    # both attack and benign-impairment runs (countMaliciousMessages on the
+    # generator side does the equivalent thing for its batch target).
+    runs["labelled_rows"] = runs["run_id"].map(
+        df[df["class"] != NORMAL_LABEL].groupby("run_id").size()
     ).fillna(0).astype(int)
 
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -727,13 +754,13 @@ def run_native(args, df, out_path, report_path):
         "",
         "## 2. Runs",
         "",
-        "| run_id | scenario_id | seed | variant | loss_rate | burst_size | rows | attack rows |",
+        "| run_id | scenario_id | seed | variant | loss_rate | burst_size | rows | labelled rows |",
         "|---|---|---:|---|---:|---:|---:|---:|",
     ]
     for _, r in runs.iterrows():
         lines.append(
             f"| {r['run_id']} | {r['scenario']} | {r['seed']} | {r['variant']} | "
-            f"{r['loss_rate']} | {r['burst_size']} | {r['rows']:,} | {r['attack_rows']:,} |"
+            f"{r['loss_rate']} | {r['burst_size']} | {r['rows']:,} | {r['labelled_rows']:,} |"
         )
     lines += [
         "",
@@ -755,19 +782,49 @@ def run_native(args, df, out_path, report_path):
     # Benign rows are in every run by construction, so counting `none` here
     # would report a coverage the attack classes do not have.
     per_variant = df[df["attack_variant"] != "none"].groupby("attack_variant")["run_id"].nunique()
-    lines += [
-        f"- Each attack variant appears in **{per_variant.min() if len(per_variant) else 0:,}**"
-        " run(s) at minimum, counting only runs that actually contain that attack.",
-        "",
-    ]
-    if len(per_variant) and per_variant.min() >= 2:
-        lines.append("> Every attack variant spans at least two runs, so a left-out group still")
-        lines.append("> leaves that variant represented in training. GroupKFold is usable.")
+    if not len(per_variant):
+        # A benign-only dataset (card C) has zero attack rows by design - not
+        # a coverage gap, so this must not print the single-run warning below.
+        lines.append("- No attack-variant rows present in this dataset (benign-only pool).")
+        lines.append("")
     else:
-        lines.append("> **WARNING** at least one attack variant occupies a single run, so leaving")
-        lines.append("> that group out removes the variant from training entirely. Generate more")
+        lines += [
+            f"- Each attack variant appears in **{per_variant.min():,}**"
+            " run(s) at minimum, counting only runs that actually contain that attack.",
+            "",
+        ]
+        if per_variant.min() >= 2:
+            lines.append("> Every attack variant spans at least two runs, so a left-out group still")
+            lines.append("> leaves that variant represented in training. GroupKFold is usable.")
+        else:
+            lines.append("> **WARNING** at least one attack variant occupies a single run, so leaving")
+            lines.append("> that group out removes the variant from training entirely. Generate more")
         lines.append("> seeds per variant before running grouped CV.")
     lines.append("")
+
+    if has_impairment and (df["impairment_mode"] != "NONE").any():
+        per_mode = (
+            df[df["impairment_mode"] != "NONE"]
+            .groupby("impairment_mode")["run_id"]
+            .nunique()
+        )
+        lines += [
+            "## 5. Benign-degradation (card C) coverage",
+            "",
+            "`impairment_mode` is run-level (every row of a benign-impairment run",
+            "carries it, `normal` rows included), so it is the axis to check here -",
+            "`class` alone cannot distinguish which mechanism produced a run.",
+            "",
+            f"- Each impairment mode appears in **{per_mode.min():,}** run(s) at minimum.",
+            "",
+        ]
+        if per_mode.min() >= 2:
+            lines.append("> Every impairment mode spans at least two runs, so it can be left out of a")
+            lines.append("> fold independently, same as an attack variant.")
+        else:
+            lines.append("> **WARNING** at least one impairment mode occupies a single run. Generate")
+            lines.append("> more seeds for it before relying on grouped CV or LOETO over this axis.")
+        lines.append("")
 
     write_report(report_path, lines)
     print(f"Audit report written: {report_path}")
