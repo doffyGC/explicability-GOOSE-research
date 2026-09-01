@@ -237,7 +237,8 @@ a new dataset version and requires new hashes and counts.
 ## 12. Known gaps at this revision stage
 
 - The 120-run matrix is designed but has not been executed completely.
-- No benign degradation controls have been generated yet.
+- No benign degradation controls have been generated yet. Design and
+  milestone tracking for this gap are in `benign_controls.md` (Card C).
 - The current matrix still uses one publisher/substation configuration.
 - The legacy dataset license is undeclared.
 - Grouped split generation and validation have passed on a six-run technical
