@@ -44,6 +44,9 @@ the script's own docstring/comments, not in this file.
 | `run_grouped_validation.py` | Trains only from persisted, hash-bound grouped splits and writes fold metrics plus row/group-linked predictions. Supports a clearly marked capped technical smoke. | B.1, B.5 |
 | `test_validation_protocol.py` | Tests trace-boundary deltas, grouped split integrity, unseen-class blocking and dataset/report/split hash binding. | B.1–B.5 |
 | `validation_protocol.md` | Defines the canonical section B workflow, smoke evidence and the blockers separating implementation readiness from publishable evaluation. | B.1–B.5 |
+| `benign_controls.md` | Defines the section C plan: taxonomy of the 7 benign-degradation mechanisms, attack pairing rules, label vocabulary (`class=benign_degradation` + `impairment_mode`), matrix design, pipeline-integration constraints and per-milestone status tracking. | C.1–C.5 |
+| `benign_confusion_report.py` | Reads a `run_grouped_validation.py` run's predictions, rejoins `impairment_mode` from the hash-verified prepared dataset, and reports a 6x6 (or gracefully reduced) confusion matrix separating `normal` from `benign_degradation`, a per-mode outcome breakdown, and attack_fpr/alert_rate per mode contrasted against ideal-normal and in-run-baseline-normal traffic. Writes `benign_confusion.md`. | C.4 |
+| `test_benign_controls.py` | Tests the card-C pipeline wiring: `benign_degradation` in `VARIANT_OF_CLASS`, `SC-BENIGN_*` event-type inference, `impairment_*` columns excluded from both the feature matrix and the payload fingerprint, closed-set LOETO over the benign families (contrasted with the open-set attack-variant case), and `benign_confusion_report.py`'s matrix/per-mode/attack_fpr computations and hash-bound dataset rejoin. | C.3, C.4 |
 
 ```bash
 # what the delivered CSV can and cannot support, no files written
