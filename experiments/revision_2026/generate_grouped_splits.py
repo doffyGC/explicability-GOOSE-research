@@ -138,6 +138,12 @@ def make_grouped_splits(frame, protocol, n_splits, seed, group_column="split_gro
     if len(groups) < 2:
         raise SplitPlanningError("at least two independent groups are required")
 
+    # A plain numpy take avoids materialising a full-width row-sliced copy of
+    # `frame` (`frame.iloc[idx]`) just to read one column back out of it -
+    # matters most for leave-one-group-out, whose fold count equals the
+    # number of groups.
+    group_values = frame[group_column].to_numpy()
+
     records = []
     if protocol in ("stratified-group-kfold", "group-kfold"):
         if not 2 <= n_splits <= len(groups):
@@ -150,16 +156,16 @@ def make_grouped_splits(frame, protocol, n_splits, seed, group_column="split_gro
             splitter = GroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
         for index, (train_idx, test_idx) in enumerate(
                 splitter.split(frame, frame[target_column], groups=frame[group_column])):
-            train_groups = set(frame.iloc[train_idx][group_column])
-            test_groups = set(frame.iloc[test_idx][group_column])
+            train_groups = set(group_values[train_idx])
+            test_groups = set(group_values[test_idx])
             records.append(_record("fold-%02d" % index, train_groups, test_groups,
                                    labels_by_group, rows_by_group))
     elif protocol == "leave-one-group-out":
         splitter = LeaveOneGroupOut()
         for index, (train_idx, test_idx) in enumerate(
                 splitter.split(frame, frame[target_column], groups=frame[group_column])):
-            train_groups = set(frame.iloc[train_idx][group_column])
-            test_groups = set(frame.iloc[test_idx][group_column])
+            train_groups = set(group_values[train_idx])
+            test_groups = set(group_values[test_idx])
             records.append(_record("logo-%02d" % index, train_groups, test_groups,
                                    labels_by_group, rows_by_group))
     elif protocol == "leave-one-event-type-out":

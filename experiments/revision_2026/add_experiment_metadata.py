@@ -628,6 +628,17 @@ def has_native_metadata(df):
     return all(c in df.columns for c in NATIVE_REQUIRED)
 
 
+def native_parquet_columns(path):
+    """Column names of a parquet file, read from its footer only.
+
+    Lets `main()` decide native vs. legacy mode - and pick the chunked path
+    below - without loading a single row of a dataset that can be tens of
+    millions of rows.
+    """
+    import pyarrow.parquet as pq
+    return pq.ParquetFile(path).schema_arrow.names
+
+
 def build_event_ids_native(df):
     """Derive `event_id` from provenance the generator already wrote.
 
@@ -665,7 +676,10 @@ def run_native(args, df, out_path, report_path):
     # configured variant stays in `scenario_id` (SC-<VARIANT>-l<loss>-b<burst>)
     # and is reported per run below.
     raw_variants = sorted(df["attack_variant"].astype(str).unique())
-    df = df.copy()
+    # No caller keeps a reference to the frame `main()` passed in after this
+    # call returns, so mutating it in place (instead of `df = df.copy()`)
+    # avoids holding two full-dataset copies at once. Safe only because of
+    # that contract - callers that need their frame intact must pass a copy.
     run_variant = (
         df.groupby("run_id")["attack_variant"]
         .first()
@@ -682,16 +696,18 @@ def run_native(args, df, out_path, report_path):
         "event": event_id,
     }[args.split_level]
 
-    meta = pd.DataFrame({"event_id": event_id, "split_group": split_source}, index=df.index)
+    # `event_id`/`split_group` are new columns, assigned in place - this is an
+    # O(1) allocation (two extra arrays), not a frame-sized copy.
+    df["event_id"] = event_id
+    df["split_group"] = split_source
 
     # Keep the checklist's column order, with the generator's values passed
-    # through untouched and only the two derived columns added.
-    ordered = [c for c in METADATA_COLUMNS if c in df.columns or c in meta.columns]
-    out = pd.concat(
-        [pd.concat([df[[c for c in ordered if c in df.columns]], meta], axis=1)[ordered],
-         df.drop(columns=[c for c in ordered if c in df.columns])],
-        axis=1,
-    )
+    # through untouched and only the two derived columns added. Building the
+    # actual reordered frame is deferred to just before it is written (below,
+    # past the `--audit-only` early return): a `df[ordered]`-style reindex is
+    # the only allocation it costs, versus the drop+double-concat this used to
+    # be, and `--audit-only` never needs it at all.
+    ordered = [c for c in METADATA_COLUMNS if c in df.columns]
 
     has_impairment = "impairment_mode" in df.columns
     runs_agg = dict(
@@ -762,16 +778,19 @@ def run_native(args, df, out_path, report_path):
             f"| {r['run_id']} | {r['scenario']} | {r['seed']} | {r['variant']} | "
             f"{r['loss_rate']} | {r['burst_size']} | {r['rows']:,} | {r['labelled_rows']:,} |"
         )
+    # Computed once, not once per run_id: `unique()` is a full-column pass
+    # over the (up to tens of millions of rows) `class` column.
+    class_values = sorted(df["class"].unique())
     lines += [
         "",
         "## 3. Class distribution per run",
         "",
-        "| run_id | " + " | ".join(sorted(df["class"].unique())) + " |",
-        "|---" * (1 + df["class"].nunique()) + "|",
+        "| run_id | " + " | ".join(class_values) + " |",
+        "|---" * (1 + len(class_values)) + "|",
     ]
     ct = pd.crosstab(df["run_id"], df["class"])
     for run_id, row in ct.iterrows():
-        lines.append(f"| {run_id} | " + " | ".join(f"{row.get(c, 0):,}" for c in sorted(df["class"].unique())) + " |")
+        lines.append(f"| {run_id} | " + " | ".join(f"{row.get(c, 0):,}" for c in class_values) + " |")
 
     lines += [
         "",
@@ -833,6 +852,9 @@ def run_native(args, df, out_path, report_path):
         print("--audit-only: no dataset written.")
         return 0
 
+    other = [c for c in df.columns if c not in ordered]
+    out = df[ordered + other]
+
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     print(f"Writing {out_path} ...")
     if args.format == "parquet":
@@ -840,6 +862,258 @@ def run_native(args, df, out_path, report_path):
     else:
         out.to_csv(out_path, index=False)
     print(f"  {len(out):,} rows x {out.shape[1]} columns")
+    return 0
+
+
+def run_native_chunked(args, dataset_path, out_path, report_path):
+    """Same annotation and audit report as `run_native`, one row group at a time.
+
+    `merge_runs.py` writes exactly one Parquet row group per pooled run (one
+    `write_table()` call per run, and pyarrow does not split a single-chunk
+    table into several row groups without an explicit `row_group_size`), and
+    every provenance field this function reads - `scenario_id`, `seed`,
+    `loss_rate`, `burst_size`, `impairment_mode`, the raw `attack_variant`
+    enum - is a run-level constant the generator stamps onto every row of
+    that run. So a row group already *is* one complete trace, and processing
+    it in isolation is exactly equivalent to processing the whole pooled
+    dataset: `build_event_ids_native` cannot see an id collision spanning two
+    chunks (different traces never share an id prefix), and every "first
+    value in the run" read below is the same value regardless of which row
+    supplies it. Only the per-run/per-class report aggregates - each at most
+    one row per run - are kept in memory across chunks; annotated rows are
+    written out immediately and never held past the chunk that produced them.
+
+    Falls back to nothing: this is only reached from `main()` for a parquet
+    dataset that already has native columns. Small fixtures and the legacy
+    CSV keep using `load_raw` + `run_native` unchanged.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    print("Native provenance detected - using the generator's own identifiers (chunked).")
+
+    parquet_file = pq.ParquetFile(dataset_path)
+    n_row_groups = parquet_file.num_row_groups
+
+    ordered = None
+    has_impairment = None
+    n_columns = None
+    writer = None
+    csv_fh = None
+
+    total_rows = 0
+    total_events = 0
+    raw_variants = set()
+    trace_ids = set()
+    scenario_ids = set()
+    seeds = set()
+    substation_configs = set()
+    class_values = set()
+    split_group_values = set()
+
+    run_rows, run_scenario, run_seed = {}, {}, {}
+    run_loss_rate, run_burst_size, run_impairment_mode = {}, {}, {}
+    run_variant_raw, run_labelled_rows = {}, {}
+    class_counts = {}
+    per_variant_runs = {}
+    per_mode_runs = {}
+
+    if not args.audit_only:
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+        print(f"Writing {out_path} ...")
+
+    for group_index in range(n_row_groups):
+        chunk = parquet_file.read_row_group(group_index).to_pandas()
+        if ordered is None:
+            has_impairment = "impairment_mode" in chunk.columns
+
+        # Raw provenance, before the row-level rewrite below overwrites it.
+        raw_variants.update(chunk["attack_variant"].astype(str).unique())
+        chunk_run_variant = (
+            chunk.groupby("run_id")["attack_variant"]
+            .first()
+            .map(lambda v: VARIANT_OF_ENUM.get(str(v), str(v)))
+        )
+        for run_id, variant in chunk_run_variant.items():
+            run_variant_raw.setdefault(run_id, variant)
+
+        chunk["attack_variant"] = chunk["class"].map(VARIANT_OF_CLASS)
+
+        event_id, n_events = build_event_ids_native(chunk)
+        total_events += n_events
+        split_source = {
+            "run": chunk["run_id"],
+            "trace": chunk["trace_id"],
+            "event": event_id,
+        }[args.split_level]
+        chunk["event_id"] = event_id
+        chunk["split_group"] = split_source
+        split_group_values.update(split_source.unique())
+
+        if ordered is None:
+            ordered = [c for c in METADATA_COLUMNS if c in chunk.columns]
+        other = [c for c in chunk.columns if c not in ordered]
+        out_chunk = chunk[ordered + other]
+        if n_columns is None:
+            n_columns = out_chunk.shape[1]
+
+        if not args.audit_only:
+            if args.format == "parquet":
+                table = pa.Table.from_pandas(out_chunk, preserve_index=False)
+                if writer is None:
+                    writer = pq.ParquetWriter(out_path, table.schema)
+                writer.write_table(table)
+            else:
+                out_chunk.to_csv(out_path, index=False, mode="w" if csv_fh is None else "a",
+                                 header=csv_fh is None)
+                csv_fh = True
+
+        total_rows += len(chunk)
+        trace_ids.update(chunk["trace_id"].unique())
+        scenario_ids.update(chunk["scenario_id"].unique())
+        seeds.update(chunk["seed"].unique())
+        substation_configs.update(chunk["substation_config"].unique())
+        class_values.update(chunk["class"].unique())
+
+        for run_id, group in chunk.groupby("run_id"):
+            run_rows[run_id] = run_rows.get(run_id, 0) + len(group)
+            run_scenario.setdefault(run_id, group["scenario_id"].iloc[0])
+            run_seed.setdefault(run_id, group["seed"].iloc[0])
+            run_loss_rate.setdefault(run_id, group["loss_rate"].iloc[0])
+            run_burst_size.setdefault(run_id, group["burst_size"].iloc[0])
+            if has_impairment:
+                run_impairment_mode.setdefault(run_id, group["impairment_mode"].iloc[0])
+            run_labelled_rows[run_id] = (
+                run_labelled_rows.get(run_id, 0) + int((group["class"] != NORMAL_LABEL).sum())
+            )
+            run_class_counts = class_counts.setdefault(run_id, {})
+            for cls, count in group["class"].value_counts().items():
+                run_class_counts[cls] = run_class_counts.get(cls, 0) + int(count)
+            for variant in group.loc[group["attack_variant"] != "none", "attack_variant"].unique():
+                per_variant_runs.setdefault(variant, set()).add(run_id)
+            if has_impairment:
+                for mode in group.loc[group["impairment_mode"] != "NONE", "impairment_mode"].unique():
+                    per_mode_runs.setdefault(mode, set()).add(run_id)
+
+        print(f"  row group {group_index + 1}/{n_row_groups}: {len(chunk):,} rows")
+
+    if writer is not None:
+        writer.close()
+
+    raw_variants = sorted(raw_variants)
+    class_values = sorted(class_values)
+    print(f"  {total_events:,} distinct events across {len(run_rows):,} runs")
+
+    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    lines = [
+        "# Dataset metadata audit - Gray-GOOSE (native mode)",
+        "",
+        f"- Generated: {generated}",
+        f"- Source dataset: `{args.dataset}`",
+        f"- Rows: {total_rows:,}",
+        f"- Output: `{out_path}`",
+        f"- split_group level: `{args.split_level}`",
+        "",
+        "## 1. Provenance",
+        "",
+        "Every checklist column except `event_id` and `split_group` was written by",
+        "the generator itself, so nothing here is inferred. `event_id` comes from",
+        "`(trace_id, StNum, t)` and `split_group` mirrors the chosen level.",
+        "",
+        f"- Independent runs: **{len(run_rows):,}**",
+        f"- Traces: **{len(trace_ids):,}**",
+        f"- Scenarios: **{len(scenario_ids):,}**",
+        f"- Distinct seeds: **{len(seeds):,}**",
+        f"- Substation configurations: **{len(substation_configs):,}**",
+        f"- Distinct events: **{total_events:,}**",
+        f"- Variant names as emitted: {', '.join('`' + v + '`' for v in raw_variants)}",
+        "",
+        "> `attack_variant` describes the **message**, so benign rows carry `none`,",
+        "> exactly as in legacy mode - the two datasets can be pooled and compared",
+        "> column for column. The generator instead writes the *run's* configured",
+        "> variant into every row; that reading is preserved in `scenario_id` and in",
+        "> the `variant` column of the table below.",
+        "",
+        "## 2. Runs",
+        "",
+        "| run_id | scenario_id | seed | variant | loss_rate | burst_size | rows | labelled rows |",
+        "|---|---|---:|---|---:|---:|---:|---:|",
+    ]
+    for run_id in sorted(run_rows):
+        variant = run_variant_raw.get(run_id)
+        mode = run_impairment_mode.get(run_id) if has_impairment else None
+        if mode is not None and mode != "NONE":
+            variant = "BENIGN:" + mode
+        lines.append(
+            f"| {run_id} | {run_scenario[run_id]} | {run_seed[run_id]} | {variant} | "
+            f"{run_loss_rate[run_id]} | {run_burst_size[run_id]} | {run_rows[run_id]:,} | "
+            f"{run_labelled_rows.get(run_id, 0):,} |"
+        )
+
+    lines += [
+        "",
+        "## 3. Class distribution per run",
+        "",
+        "| run_id | " + " | ".join(class_values) + " |",
+        "|---" * (1 + len(class_values)) + "|",
+    ]
+    for run_id in sorted(run_rows):
+        counts = class_counts.get(run_id, {})
+        lines.append(f"| {run_id} | " + " | ".join(f"{counts.get(c, 0):,}" for c in class_values) + " |")
+
+    lines += [
+        "",
+        "## 4. Grouped validation readiness",
+        "",
+        f"- `split_group` has **{len(split_group_values):,}** distinct values.",
+    ]
+    if not per_variant_runs:
+        lines.append("- No attack-variant rows present in this dataset (benign-only pool).")
+        lines.append("")
+    else:
+        min_variant_runs = min(len(v) for v in per_variant_runs.values())
+        lines += [
+            f"- Each attack variant appears in **{min_variant_runs:,}**"
+            " run(s) at minimum, counting only runs that actually contain that attack.",
+            "",
+        ]
+        if min_variant_runs >= 2:
+            lines.append("> Every attack variant spans at least two runs, so a left-out group still")
+            lines.append("> leaves that variant represented in training. GroupKFold is usable.")
+        else:
+            lines.append("> **WARNING** at least one attack variant occupies a single run, so leaving")
+            lines.append("> that group out removes the variant from training entirely. Generate more")
+        lines.append("> seeds per variant before running grouped CV.")
+    lines.append("")
+
+    if has_impairment and per_mode_runs:
+        min_mode_runs = min(len(v) for v in per_mode_runs.values())
+        lines += [
+            "## 5. Benign-degradation (card C) coverage",
+            "",
+            "`impairment_mode` is run-level (every row of a benign-impairment run",
+            "carries it, `normal` rows included), so it is the axis to check here -",
+            "`class` alone cannot distinguish which mechanism produced a run.",
+            "",
+            f"- Each impairment mode appears in **{min_mode_runs:,}** run(s) at minimum.",
+            "",
+        ]
+        if min_mode_runs >= 2:
+            lines.append("> Every impairment mode spans at least two runs, so it can be left out of a")
+            lines.append("> fold independently, same as an attack variant.")
+        else:
+            lines.append("> **WARNING** at least one impairment mode occupies a single run. Generate")
+            lines.append("> more seeds for it before relying on grouped CV or LOETO over this axis.")
+        lines.append("")
+
+    write_report(report_path, lines)
+    print(f"Audit report written: {report_path}")
+
+    if args.audit_only:
+        print("--audit-only: no dataset written.")
+        return 0
+
+    print(f"  {total_rows:,} rows x {n_columns} columns")
     return 0
 
 
@@ -862,6 +1136,20 @@ def parse_args(argv=None):
 def main(argv=None):
     args = parse_args(argv)
 
+    base, _ = os.path.splitext(args.dataset)
+    out_path = args.out or f"{base}-metadata.{args.format}"
+    report_path = args.report or os.path.join(HERE, "metadata_audit.md")
+
+    # A native-provenance Parquet dataset is annotated one row group at a
+    # time (run_native_chunked) so a pooled multi-run dataset - tens of
+    # millions of rows for the full revision matrix - is never loaded whole
+    # into pandas. Only the schema (the file's footer) is read here to make
+    # that decision; a native CSV/small fixture falls through to the
+    # original whole-file path below, same as the legacy dataset.
+    if args.dataset.endswith(".parquet"):
+        if all(c in native_parquet_columns(args.dataset) for c in NATIVE_REQUIRED):
+            return run_native_chunked(args, args.dataset, out_path, report_path)
+
     print(f"Loading {args.dataset} ...")
     df = load_raw(args.dataset)
     print(f"  {len(df):,} rows x {df.shape[1]} columns")
@@ -869,13 +1157,11 @@ def main(argv=None):
     variants = [VARIANT_OF_CLASS[c] for c in sorted(VARIANT_OF_CLASS) if c != NORMAL_LABEL]
     trace_names = {i: f"T{i:02d}-{v}" for i, v in enumerate(variants)}
 
-    base, _ = os.path.splitext(args.dataset)
-    out_path = args.out or f"{base}-metadata.{args.format}"
-    report_path = args.report or os.path.join(HERE, "metadata_audit.md")
-
     # A dataset produced by the patched ERENO carries its own provenance, so
     # there is nothing to reverse-engineer and nothing to take on faith from a
-    # manifest. Reconstruction is only for the legacy CSV.
+    # manifest. Reconstruction is only for the legacy CSV. (A native Parquet
+    # dataset already returned above via the chunked path; this only catches
+    # a native CSV/small fixture.)
     if has_native_metadata(df):
         return run_native(args, df, out_path, report_path)
 
