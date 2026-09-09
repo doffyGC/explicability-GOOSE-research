@@ -152,7 +152,25 @@ class exists.
 To make LOETO a closed-set supervised experiment, generate an event-type axis
 orthogonal to attack class — for example physical fault/event categories — and
 represent every event type under normal traffic and every SAG variant. Until
-then, LOETO is implemented but not a publishable closed-set result.
+then, LOETO is implemented but not a publishable closed-set result **within
+the attack-only scope described in this document.**
+
+> **Update:** card C's benign-degradation controls (`benign_controls.md`)
+> turned out to *be* that orthogonal axis, not a hypothetical future one.
+> `infer_event_type` now maps 7 `BENIGN_<MODE>` markers alongside the 4 attack
+> ones, and every benign run carries both `normal` and `benign_degradation`
+> rows — so holding out one benign mechanism no longer holds out a class the
+> way holding out an attack variant does. Confirmed on the 17-run benign-only
+> smoke pool (`benign_controls.md` §7, C3): **7/7 LOETO folds closed-set**,
+> `open_set_diagnostic: false` throughout. This resolves LOETO for the benign
+> axis, but not for the attack axis: in the combined 205-run pool (120 attack
+> + 85 benign, once Fase 3 lands), the 4 attack families are still each
+> attack-class-exclusive, so a LOETO run over *all* 11 event types has 4
+> open-set folds mixed with 7 closed-set ones, and `open_set_diagnostic: true`
+> on the whole split file makes the closed-set folds hard to consume
+> separately. An `--event-types` filter on `generate_grouped_splits.py`
+> (restrict LOETO to a chosen subset of families, e.g. just the 7 benign ones)
+> would let each axis be evaluated on its own terms; not yet implemented.
 
 ## Remaining blocker for the full section B results
 

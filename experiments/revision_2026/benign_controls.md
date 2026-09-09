@@ -204,11 +204,16 @@ the milestone named:
     `IDENTIFIER_COLUMNS` wiring, and the `countMaliciousMessages` naming pass
     (a comment now documents why it intentionally counts `benign_degradation`
     rows too).
-- [ ] **C2 — Benign run matrix (Python).** `generate_run_matrix.py` extended
+- [x] **C2 — Benign run matrix (Python).** `generate_run_matrix.py` extended
       with `--family {attack,benign,all}` / `--tier {1,2,all}`,
       `benign_matrix_plan.json`. Verification: dry-run plan has 50/85 unique
       `run_id`s; mixed smoke (attack + benign) passes `merge_runs.py
-      --check-only`; payload fingerprints of paired runs differ.
+      --check-only`; payload fingerprints of paired runs differ. Full
+      generation completed 2026-09-01: 85/85 benign CSVs present in
+      `data/runs/` (all 7 tier-1+tier-2 mechanisms), pooled into
+      `data/runs/gray-GOOSE-runs.parquet` (2,676,566 rows × 65 columns) — the
+      pool C3/C4's smoke evidence below and the 205-run combined pool in C5
+      both build on.
 - [x] **C3 — Pipeline plumbing.** `VARIANT_OF_CLASS["benign_degradation"] =
       "none"` (§6 constraint 4 — not "BENIGN": `attack_variant` answers "which
       attack", so a benign row reads `none` exactly like `normal`, and

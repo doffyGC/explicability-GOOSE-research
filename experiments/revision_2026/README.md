@@ -35,13 +35,13 @@ the script's own docstring/comments, not in this file.
 |---|---|---|
 | `generate_run_matrix.py` | Executes the preregistered variant × seed × loss-rate × burst-size matrix in the patched ERENO. Writes one CSV and one provenance sidecar per independent run plus `run_matrix.json`; restores `params.properties` even after interruption. | A.3 |
 | `merge_runs.py` | Pools the per-run CSVs from `generate_run_matrix.py` into one dataset, validating each run before it is allowed in: one run per file, `run_id`/`seed` agreeing across rows, sidecar and filename, no repeated run identity, and no two runs sharing a payload. Runs are streamed one at a time, so peak memory is one run. Writes `merge_report.md`. Derives nothing — `event_id` and `split_group` stay with `add_experiment_metadata.py`. | A.3 |
-| `add_experiment_metadata.py` | Adds the experimental-unit columns to the dataset. Derives `event_id` from the GOOSE `(StNum, t)` state key, groups events into `trace_id`/`run_id`, maps `class` to `attack_variant`, reads the ERENO generation parameters (`seed`, `loss_rate`, `burst_size`, `traffic_rate`, `substation_config`) from a JSON manifest, and sets `split_group`. Writes `metadata_audit.md` recording what was derived, what is still missing and how many independent units actually exist. | A.3 |
+| `add_experiment_metadata.py` | Adds the experimental-unit columns to the dataset. Derives `event_id` from the GOOSE `(StNum, t)` state key, groups events into `trace_id`/`run_id`, maps `class` to `attack_variant`, reads the ERENO generation parameters (`seed`, `loss_rate`, `burst_size`, `traffic_rate`, `substation_config`) from a JSON manifest, and sets `split_group`. Writes `metadata_audit.md` recording what was derived, what is still missing and how many independent units actually exist. On a native-schema Parquet input (one row group per run, as `merge_runs.py` writes), processes and writes one row group at a time instead of loading the whole dataset (`run_native_chunked`) — ~8.8× lower peak RSS, same output. | A.3 |
 | `check_no_leakage.py` | Validates versioned JSON/CSV grouped splits before training. Fails on train/test group overlap, unknown/omitted groups, duplicate assignments or invalid fold coverage; can write a machine-readable audit. | A.4 |
 | `test_check_no_leakage.py` | Positive and deliberately leaking fixtures for the split-integrity checker, including its command-line interface and exit codes. | A.4 |
 | `data_card.md` | Documents generation, labels, features, experimental units, legacy provenance limits, intended/prohibited uses, hashes and the release procedure for regenerated runs. | A.5 |
-| `prepare_grouped_dataset.py` | Sorts messages inside each trace and recomputes ERENO's delta features without crossing trace boundaries; drops the predecessor-less first row of every trace and writes a hash-bound audit. | B.2 |
+| `prepare_grouped_dataset.py` | Sorts messages inside each trace and recomputes ERENO's delta features without crossing trace boundaries; drops the predecessor-less first row of every trace and writes a hash-bound audit. Processes trace-aligned Parquet inputs one row group at a time (~10.2× lower peak RSS); rejects, rather than silently mis-computing, any file whose row groups are not trace-aligned. | B.2 |
 | `generate_grouped_splits.py` | Creates StratifiedGroupKFold, GroupKFold, LeaveOneGroupOut or LOETO folds; checks class coverage and persists exact groups as JSON plus CSV before invoking the independent leakage checker. | B.1, B.3, B.4 |
-| `run_grouped_validation.py` | Trains only from persisted, hash-bound grouped splits and writes fold metrics plus row/group-linked predictions. Supports a clearly marked capped technical smoke. | B.1, B.5 |
+| `run_grouped_validation.py` | Trains only from persisted, hash-bound grouped splits and writes fold metrics plus row/group-linked predictions. Supports a clearly marked capped technical smoke — when capped and given a Parquet dataset, samples row group by row group instead of loading the full dataset first (~8.4× lower peak RSS on the smoke path). The uncapped/full training path still loads the whole dataset, which model training inherently requires. | B.1, B.5 |
 | `test_validation_protocol.py` | Tests trace-boundary deltas, grouped split integrity, unseen-class blocking and dataset/report/split hash binding. | B.1–B.5 |
 | `validation_protocol.md` | Defines the canonical section B workflow, smoke evidence and the blockers separating implementation readiness from publishable evaluation. | B.1–B.5 |
 | `benign_controls.md` | Defines the section C plan: taxonomy of the 7 benign-degradation mechanisms, attack pairing rules, label vocabulary (`class=benign_degradation` + `impairment_mode`), matrix design, pipeline-integration constraints and per-milestone status tracking. | C.1–C.5 |
@@ -121,6 +121,20 @@ source that produced the dataset, each traced to a file and line. What it can
 and cannot supply is recorded below.
 
 ### A.3 status after auditing the ERENO source
+
+> **This subsection is a historical record of the audit that motivated
+> regenerating ERENO's output — it describes the legacy `gray-GOOSE.csv` and
+> the unpatched generator, not the current state.** All three gaps below
+> (unseeded RNG, one variant per build, no run/batch identifiers) have since
+> been closed in `../ereno` (branch `refactor/fix-major-revision`): `run.seed`
+> now threads through `Rng` into every `Random` construction on the generation
+> path; `attack.orientedGrayhole.variant/.discardRate/.burstSize` are read
+> from `params.properties` per run (`RunContext.loadConfigs()`); and
+> `RunContext.csvHeader()`/`csvRow()` emit `run_id`, `trace_id`, `seed`,
+> `loss_rate`, `burst_size` and (as of card C1) `impairment_*` natively. See
+> `data_card.md` §4 for how this maps onto the experimental-unit hierarchy,
+> and `run_matrix_plan.json` for the resulting 120-run attack matrix (in
+> progress — see `validation_protocol.md`, "Remaining blocker").
 
 | Column | Status | Source |
 |---|---|---|
