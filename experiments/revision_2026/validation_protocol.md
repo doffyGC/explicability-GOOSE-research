@@ -279,6 +279,66 @@ against `xgboost`/Random Forest (checklist D) before drawing any conclusion
 about SAG detectability being an inherent model-family limit versus a
 decision-tree-at-depth-8 limit specifically.
 
+### Metric labelling and prediction integrity (E.4/E.5)
+
+`check_prediction_integrity.py` audits finished runs before any statistical
+test is written, recomputing every number from a `numpy.bincount` confusion
+matrix over the persisted `grouped_predictions.csv` — never from the
+`sklearn` helpers the runner itself used, so a metric bug in the runner
+cannot pass its own audit (the same decoupling rationale as
+`check_no_leakage.py`):
+
+```bash
+python experiments/revision_2026/check_prediction_integrity.py \
+  --run results/grouped-validation-full \
+  --run results/grouped-validation-full-downsample \
+  --run results/grouped-validation-full-smote \
+  --out experiments/revision_2026/prediction_integrity.md \
+  --json-out experiments/revision_2026/prediction_integrity.json
+```
+
+**Counts (E.5).** All three runs reconcile completely — 30 checks each, 0
+failures: every `row_index` predicted exactly once, full coverage of rows
+0..20,796,920 with no gaps, per-fold predictions equal to both `test_rows`
+and the sum of per-class support, and per-class `y_true` totals matching
+both the run report *and* the dataset's own class counts (17,094 `SAG.DB` /
+21,436 `FRG` / 46,959 `SAG.PB` / 54,828 `SAG.PBM` / 270,680
+`benign_degradation` / 20,385,924 `normal`). Recorded per-fold accuracy and
+macro-F1 match the recomputation to 12 decimal places.
+
+**Labelling (E.4).** Pooled over all folds on the original distribution, with
+each averaging scheme named for what it is:
+
+| Run | accuracy (micro) | macro F1 | weighted F1 |
+|---|---:|---:|---:|
+| none (baseline) | 0.9862 | 0.2794 | 0.9823 |
+| smote | 0.9855 | 0.2783 | 0.9819 |
+| downsample | 0.5234 | 0.1993 | 0.6766 |
+
+This table is the reason checklist E.4 exists. The unbalanced baseline
+detects **zero** attack rows, yet its *weighted* F1 is 0.9823 — a number that
+would read as a near-perfect detector in a paper that did not say which
+average it used. Its *macro* F1 over the same predictions is 0.2794. Every
+metric reported from this pipeline must therefore carry its scheme; per-class
+values (`prediction_integrity.md` §3) stay the primary evidence, macro is the
+headline average, and weighted/accuracy are reported only as context for how
+dominated by `normal` the pool is.
+
+**Pairing (E.5).** All three runs predict exactly the same 20,796,921 rows
+with the same ground truth, so they are pairable — a precondition for any
+paired test in checklist F. The agreement tables also quantify the balancing
+trade-off at row level:
+
+| A vs. B | paired rows | only A correct | only B correct | discordant |
+|---|---:|---:|---:|---:|
+| none vs. downsample | 20,796,921 | 9,741,717 | 117,232 | 9,858,949 |
+| none vs. smote | 20,796,921 | 20,301 | 6,186 | 26,487 |
+
+Downsampling buys 117,232 rows the baseline got wrong at the cost of
+9,741,717 it got right — an ~83:1 losing exchange, almost all of it `normal`
+traffic turned into false alerts. SMOTE is not merely unhelpful but slightly
+*net-negative* against doing nothing (20,301 lost vs. 6,186 gained).
+
 ## Smoke evidence (2026-08-25)
 
 Six independent native runs were used: two seeds each for DB, FRG and PB.

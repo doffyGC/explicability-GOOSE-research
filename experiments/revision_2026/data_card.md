@@ -263,3 +263,12 @@ a new dataset version and requires new hashes and counts.
   could absorb. Checklist item D (ablations/baselines: tree depth, model
   family, class-weighted alternatives) is the required next step before any
   claim about SAG detectability under grouped validation.
+- All three runs have been reconciled by `check_prediction_integrity.py`
+  (`prediction_integrity.md`): 90 checks, 0 failures — row coverage, per-fold
+  counts, per-class sums against both the run reports and this dataset's own
+  class counts, and metrics recomputed independently of the runner. The three
+  runs are pairable (identical rows and ground truth), which is what any
+  paired statistical test in checklist F will require. Note for anyone
+  quoting numbers from these runs: the unbalanced baseline's **weighted** F1
+  is 0.9823 while its **macro** F1 is 0.2794 and it detects no attack rows at
+  all — never report an average from this dataset without naming its scheme.
