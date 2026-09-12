@@ -250,7 +250,16 @@ a new dataset version and requires new hashes and counts.
   is a wiring/baseline result, not a reportable detectability claim: it
   **never predicts any of the four attack classes** (0.000 precision/recall
   on `SAG.DB`/`FRG`/`SAG.PB`/`SAG.PBM` across all 5 folds), consistent with
-  the ~0.1-1% share attack rows hold against `normal`. Checklist items
-  D (ablations/baselines) and E (balancing: no-SMOTE/SMOTE/downsampling) are
-  the required next step before any claim about SAG detectability under
-  grouped validation.
+  the ~0.1-1% share attack rows hold against `normal`.
+- Checklist E (balancing) has since run two train-only rebalancing scenarios
+  on top of that same tree/splits (`run_grouped_validation.py --balance
+  {downsample,smote}` — see `validation_protocol.md`, "Balancing scenarios").
+  Neither is a usable operating point by itself: capped SMOTE
+  (20x/200k cap) left attack recall at ~0 (indistinguishable from the
+  unbalanced baseline), while full downsampling recovers attack recall
+  (0.51-1.00 across all four classes) at the cost of a 43-44% attack
+  false-positive rate on ideal, unimpaired `normal` traffic
+  (`benign_confusion_downsample.md`) — an alert burden no real deployment
+  could absorb. Checklist item D (ablations/baselines: tree depth, model
+  family, class-weighted alternatives) is the required next step before any
+  claim about SAG detectability under grouped validation.

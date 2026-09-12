@@ -158,6 +158,127 @@ run. Checklist D (ablations/baselines) and E (balancing: no-SMOTE/SMOTE/
 downsampling per fold) are the required next step; this run is the reference
 point ("no balancing") the balanced runs must be compared against.
 
+## Balancing scenarios (checklist E, 2026-09-12)
+
+The "Full-scale results" run above is the **unbalanced** reference scenario
+(checklist E's "sem balanceamento"). Checklist E calls for two more, both
+implemented as `--balance {downsample,smote}` on `run_grouped_validation.py`:
+each rebalances **only the current fold's TRAIN partition**; the test
+partition is always the untouched original distribution, so precision/recall
+numbers below are never inflated by evaluating on rebalanced data.
+
+Neither scenario aims for exact parity with the majority (`normal`) class.
+`normal` is ~16M rows in a typical fold's train partition against ~13-45k for
+the rarest attack class — plain SMOTE-to-parity would synthesise on the
+order of tens of millions of rows, the same class of failure as the OOM this
+script already hit once (see "Run the full, uncapped grouped validation"
+above). Both scenarios are therefore explicitly bounded:
+
+```bash
+# downsample: every class cut to the size of the smallest class in that fold's train partition
+python experiments/revision_2026/run_grouped_validation.py \
+  --dataset data/runs/gray-GOOSE-runs-prepared.parquet \
+  --preparation-report experiments/revision_2026/preparation_audit.json \
+  --splits experiments/revision_2026/splits_grouped.json \
+  --out-dir results/grouped-validation-full-downsample \
+  --model decision-tree --balance downsample
+
+# smote: attack classes oversampled up to 20x their own count, capped at 200k;
+# normal/benign_degradation (already above the cap) are left untouched
+python experiments/revision_2026/run_grouped_validation.py \
+  --dataset data/runs/gray-GOOSE-runs-prepared.parquet \
+  --preparation-report experiments/revision_2026/preparation_audit.json \
+  --splits experiments/revision_2026/splits_grouped.json \
+  --out-dir results/grouped-validation-full-smote \
+  --model decision-tree --balance smote
+```
+
+`--smote-oversample-factor` (default 20.0) and `--smote-max-target` (default
+200,000) control the SMOTE cap; both are recorded in `grouped_validation_report.json`.
+Requires `pip install imbalanced-learn` (added to `requirements.txt`).
+
+### Downsample results
+
+Mean over 5 folds: **accuracy 0.513 ± 0.041, macro-F1 0.197 ± 0.011.** Both
+numbers *drop* relative to the unbalanced baseline (0.985 / 0.276) — expected,
+since `normal` recall itself falls to ~44-55% once its training rows are cut
+from ~16M to the size of the rarest attack class (~13-45k) per fold. The
+headline change is recall on the four attack classes, previously exactly
+0.000 for all of them:
+
+| Class | recall (range across folds) | precision (range) |
+|---|---:|---:|
+| `SAG.DB` (`DETERMINISTIC_BURST`) | 0.74–1.00 | 0.005–0.022 |
+| `FRG` (`FULLY_RANDOMIZED`) | 0.51–0.66 | 0.001–0.007 |
+| `SAG.PB` (`RANDOMIC_BURST`) | 0.60–0.67 | 0.007–0.015 |
+| `SAG.PBM` (`RANDOMIC_MESSAGE`) | 0.58–0.64 | 0.010–0.015 |
+| `benign_degradation` | 0.51–0.87 | 0.23–0.40 |
+| `normal` | 0.44–0.55 | 0.997–0.999 |
+
+So the class-imbalance artifact reported above is confirmed, not contradicted:
+the same decision tree **can** separate every attack class from `normal`
+reasonably well once training sees them at comparable scale — it just never
+tried to under the unbalanced default. The cost is precision: with `normal`'s
+recall collapsing to ~50%, roughly half of all normal traffic in the original
+test distribution is flagged as something else, so the *alert burden*
+("Reportar false positive rate e alert burden em tráfego realista", checklist
+E) at this operating point is far too high for direct deployment as-is. This
+is the expected downsample trade-off (recall up, precision down from flooding
+minority-class decision regions with too few majority examples to bound them
+tightly) and is exactly why checklist E asks for three scenarios side by side
+rather than picking one.
+
+### SMOTE results
+
+Mean over 5 folds: **accuracy 0.984 ± 0.007, macro-F1 0.274 ± 0.017** —
+statistically indistinguishable from the unbalanced baseline (0.985 / 0.276).
+Oversampling each attack class to 200,000 synthetic-plus-real rows (from
+12k-45k) did **not** move the needle:
+
+| Class | recall (range across folds) |
+|---|---:|
+| `SAG.DB` | 0.000–0.003 |
+| `FRG` | 0.000–0.0002 |
+| `SAG.PB` | 0.000–0.0012 |
+| `SAG.PBM` | 0.000 (every fold) |
+| `benign_degradation` | 0.43–0.82 |
+| `normal` | 0.996–0.999 |
+
+SMOTE's synthetic points are convex-combination neighbours of the real
+minority rows already present, so they add density around existing minority
+regions rather than new ones. At `DecisionTreeClassifier(max_depth=8)`, that
+extra density still doesn't outweigh the accuracy gain from ignoring
+attack classes altogether, when they remain ~1.2% of the training rows
+(200k of ~16.7M) even after oversampling — the same Gini-optimality logic
+documented in "Full-scale results" above, just less starved than before.
+`benign_confusion_smote.md` confirms the model barely changed its behaviour
+at all: normal-traffic `attack_fpr` stays at 0.04% (baseline: 0.00%).
+
+### Cross-scenario comparison
+
+| Scenario | mean accuracy | mean macro-F1 | attack-class recall | normal `attack_fpr` (ideal traffic) |
+|---|---:|---:|---:|---:|
+| none (baseline) | 0.985 | 0.276 | 0.000 (all 4 classes, every fold) | 0.00% |
+| smote (capped, train-only) | 0.984 | 0.274 | ~0.000–0.003 (unchanged) | 0.04% |
+| downsample (train-only) | 0.513 | 0.197 | 0.51–1.00 (all 4 classes detected) | **43.46%** |
+
+None of the three scenarios is a usable operating point on its own: the
+unbalanced and capped-SMOTE runs never detect an attack; the downsampled run
+detects every attack class but at a false-positive rate on *ideal, unimpaired*
+normal traffic that would flood any real deployment with alerts (44.60%
+overall alert rate on that slice — see `benign_confusion_downsample.md`).
+This is exactly the trade-off checklist E asks to be reported explicitly
+rather than picked around: **detectability under grouped, leakage-free
+validation depends entirely on how training balance is handled, and the two
+balancing techniques tried so far sit at opposite, both-impractical ends of
+the precision/recall trade-off.** Next steps this opens up (not yet done):
+tuning the SMOTE cap/factor and tree depth together (a shallow tree may
+simply lack the capacity to use denser minority regions), a class-weighted
+loss as a third, cheaper alternative to explicit resampling, and comparing
+against `xgboost`/Random Forest (checklist D) before drawing any conclusion
+about SAG detectability being an inherent model-family limit versus a
+decision-tree-at-depth-8 limit specifically.
+
 ## Smoke evidence (2026-08-25)
 
 Six independent native runs were used: two seeds each for DB, FRG and PB.
