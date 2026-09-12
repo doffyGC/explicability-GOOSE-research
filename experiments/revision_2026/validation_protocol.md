@@ -277,7 +277,8 @@ simply lack the capacity to use denser minority regions), a class-weighted
 loss as a third, cheaper alternative to explicit resampling, and comparing
 against `xgboost`/Random Forest (checklist D) before drawing any conclusion
 about SAG detectability being an inherent model-family limit versus a
-decision-tree-at-depth-8 limit specifically.
+decision-tree-at-depth-8 limit specifically. That is card D: its plan, agreed
+scope and deferrals are in `ablations_baselines.md`.
 
 ### Metric labelling and prediction integrity (E.4/E.5)
 
