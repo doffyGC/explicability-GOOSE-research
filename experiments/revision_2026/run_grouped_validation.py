@@ -72,12 +72,18 @@ def verify_artifacts(dataset, preparation_report, splits_payload):
     return digest
 
 
-def load_frame(path):
+def load_frame(path, columns=None):
     import pandas as pd
     if path.lower().endswith(".csv"):
         return pd.read_csv(path, encoding="utf-8")
     if path.lower().endswith((".parquet", ".pq")):
-        return pd.read_parquet(path)
+        # `columns=None` reads every column, as before. The uncapped path in
+        # `main()` passes only what survives `feature_matrix`'s own discard
+        # sets plus group/target - the ~18 string identifier/discard columns
+        # (ethDst, gocbRef, datSet, ...) are dropped there anyway, so reading
+        # them from disk only to throw them away doubled peak RSS for no
+        # benefit on a 20M-row dataset.
+        return pd.read_parquet(path, columns=columns)
     raise GroupedRunError("dataset must be .csv or .parquet")
 
 
@@ -152,7 +158,15 @@ def feature_matrix(frame, target_column, extra_discard):
         )
     if features.empty:
         raise GroupedRunError("no model features remain")
-    return features
+    # float32 throughout: every remaining feature is a small protocol counter
+    # (StNum/SqNum/frameLen/...) or a delta/electrical measurement, all well
+    # inside float32's exact-integer range (2**24) and precision. Halves the
+    # size of the dense array pandas/sklearn materialise per fold - on the
+    # full 20M-row dataset that array alone was the actual OOM (see
+    # run_grouped_validation.py history around 2026-09-12). sklearn's own
+    # tree splitter already runs in float32 internally, so this changes
+    # nothing about the fitted model, only how much RAM getting there needs.
+    return features.astype("float32")
 
 
 def classifier(name, seed):
@@ -267,7 +281,15 @@ def main(argv=None):
                 args.max_rows_per_group_class, args.seed,
             )
         else:
-            frame = load_frame(args.dataset)
+            columns = None
+            if args.dataset.lower().endswith((".parquet", ".pq")):
+                import pyarrow.parquet as pq
+                schema_columns = pq.ParquetFile(args.dataset).schema_arrow.names
+                drop_cols = (
+                    IDENTIFIER_COLUMNS | BASE_DISCARD_COLUMNS | set(args.discard_column)
+                ) - {args.group_column, args.target_column}
+                columns = [c for c in schema_columns if c not in drop_cols]
+            frame = load_frame(args.dataset, columns=columns)
             if args.group_column not in frame or args.target_column not in frame:
                 raise GroupedRunError("dataset is missing group or target column")
             frame = technical_sample(
