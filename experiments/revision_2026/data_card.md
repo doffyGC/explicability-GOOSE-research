@@ -13,11 +13,12 @@ This card distinguishes two artifacts that must not be presented as equivalent:
 |---|---|---|
 | `gray-GOOSE.csv` | Dataset used by the submitted paper; available locally | Audit and baseline reproduction only. Its run identity and random state were not recorded. |
 | `gray-GOOSE-metadata.parquet` | Legacy dataset annotated after generation | Data-quality analysis only. Some metadata is recovered or derived, not generator-emitted. |
-| Regenerated run matrix | **Planned and smoke-tested, not generated in full** | Intended dataset for the revised grouped evaluation. The complete design is versioned in `run_matrix_plan.json`. |
+| Regenerated run matrix (`gray-GOOSE-runs-prepared.parquet`) | **Generated in full and validated**: 205 runs (120 attack + 85 benign-degradation), 20,796,921 prepared rows, merged (`merge_report.md`), annotated (`metadata_audit.md`), delta-recomputed within trace (`preparation_audit.json`), split 5-fold StratifiedGroupKFold and leakage-audited (`check_no_leakage.py`: pass, 205/205 groups tested once). | Primary dataset for the revised grouped evaluation. A first full training run exists (`validation_protocol.md`, "Full-scale results"; `benign_confusion.md`) but used an unbalanced decision tree and must not be read as a final detectability result — see §12. |
 
 The legacy artifact must not be used to claim leakage-free grouped validation.
-The regenerated artifact must not be described as available until all planned
-runs have passed `merge_runs.py`, annotation and `check_no_leakage.py`.
+The regenerated artifact has now passed `merge_runs.py`, annotation and
+`check_no_leakage.py` for all 205 planned runs; it is the dataset the revised
+evaluation should train and report on going forward.
 
 ## 2. Artifact identity
 
@@ -25,6 +26,7 @@ runs have passed `merge_runs.py`, annotation and `check_no_leakage.py`.
 |---|---:|---:|---|
 | `data/CSV files/gray-GOOSE.csv` | 1,006,989 | 588,751,063 bytes | `B77E6EF58DE054336DBFA19B3C9469AEE56C859B695B139029C9801FC79B32AE` |
 | `data/CSV files/gray-GOOSE-metadata.parquet` | 1,006,989 | 66,461,377 bytes | `FE7F7F12B674267A9F404A6CC6E3BCC3BB4B9A159C0A0BC84001E131BC3C7BCD` |
+| `data/runs/gray-GOOSE-runs-prepared.parquet` | 20,796,921 | see `preparation_audit.json` | `a9f3f5f40cdbcec1c7387d49457fb588539cb2805f26ecf5ac228f8278f71dfb` |
 
 Hashes identify the local artifacts audited for this revision. Regenerating or
 rewriting either file requires updating this section and `metadata_audit.md`.
@@ -63,7 +65,9 @@ CSVs with MD5 `42f78a780335b473ce5323698329aa4c`; seed `20260102` produced a
 different hash. This establishes deterministic reproduction for the patched
 single-threaded generation path.
 
-The planned matrix contains 120 independent runs:
+The matrix has been executed in full: 120 independent attack runs (below) plus
+85 benign-degradation runs (`benign_controls.md`), 205 total, merged and
+annotated in `metadata_audit.md`.
 
 | Dimension | Values |
 |---|---|
@@ -236,11 +240,17 @@ a new dataset version and requires new hashes and counts.
 
 ## 12. Known gaps at this revision stage
 
-- The 120-run matrix is designed but has not been executed completely.
-- No benign degradation controls have been generated yet. Design and
-  milestone tracking for this gap are in `benign_controls.md` (Card C).
 - The current matrix still uses one publisher/substation configuration.
 - The legacy dataset license is undeclared.
-- Grouped split generation and validation have passed on a six-run technical
-  smoke. Final five-fold splits have not been produced because the complete
-  120-run matrix does not exist yet.
+- Grouped split generation, the independent leakage audit and a first full
+  training run have all passed on the complete 205-run pool (5-fold
+  StratifiedGroupKFold, 20,796,921 rows, `check_no_leakage.py`: pass). See
+  `validation_protocol.md`, "Full-scale results", and `benign_confusion.md`.
+- That first full run used a plain, unbalanced `DecisionTreeClassifier` and
+  is a wiring/baseline result, not a reportable detectability claim: it
+  **never predicts any of the four attack classes** (0.000 precision/recall
+  on `SAG.DB`/`FRG`/`SAG.PB`/`SAG.PBM` across all 5 folds), consistent with
+  the ~0.1-1% share attack rows hold against `normal`. Checklist items
+  D (ablations/baselines) and E (balancing: no-SMOTE/SMOTE/downsampling) are
+  the required next step before any claim about SAG detectability under
+  grouped validation.

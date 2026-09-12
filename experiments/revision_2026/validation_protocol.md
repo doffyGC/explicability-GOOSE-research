@@ -97,6 +97,67 @@ original-distribution grouped run. The runner verifies that the dataset hash
 matches both preparation and split artifacts, and writes fold-linked
 predictions. It never trains a final all-data model or runs SHAP.
 
+### 6. Run the full, uncapped grouped validation
+
+```bash
+python experiments/revision_2026/run_grouped_validation.py \
+  --dataset data/runs/gray-GOOSE-runs-prepared.parquet \
+  --preparation-report experiments/revision_2026/preparation_audit.json \
+  --splits experiments/revision_2026/splits_grouped.json \
+  --out-dir results/grouped-validation-full \
+  --model decision-tree
+```
+
+Dropping `--max-rows-per-group-class` loads and trains on every row; the
+report status becomes `full_grouped_run`. On the 205-run/20.8M-row pool this
+needs the whole prepared dataset in memory at once (model training inherently
+requires it), so `run_grouped_validation.py` only reads the columns that
+survive `feature_matrix`'s own discard sets (`load_frame(..., columns=...)`)
+and casts the feature matrix to `float32` before `fit()` (sklearn's tree
+splitter runs in float32 internally regardless, so this changes nothing about
+the fitted model) — without both, materialising the training fold as a dense
+array raised `numpy._core._exceptions._ArrayMemoryError` on a 16GB-RAM
+machine. See "Full-scale results" below.
+
+## Full-scale results (2026-09-12)
+
+The 205-run pool (120 attack + 85 benign-degradation, `metadata_audit.md`)
+has now been carried through the full canonical workflow above:
+
+| Step | Result |
+|---|---|
+| Merge (`merge_runs.py`) | 205 runs, 20,797,126 rows, all passed validation |
+| Metadata (`add_experiment_metadata.py`) | 205 traces/runs, 845,212 events |
+| Delta preparation (`prepare_grouped_dataset.py`) | 20,796,921 rows; 205 trace-boundary rows removed |
+| Splits (`generate_grouped_splits.py`) | 5-fold stratified-group-kfold, 205 groups |
+| Leakage audit (`check_no_leakage.py`) | **pass** — 205/205 groups tested exactly once |
+| Training (`run_grouped_validation.py --model decision-tree`) | `full_grouped_run`, 5 folds, 20,796,921 rows |
+
+Fold results (mean over 5 folds): **accuracy 0.985 ± 0.007, macro-F1 0.276 ±
+0.021.** The gap between those two numbers is the headline finding, not a
+detail: per-class metrics are identical in shape across all 5 folds —
+
+| Class | precision | recall | f1 |
+|---|---:|---:|---:|
+| `normal` | ~0.99 | ~0.99 | ~0.99 |
+| `benign_degradation` | 0.44–0.94 | 0.44–0.82 | 0.57–0.88 |
+| `SAG.DB` / `FRG` / `SAG.PB` / `SAG.PBM` (all four) | **0.000** | **0.000** | **0.000** |
+
+The confusion matrix (`benign_confusion.md`) confirms this is not "mostly
+misses, sometimes hits": across all 20.8M rows the model predicts an attack
+class **for essentially no row at all** (all four attack columns are ~0 across
+every true class). With attack rows at well under 1% of the pool and a plain
+`DecisionTreeClassifier(max_depth=8)`, the tree finds it Gini-optimal to never
+carve out a leaf for the rare classes.
+
+**This is a class-imbalance artifact of running the first grouped model
+completely unbalanced, not evidence about SAG detectability**, and not a
+leakage problem — `check_no_leakage.py` passed. It does mean no claim about
+SAG being detectable (or not) under grouped validation can be made from this
+run. Checklist D (ablations/baselines) and E (balancing: no-SMOTE/SMOTE/
+downsampling per fold) are the required next step; this run is the reference
+point ("no balancing") the balanced runs must be compared against.
+
 ## Smoke evidence (2026-08-25)
 
 Six independent native runs were used: two seeds each for DB, FRG and PB.
@@ -164,7 +225,7 @@ the attack-only scope described in this document.**
 > smoke pool (`benign_controls.md` §7, C3): **7/7 LOETO folds closed-set**,
 > `open_set_diagnostic: false` throughout. This resolves LOETO for the benign
 > axis, but not for the attack axis: in the combined 205-run pool (120 attack
-> + 85 benign, once Fase 3 lands), the 4 attack families are still each
+> + 85 benign, now merged — see "Full-scale results"), the 4 attack families are still each
 > attack-class-exclusive, so a LOETO run over *all* 11 event types has 4
 > open-set folds mixed with 7 closed-set ones, and `open_set_diagnostic: true`
 > on the whole split file makes the closed-set folds hard to consume
@@ -172,16 +233,15 @@ the attack-only scope described in this document.**
 > (restrict LOETO to a chosen subset of families, e.g. just the 7 benign ones)
 > would let each axis be evaluated on its own terms; not yet implemented.
 
-## Remaining blocker for the full section B results
+## Historical blocker (resolved 2026-09-12)
 
-The legacy annotated dataset cannot be used:
+The legacy annotated dataset could not be used for the full section B results:
 
 - `T-UNRESOLVED` mixes real traces;
-- only four usable inferred groups remain;
-- every group is tied to one attack class;
-- the original deltas cannot be safely recomputed for ambiguous rows.
+- only four usable inferred groups remained;
+- every group was tied to one attack class;
+- the original deltas could not be safely recomputed for ambiguous rows.
 
-The final five-fold experiment requires execution of the regenerated run matrix
-with at least five independent seeds per attack variant. After that, repeat the
-canonical workflow above, archive all JSON/CSV audits and only then reproduce
-the complete model results.
+This required executing the regenerated run matrix with at least five
+independent seeds per attack variant, then repeating the canonical workflow
+above end to end. Both have now happened — see "Full-scale results" above.

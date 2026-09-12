@@ -41,7 +41,7 @@ the script's own docstring/comments, not in this file.
 | `data_card.md` | Documents generation, labels, features, experimental units, legacy provenance limits, intended/prohibited uses, hashes and the release procedure for regenerated runs. | A.5 |
 | `prepare_grouped_dataset.py` | Sorts messages inside each trace and recomputes ERENO's delta features without crossing trace boundaries; drops the predecessor-less first row of every trace and writes a hash-bound audit. Processes trace-aligned Parquet inputs one row group at a time (~10.2× lower peak RSS); rejects, rather than silently mis-computing, any file whose row groups are not trace-aligned. | B.2 |
 | `generate_grouped_splits.py` | Creates StratifiedGroupKFold, GroupKFold, LeaveOneGroupOut or LOETO folds; checks class coverage and persists exact groups as JSON plus CSV before invoking the independent leakage checker. | B.1, B.3, B.4 |
-| `run_grouped_validation.py` | Trains only from persisted, hash-bound grouped splits and writes fold metrics plus row/group-linked predictions. Supports a clearly marked capped technical smoke — when capped and given a Parquet dataset, samples row group by row group instead of loading the full dataset first (~8.4× lower peak RSS on the smoke path). The uncapped/full training path still loads the whole dataset, which model training inherently requires. | B.1, B.5 |
+| `run_grouped_validation.py` | Trains only from persisted, hash-bound grouped splits and writes fold metrics plus row/group-linked predictions. Supports a clearly marked capped technical smoke — when capped and given a Parquet dataset, samples row group by row group instead of loading the full dataset first (~8.4× lower peak RSS on the smoke path). The uncapped/full training path still loads the whole dataset, which model training inherently requires, but only the columns that survive `feature_matrix`'s discard sets (skips ~18 string identifier/discard columns at read time) and casts the feature matrix to `float32` before `fit()` — needed to fit the 205-run/20.8M-row full training on a 16GB-RAM machine at all; see `validation_protocol.md`, "Full-scale results". | B.1, B.5 |
 | `test_validation_protocol.py` | Tests trace-boundary deltas, grouped split integrity, unseen-class blocking and dataset/report/split hash binding. | B.1–B.5 |
 | `validation_protocol.md` | Defines the canonical section B workflow, smoke evidence and the blockers separating implementation readiness from publishable evaluation. | B.1–B.5 |
 | `benign_controls.md` | Defines the section C plan: taxonomy of the 7 benign-degradation mechanisms, attack pairing rules, label vocabulary (`class=benign_degradation` + `impairment_mode`), matrix design, pipeline-integration constraints and per-milestone status tracking. | C.1–C.5 |
@@ -133,8 +133,9 @@ and cannot supply is recorded below.
 > `RunContext.csvHeader()`/`csvRow()` emit `run_id`, `trace_id`, `seed`,
 > `loss_rate`, `burst_size` and (as of card C1) `impairment_*` natively. See
 > `data_card.md` §4 for how this maps onto the experimental-unit hierarchy,
-> and `run_matrix_plan.json` for the resulting 120-run attack matrix (in
-> progress — see `validation_protocol.md`, "Remaining blocker").
+> and `run_matrix_plan.json` for the resulting 120-run attack matrix (executed
+> in full and merged with the 85-run benign matrix — see `validation_protocol.md`,
+> "Full-scale results").
 
 | Column | Status | Source |
 |---|---|---|

@@ -296,11 +296,34 @@ the milestone named:
       explicit note that this is uninformative absent any attack rows in the
       pool, and `Run status: technical_smoke` carried through from
       `run_grouped_validation.py`'s own report.
-- [ ] **C5 — Full generation and documentation.** Regenerate attack matrix
-      (120 runs) + benign tier-1 (50 runs) under the new schema, run the
-      canonical workflow on the pooled dataset, populate `benign_confusion.md`
-      with real numbers, update `validation_protocol.md`/`data_card.md`/
-      `README.md`/`metadata_audit.md`, close this document's checklist.
+- [x] **C5 — Full generation and documentation.** Attack matrix (120 runs) +
+      the full benign matrix (85 runs — both tiers, not just tier-1's 50)
+      regenerated under the new schema, merged (205 runs, 20,797,126 rows,
+      `merge_report.md`), annotated (`metadata_audit.md`), delta-prepared
+      (`preparation_audit.json`) and carried through the canonical workflow:
+      5-fold StratifiedGroupKFold, `check_no_leakage.py` pass (205/205 groups
+      tested once), and a first full training run
+      (`results/grouped-validation-full/`, `run_grouped_validation.py
+      --model decision-tree`, no cap).
+
+      `benign_confusion.md` is now populated with real numbers instead of
+      the technical-smoke placeholder: on the full pool, `attack_fpr` is
+      0.00% for every one of the 7 impairment modes — but so is the model's
+      attack recall (see `validation_protocol.md`, "Full-scale results"): a
+      plain unbalanced decision tree never predicts any attack class at all,
+      so a 0.00% `attack_fpr` here is *not yet* evidence that benign
+      degradation is safely distinguished from attack — it is evidence the
+      model doesn't distinguish *anything* as attack. Per-mode `alert_rate`
+      is informative on its own terms (`DELAY` 97.2%, `JITTER` 61.4%,
+      `DUPLICATION` 75.8%, `REORDERING` 45.0%, `CONGESTION_LOSS`/`LINK_FLAP`/
+      `QUEUE_OVERLOAD_BURST` 0.0%) and should carry over once a balanced
+      model exists to re-run this same report against.
+
+      `validation_protocol.md`, `data_card.md`, `README.md` and
+      `metadata_audit.md` updated in the same change. Re-run this milestone's
+      `benign_confusion.md` once checklist E (balancing) lands, since the
+      current numbers are a wiring/baseline confirmation, not the reportable
+      card-C result.
 
 To resume work on a later day: read this file's status table and
 `README.md`'s script table, then continue at the first unchecked milestone.
