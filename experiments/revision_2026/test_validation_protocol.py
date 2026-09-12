@@ -15,7 +15,15 @@ from generate_grouped_splits import (
     validate_class_coverage,
 )
 from prepare_grouped_dataset import PreparationError, recompute_trace_deltas
-from run_grouped_validation import GroupedRunError, class_counts, resample_train, verify_artifacts
+from run_grouped_validation import (
+    MODEL_CHOICES,
+    GroupedRunError,
+    class_counts,
+    classifier,
+    resample_train,
+    subsample_train,
+    verify_artifacts,
+)
 
 
 class EventTypeTests(unittest.TestCase):
@@ -194,6 +202,76 @@ class BalanceTests(unittest.TestCase):
         with self.assertRaisesRegex(GroupedRunError, "too few"):
             resample_train(X, y, self.class_names, "smote", 0,
                             smote_factor=3.0, smote_max_target=50)
+
+
+class SubsampleTests(unittest.TestCase):
+    """Checklist D.3: the per-fold train cap is a scale control, not balancing."""
+
+    @staticmethod
+    def strata(counts):
+        import numpy as np
+        return np.repeat(np.arange(len(counts)), counts)
+
+    def test_cap_is_a_no_op_when_unset_or_larger_than_the_partition(self):
+        strata = self.strata([100, 50])
+        self.assertIsNone(subsample_train(strata, 0, 42))
+        self.assertIsNone(subsample_train(strata, 150, 42))
+        self.assertIsNone(subsample_train(strata, 10_000, 42))
+
+    def test_every_stratum_keeps_its_share_of_the_partition(self):
+        import numpy as np
+        # One dominant stratum and two small ones: a cap that preserved counts
+        # instead of proportions, or that sampled globally at random, would not
+        # land on these numbers.
+        strata = self.strata([9000, 600, 400])
+        keep = subsample_train(strata, 1000, 42)
+        kept = np.bincount(strata[keep], minlength=3)
+        self.assertEqual(kept.tolist(), [900, 60, 40])
+        self.assertEqual(len(keep), 1000)
+
+    def test_a_rare_stratum_is_never_emptied_by_the_cap(self):
+        import numpy as np
+        # 3 * (100/100_003) rounds down to 0 rows; the floor keeps one, so a
+        # cap can never silently remove a rare class from training. That floor
+        # is also why the sample may exceed the cap slightly (101 here).
+        strata = self.strata([100_000, 3])
+        keep = subsample_train(strata, 100, 42)
+        kept = np.bincount(strata[keep], minlength=2)
+        self.assertEqual(kept.tolist(), [99, 1])
+        self.assertEqual(len(keep), 100)
+
+    def test_sample_is_ordered_and_reproducible_for_a_seed(self):
+        import numpy as np
+        strata = self.strata([500, 500])
+        first = subsample_train(strata, 100, 42)
+        self.assertTrue(np.all(np.diff(first) > 0), "positions must be sorted and unique")
+        np.testing.assert_array_equal(first, subsample_train(strata, 100, 42))
+        self.assertFalse(np.array_equal(first, subsample_train(strata, 100, 43)))
+
+
+class ModelFamilyTests(unittest.TestCase):
+    """Checklist D.3: every family is reachable and left at library defaults."""
+
+    def test_every_advertised_family_builds(self):
+        for name in MODEL_CHOICES:
+            model = classifier(name, seed=7)
+            self.assertTrue(hasattr(model, "fit"), name)
+
+    def test_unknown_family_is_rejected(self):
+        with self.assertRaisesRegex(GroupedRunError, "unknown model"):
+            classifier("transformer", seed=7)
+
+    def test_logistic_regression_is_scaled_like_the_baseline_pipeline(self):
+        model = classifier("logistic-regression", seed=7)
+        self.assertEqual([name for name, _ in model.steps], ["scaler", "clf"])
+
+    def test_no_hyperparameter_is_tuned_away_from_its_default(self):
+        from sklearn.ensemble import RandomForestClassifier
+        forest = classifier("random-forest", seed=7)
+        defaults = RandomForestClassifier()
+        for key in ("n_estimators", "max_depth", "max_samples", "min_samples_leaf",
+                    "class_weight", "criterion"):
+            self.assertEqual(getattr(forest, key), getattr(defaults, key), key)
 
 
 if __name__ == "__main__":

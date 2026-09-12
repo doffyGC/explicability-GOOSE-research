@@ -278,7 +278,9 @@ loss as a third, cheaper alternative to explicit resampling, and comparing
 against `xgboost`/Random Forest (checklist D) before drawing any conclusion
 about SAG detectability being an inherent model-family limit versus a
 decision-tree-at-depth-8 limit specifically. That is card D: its plan, agreed
-scope and deferrals are in `ablations_baselines.md`.
+scope and deferrals are in `ablations_baselines.md`. **The model-family half
+of that question is now answered — see "Model family comparison (checklist
+D.3)" below: it is not a decision-tree limit.**
 
 ### Metric labelling and prediction integrity (E.4/E.5)
 
@@ -339,6 +341,127 @@ Downsampling buys 117,232 rows the baseline got wrong at the cost of
 9,741,717 it got right — an ~83:1 losing exchange, almost all of it `normal`
 traffic turned into false alerts. SMOTE is not merely unhelpful but slightly
 *net-negative* against doing nothing (20,301 lost vs. 6,186 gained).
+
+## Model family comparison (checklist D.3, 2026-09-12)
+
+Card E ended on an open question: is never predicting an attack class a
+property of `DecisionTreeClassifier(max_depth=8)`, or of every model at this
+class balance? D.3 answers it by running four families — decision tree,
+XGBoost, Random Forest, logistic regression — **at library defaults, with no
+tuning** (tuning is D.4), on the same persisted folds, in both the `none` and
+`downsample` scenarios. Nine runs in ~2.5 h wall clock. The per-fold train
+cap the Random Forest needs, and the measurements behind it, are in
+`ablations_baselines.md` §7; the run matrix and the champion criterion fixed
+before execution are in its §8.
+
+**Runner reproducibility.** D.3 required reworking how
+`run_grouped_validation.py` loads data and predicts (float32/dictionary cast
+at read time, the DataFrame released before the first `fit()`, and prediction
+in bounded blocks). Both card-E decision-tree runs were therefore re-executed
+on the reworked runner as regression checks: `grouped_predictions.csv` came
+back **byte-identical by SHA-256** in both cases — `4313b224…facc4` for
+`none`, `d6afdeb8…badd6` for `downsample` — over all 20,796,921 rows. The
+rework changed memory and wall clock only (the `none` run went from ~20-50
+min to 16.5 min), and the balancing path is confirmed deterministic.
+
+### Unbalanced (`none`): is it a decision-tree limit?
+
+Means over 5 folds, original-distribution test partitions:
+
+| Model | cap | accuracy (micro) | **macro F1** | weighted F1 | attack-class recall | ideal-`normal` attack_fpr |
+|---|---:|---:|---:|---:|---|---:|
+| decision-tree | — | 0.9848 | 0.2758 | 0.9805 | **0.000** (all four, every fold) | 0.00% |
+| decision-tree | 4M | 0.9848 | 0.2759 | 0.9805 | **0.000** (all four, every fold) | — |
+| xgboost | — | 0.9850 | 0.2747 | 0.9805 | **0.000** (all four, every fold) | 0.00% |
+| logistic-regression | — | 0.9789 | 0.1649 | 0.9685 | **0.000** (all four) | — |
+| random-forest | 4M | 0.9839 | **0.3034** | 0.9806 | 0.0002–0.0777 | 0.11% |
+
+**It is not a decision-tree artifact.** XGBoost at defaults, trained on the
+full ~16M-row partition, predicts an attack class for essentially no row —
+exactly like the tree. Logistic regression is worse still: it predicts
+`normal` for *literally every row*, `benign_degradation` included (recall
+0.000 there too), which is what its macro F1 of 0.1649 measures. That is not
+an optimisation failure — lbfgs converged in 49–61 of its 100 iterations in
+every fold — but a capacity limit, and it is the honest floor this comparison
+needed.
+
+**Random Forest is the one family that predicts any attack row at all**, and
+the detail matters more than the macro average:
+
+| Class | recall (range) | precision (range) |
+|---|---:|---:|
+| `SAG.DB` | 0.0002–0.0028 | 0.0013–0.0054 |
+| `FRG` | 0.0007–0.0044 | 0.0066–0.0200 |
+| `SAG.PB` | 0.0120–0.0618 | 0.0574–0.2814 |
+| `SAG.PBM` | 0.0470–0.0777 | 0.1693–0.2477 |
+
+At ≤8% recall this is **not a detector**. But it is the first operating point
+in this revision where attack predictions carry non-trivial precision
+(0.17–0.28 on `SAG.PBM`/`SAG.PB`) at a false-positive rate on ideal `normal`
+traffic of **0.11%** — against 43.46% for the downsampled tree, the only other
+configuration that detects anything. Fully grown, unpruned trees do carve out
+small genuine attack regions that a depth-8 tree and a default-depth XGBoost
+never look for; they are just far too small to cover the class.
+
+**The cap is not doing this.** The decision tree run under the identical 4M
+cap is indistinguishable from the tree on the full partition — macro F1 0.2759
+vs 0.2758, and 5,430 discordant rows out of 20,796,921 (0.026%). So the
+Random Forest's behaviour is a property of the family, not of §7's
+subsampling. (This controls the cap's effect on a tree; it does not
+independently prove the uncapped Random Forest would behave the same, which
+is why every Random Forest row above carries its cap.)
+
+### Balanced (`downsample`): champion selection
+
+The champion is chosen here, not above, because this is the scenario card
+D.1's ablation runs in. Criterion fixed before execution: mean macro F1, then
+mean attack-class recall, then ideal-`normal` attack_fpr.
+
+| Model | **macro F1** | mean attack recall | ideal-`normal` attack_fpr | `normal` recall |
+|---|---:|---:|---:|---:|
+| **xgboost** | **0.1972** | **0.6862** | **38.69%** | 0.541 |
+| decision-tree | 0.1970 | 0.6858 | 43.46% | 0.510 |
+| random-forest | 0.1766 | 0.5600 | 36.67% | 0.545 |
+| logistic-regression | 0.1355 | 0.5205 | 42.21% | 0.452 |
+
+**Champion: XGBoost**, decided on the third criterion. The first two are ties
+in every meaningful sense — 0.1972 vs 0.1970 macro F1 against a per-fold
+standard deviation of ~0.013, and 0.6862 vs 0.6858 mean attack recall — so
+the separation comes entirely from the false-positive rate on ideal traffic,
+where XGBoost costs 4.8 percentage points less than the tree. Random Forest
+has the lowest attack_fpr of the four but never reaches that tie-breaker: its
+macro F1 is a clear 0.02 below the leaders.
+
+Caveat, recorded rather than tuned away: **logistic regression did not
+converge in the `downsample` scenario** — `n_iter_` hit its default
+`max_iter=100` in all 5 folds (it converged comfortably in `none`). Raising
+`max_iter` would be tuning, which is card D.4; the D.3 number stands with the
+caveat attached.
+
+### What D.3 settles, and what it does not
+
+- Card E's class-imbalance explanation **survives the family comparison**. No
+  model family at library defaults escapes it on the unbalanced pool, so the
+  zero-detection result is not an artifact of the specific tree that produced
+  it.
+- The `downsample` trade-off is likewise **family-independent**: all four
+  models land at macro F1 0.14–0.20 with `normal` recall ~0.45–0.55 and
+  attack_fpr 37–43%. Changing the model does not buy a usable operating point;
+  the balancing method dominates.
+- Detectability itself is still **not** established. The best attack-class
+  numbers in this card are either ≤8% recall (Random Forest, `none`) or bought
+  at a ~39% false-positive rate (XGBoost, `downsample`). D.1's feature-group
+  ablation and D.4's tuning are what remain before any detectability claim.
+- Cost note for D.1: the champion's `downsample` run takes **2.2 min**, so the
+  six-run ablation is ~15 min of compute rather than the 4–6 h `ablations_baselines.md`
+  §4 budgeted against a possibly-expensive champion.
+
+**Integrity.** All nine runs went through `check_prediction_integrity.py`
+before any number above was written: **315 checks, 0 failures**, every
+`row_index` predicted exactly once with full 0..20,796,920 coverage, and all
+nine pairable against each other for card F's paired tests
+(`prediction_integrity_d3.md`). Its run table now carries a `train cap`
+column so a capped run can never be silently compared against an uncapped one.
 
 ## Smoke evidence (2026-08-25)
 

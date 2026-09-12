@@ -11,6 +11,12 @@ run validates wiring only and must not be reported as scientific performance.
 TRAIN partition is rebalanced (test is always the untouched original
 distribution). ``none`` is the already-reported unbalanced baseline;
 ``downsample``/``smote`` require ``pip install imbalanced-learn``.
+
+``--model`` covers checklist D.3's model-family comparison (decision-tree,
+xgboost, random-forest, logistic-regression).  ``--max-train-rows-per-fold``
+is the documented per-fold train cap that comparison needs on this machine;
+see ``subsample_train`` and ``ablations_baselines.md`` SS7 for the policy and
+the measurements behind it.
 """
 
 from __future__ import annotations
@@ -77,7 +83,7 @@ def verify_artifacts(dataset, preparation_report, splits_payload):
     return digest
 
 
-def load_frame(path, columns=None):
+def load_frame(path, columns=None, group_column=None, target_column=None):
     import pandas as pd
     if path.lower().endswith(".csv"):
         return pd.read_csv(path, encoding="utf-8")
@@ -88,7 +94,38 @@ def load_frame(path, columns=None):
         # (ethDst, gocbRef, datSet, ...) are dropped there anyway, so reading
         # them from disk only to throw them away doubled peak RSS for no
         # benefit on a 20M-row dataset.
-        return pd.read_parquet(path, columns=columns)
+        #
+        # The remaining numeric columns are stored as float64/int64 but are
+        # cast to float32 by `feature_matrix` regardless, so they are cast on
+        # the way in instead - row group by row group, so the full float64
+        # table never exists at once. The group and target columns become
+        # dictionary-encoded (pandas Categorical) rather than one Python str
+        # object per row. Measured on the 20.8M-row pool: peak RSS during the
+        # load drops from 11.7 GB to 7.3 GB and the resident frame from
+        # ~8.7 GB to ~3.5 GB, which is the headroom a Random Forest's fitted
+        # trees need (see `subsample_train`). Values are unchanged - the
+        # float32 rounding is the same one `feature_matrix` already applied.
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        parquet_file = pq.ParquetFile(path)
+        schema = parquet_file.schema_arrow
+        names = list(columns) if columns is not None else list(schema.names)
+        fields = []
+        for name in names:
+            field = schema.field(name)
+            if name in (group_column, target_column) and pa.types.is_string(field.type):
+                fields.append(pa.field(name, pa.dictionary(pa.int32(), pa.string())))
+            elif pa.types.is_floating(field.type) or pa.types.is_integer(field.type):
+                fields.append(pa.field(name, pa.float32()))
+            else:
+                fields.append(field)
+        target_schema = pa.schema(fields)
+        chunks = [
+            parquet_file.read_row_group(index, columns=names).cast(target_schema).to_pandas()
+            for index in range(parquet_file.metadata.num_row_groups)
+        ]
+        return pd.concat(chunks, ignore_index=True)
     raise GroupedRunError("dataset must be .csv or .parquet")
 
 
@@ -171,19 +208,110 @@ def feature_matrix(frame, target_column, extra_discard):
     # run_grouped_validation.py history around 2026-09-12). sklearn's own
     # tree splitter already runs in float32 internally, so this changes
     # nothing about the fitted model, only how much RAM getting there needs.
-    return features.astype("float32")
+    # copy=False so a frame that `load_frame` already cast on the way in is
+    # not duplicated here; a float64 frame (CSV, or the technical-sample path)
+    # is still converted exactly as before.
+    return features.astype("float32", copy=False)
 
 
-def classifier(name, seed):
+MODEL_CHOICES = ("decision-tree", "xgboost", "random-forest", "logistic-regression")
+
+
+def classifier(name, seed, n_jobs=-1):
+    """Build one model family at its library defaults (checklist D.3).
+
+    D.3 is the *untuned* family comparison: apart from ``decision-tree``'s
+    ``max_depth=8`` - inherited unchanged from the card-E runs this card has
+    to stay comparable with - no hyperparameter is set away from its library
+    default here.  Tuning is card D.4's job and happens inside train folds.
+
+    ``n_jobs`` is a throughput knob, not a hyperparameter: it changes how many
+    threads fit the model, not what is fitted.  It is recorded in the run
+    report anyway, because XGBoost's histogram reduction order depends on the
+    thread count and can move the last decimals of a score.  The scikit-learn
+    estimators are seeded per tree from ``random_state`` and are unaffected.
+    """
     if name == "decision-tree":
         from sklearn.tree import DecisionTreeClassifier
         return DecisionTreeClassifier(max_depth=8, random_state=seed)
     if name == "xgboost":
         import xgboost as xgb
         return xgb.XGBClassifier(
-            objective="multi:softprob", eval_metric="mlogloss", random_state=seed
+            objective="multi:softprob", eval_metric="mlogloss", random_state=seed,
+            n_jobs=n_jobs,
         )
+    if name == "random-forest":
+        from sklearn.ensemble import RandomForestClassifier
+        return RandomForestClassifier(random_state=seed, n_jobs=n_jobs)
+    if name == "logistic-regression":
+        # Wrapped in a scaler for the same reason the baseline pipeline wraps
+        # it (model/train.py): the feature matrix mixes raw electrical
+        # magnitudes with protocol counters, and an unscaled lbfgs run on that
+        # is dominated by whichever column happens to have the largest units.
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        return Pipeline([
+            ("scaler", StandardScaler()),
+            ("clf", LogisticRegression(random_state=seed)),
+        ])
     raise GroupedRunError("unknown model: %s" % name)
+
+
+PREDICT_CHUNK_ROWS = 1_000_000
+
+
+def predict_in_chunks(model, X, positions, chunk_rows=PREDICT_CHUNK_ROWS):
+    """Predict a fold's test partition in bounded blocks.
+
+    Predictions are row-independent, so this returns exactly what
+    ``model.predict(X[positions])`` returns - it only bounds the transient
+    memory getting there.  Predicting a whole partition at once allocates
+    several temporaries proportional to its size, and the largest fold here
+    is 5.58M rows: the fancy-indexed slice, then a copy per pipeline step
+    (``StandardScaler.transform`` copies), then - for the linear model -
+    a float64 promotion of the whole block, because ``coef_`` is float64
+    while the feature matrix is float32.  Together that overran RAM on the
+    ``logistic-regression`` run even though its fit used only ~96k rows.
+    A fixed block size makes the peak independent of fold size and model
+    family.
+    """
+    import numpy as np
+
+    chunks = [
+        model.predict(X[positions[start:start + chunk_rows]])
+        for start in range(0, len(positions), chunk_rows)
+    ]
+    return np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
+
+
+def fit_diagnostics(model):
+    """Whatever the fitted model can say about whether its fit actually finished.
+
+    Only iterative solvers answer: `logistic-regression`'s lbfgs reports
+    `n_iter_`, and a value equal to `max_iter` means it stopped on the
+    iteration budget rather than on convergence. Recording it keeps a
+    non-converged run from being reported as a converged baseline - the
+    honest fix for a D.3 family comparison is to report the caveat, since
+    raising `max_iter` would be tuning and tuning is card D.4.
+    """
+    estimator = model
+    steps = getattr(model, "named_steps", None)
+    if steps is not None:
+        estimator = steps.get("clf", model)
+    n_iter = getattr(estimator, "n_iter_", None)
+    if n_iter is None:
+        return None
+    try:
+        iterations = [int(value) for value in n_iter]
+    except TypeError:
+        iterations = [int(n_iter)]
+    max_iter = getattr(estimator, "max_iter", None)
+    return {
+        "n_iter": iterations,
+        "max_iter": int(max_iter) if max_iter is not None else None,
+        "converged": None if max_iter is None else bool(max(iterations) < max_iter),
+    }
 
 
 def class_counts(y, class_names):
@@ -211,6 +339,50 @@ def average_block(report):
         }
         for scheme in ("macro", "weighted")
     }
+
+
+def subsample_train(strata, cap, seed):
+    """Positions of a proportional, group- and class-stratified train subsample.
+
+    Checklist D.3's documented per-fold train cap.  This is a *scale* control,
+    not a balancing one: every ``(split_group, class)`` stratum keeps the same
+    share of the fold's train partition it had before, so the subsample is a
+    shrunken replica of the original train distribution rather than a
+    reweighting of it.  ``resample_train`` (checklist E) is the only thing in
+    this script that deliberately changes class proportions, and it runs
+    *after* this.  The test partition is never subsampled - every metric in
+    the run is still measured on the untouched original distribution.
+
+    Why it exists: a ``RandomForestClassifier`` at library defaults stores
+    4.0-4.4 tree nodes per training row across its 100 trees (measured on this
+    dataset at 0.5M and 2.28M rows) at ~112 bytes a node, i.e. ~490 bytes of
+    fitted forest per training row.  A full ~16M-row train partition therefore
+    needs ~6.7 GB of forest on top of the resident feature matrix, which does
+    not fit the 15.6 GB machine the revision runs on.  ``ablations_baselines.md``
+    SS7 records the measurements and which runs the cap was applied to.
+
+    Strata that would otherwise round down to zero rows keep one row, so a cap
+    can never silently delete a rare class from training; the returned sample
+    can exceed ``cap`` by at most the number of such strata.
+    """
+    import numpy as np
+
+    total = len(strata)
+    if not cap or total <= cap:
+        return None
+    fraction = cap / float(total)
+    rng = np.random.RandomState(seed)
+    # lexsort's last key is primary: rows are grouped by stratum, and the
+    # random key shuffles within each stratum so the head of every stratum is
+    # an unbiased draw from it.
+    order = np.lexsort((rng.random_sample(total), strata))
+    _, starts, counts = np.unique(strata[order], return_index=True, return_counts=True)
+    keep = np.concatenate([
+        order[start:start + max(1, int(count * fraction))]
+        for start, count in zip(starts, counts)
+    ])
+    keep.sort()
+    return keep
 
 
 def resample_train(X_train, y_train, class_names, strategy, seed,
@@ -271,54 +443,128 @@ def resample_train(X_train, y_train, class_names, strategy, seed,
     raise GroupedRunError("unknown balance strategy: %s" % strategy)
 
 
-def run_folds(frame, splits, group_column, target_column, model_name, seed,
-              extra_discard, predictions_writer, balance_strategy="none",
-              smote_factor=20.0, smote_max_target=200_000):
+def prepare_arrays(frame, group_column, target_column, extra_discard):
+    """Turn the loaded frame into the compact arrays the fold loop needs.
+
+    Split out from ``run_folds`` so ``main`` can drop its reference to the
+    DataFrame before the first fit.  On the 20.8M-row pool the frame and the
+    feature matrix are ~5.7 GB and ~3.3 GB, and holding both for the whole run
+    left no headroom for a Random Forest's fitted trees (see
+    ``subsample_train``).  Keeping only the arrays halves the resident
+    footprint for every model family.
+
+    ``row_index`` preserves the frame's own index, so the ``row_index`` column
+    written to ``grouped_predictions.csv`` keeps identifying the same dataset
+    row it always did - including under the technical-sample path, where
+    ``load_technical_sample`` re-anchors the index to true dataset positions.
+    """
     import numpy as np
-    from sklearn.metrics import accuracy_score, classification_report
     from sklearn.preprocessing import LabelEncoder
 
     encoder = LabelEncoder()
-    y = encoder.fit_transform(frame[target_column].astype(str))
-    X = feature_matrix(frame, target_column, extra_discard)
-    groups = frame[group_column].astype(str)
-    all_labels = list(range(len(encoder.classes_)))
+    # int16/int32 rather than the default intp: these are held for the whole
+    # run next to a multi-GB feature matrix, and neither the class count (6)
+    # nor the group count (205) comes close to needing 64 bits.
+    y = encoder.fit_transform(frame[target_column].astype(str)).astype("int16")
+    group_labels, group_codes = np.unique(frame[group_column].astype(str).to_numpy(),
+                                          return_inverse=True)
+    group_codes = group_codes.astype("int32")
+    row_index = frame.index.to_numpy()
+    features = feature_matrix(frame, target_column, extra_discard)
+    feature_names = list(features.columns)
+    # Every remaining column is float32 by now, so pandas holds them in one
+    # block and this is a view rather than another full-size copy.
+    X = features.to_numpy(dtype="float32", copy=False)
+    return {
+        "X": X, "y": y, "group_codes": group_codes, "group_labels": group_labels,
+        "row_index": row_index, "classes": list(encoder.classes_),
+        "features": feature_names,
+    }
+
+
+def run_folds(arrays, splits, model_name, seed, predictions_writer,
+              balance_strategy="none", smote_factor=20.0, smote_max_target=200_000,
+              max_train_rows=0, n_jobs=-1):
+    import gc
+
+    import numpy as np
+    from sklearn.metrics import accuracy_score, classification_report
+
+    X = arrays["X"]
+    y = arrays["y"]
+    group_codes = arrays["group_codes"]
+    group_labels = arrays["group_labels"]
+    row_index = arrays["row_index"]
+    classes = np.asarray(arrays["classes"], dtype=object)
+    all_labels = list(range(len(classes)))
+    label_to_code = {label: code for code, label in enumerate(group_labels)}
     metrics = []
 
     for fold_index, split in enumerate(splits):
-        train_mask = groups.isin(split["train_groups"]).to_numpy()
-        test_mask = groups.isin(split["test_groups"]).to_numpy()
+        def mask_for(partition):
+            codes = [label_to_code[g] for g in split[partition] if g in label_to_code]
+            return np.isin(group_codes, np.asarray(codes, dtype=group_codes.dtype))
+
+        train_mask = mask_for("train_groups")
+        test_mask = mask_for("test_groups")
         if (train_mask & test_mask).any():
             raise GroupedRunError("%s has row-level train/test overlap" % split["split_id"])
         if not train_mask.any() or not test_mask.any():
             raise GroupedRunError("%s has an empty partition" % split["split_id"])
 
-        train_classes = set(y[train_mask])
-        test_classes = set(y[test_mask])
+        train_classes = set(y[train_mask].tolist())
+        test_classes = set(y[test_mask].tolist())
         if not test_classes.issubset(train_classes):
-            missing = encoder.inverse_transform(sorted(test_classes - train_classes)).tolist()
+            missing = [classes[code] for code in sorted(test_classes - train_classes)]
             raise GroupedRunError("%s test-only classes: %s" % (split["split_id"], missing))
 
-        X_train, y_train = X.loc[train_mask], y[train_mask]
-        counts_before = class_counts(y_train, encoder.classes_)
+        train_positions = np.flatnonzero(train_mask)
+        rows_available = int(len(train_positions))
+        # Stratify the cap by (group, class) jointly: group codes are dense
+        # from np.unique, so this pairing is injective.
+        strata = (group_codes[train_positions].astype("int32") * len(classes)
+                  + y[train_positions])
+        keep = subsample_train(strata, max_train_rows, seed + fold_index)
+        if keep is not None:
+            train_positions = train_positions[keep]
+        rows_sampled = int(len(train_positions))
+        del strata, keep, train_mask
+        gc.collect()
+
+        X_train, y_train = X[train_positions], y[train_positions]
+        del train_positions
+        counts_before = class_counts(y_train, classes)
         X_train, y_train = resample_train(
-            X_train, y_train, encoder.classes_, balance_strategy,
+            X_train, y_train, classes, balance_strategy,
             seed + fold_index, smote_factor, smote_max_target,
         )
-        counts_after = class_counts(y_train, encoder.classes_)
+        counts_after = class_counts(y_train, classes)
 
-        model = classifier(model_name, seed + fold_index)
+        model = classifier(model_name, seed + fold_index, n_jobs=n_jobs)
         model.fit(X_train, y_train)
-        predicted = model.predict(X.loc[test_mask])
+        rows_trained = int(len(y_train))
+        diagnostics = fit_diagnostics(model)
+        # Released before predicting: on an uncapped fold this array is up to
+        # ~2.6 GB and nothing downstream needs it, while the fitted model (a
+        # forest especially) still has to share RAM with the test slice.
+        del X_train, y_train
+        gc.collect()
+
+        test_positions = np.flatnonzero(test_mask)
+        del test_mask
+        predicted = predict_in_chunks(model, X, test_positions)
+        del model
+        gc.collect()
+        y_test = y[test_positions]
         report = classification_report(
-            y[test_mask], predicted, labels=all_labels,
-            target_names=encoder.classes_, output_dict=True, zero_division=0,
+            y_test, predicted, labels=all_labels,
+            target_names=classes, output_dict=True, zero_division=0,
         )
         metrics.append({
             "split_id": split["split_id"],
-            "train_rows": int(train_mask.sum()),
-            "test_rows": int(test_mask.sum()),
-            "accuracy": float(accuracy_score(y[test_mask], predicted)),
+            "train_rows": rows_available,
+            "test_rows": int(len(test_positions)),
+            "accuracy": float(accuracy_score(y_test, predicted)),
             "macro_f1": float(report["macro avg"]["f1-score"]),
             "weighted_f1": float(report["weighted avg"]["f1-score"]),
             "averages": average_block(report),
@@ -327,28 +573,36 @@ def run_folds(frame, splits, group_column, target_column, model_name, seed,
                     key: float(report[label][key])
                     for key in ("precision", "recall", "f1-score", "support")
                 }
-                for label in encoder.classes_
+                for label in classes
             },
+            "subsample": {
+                "max_train_rows_per_fold": max_train_rows or None,
+                "train_rows_available": rows_available,
+                "train_rows_sampled": rows_sampled,
+                "applied": rows_sampled < rows_available,
+            },
+            "fit": diagnostics,
             "balance": {
                 "strategy": balance_strategy,
-                "train_rows_resampled": int(len(y_train)),
+                "train_rows_resampled": rows_trained,
                 "train_class_counts_before": counts_before,
                 "train_class_counts_after": counts_after,
             },
         })
-        test_indices = frame.index[test_mask]
-        true_labels = encoder.inverse_transform(y[test_mask])
-        predicted_labels = encoder.inverse_transform(np.asarray(predicted, dtype=int))
+        true_labels = classes[y_test]
+        predicted_labels = classes[np.asarray(predicted, dtype=int)]
         # Written straight to disk instead of accumulated in a list: on a
         # full run every dataset row is a test row in exactly one fold, so
         # the list would otherwise hold one dict per row for the whole run.
-        for row_index, group, truth, prediction in zip(
-                test_indices, groups.loc[test_mask], true_labels, predicted_labels):
+        for position, truth, prediction in zip(test_positions, true_labels, predicted_labels):
             predictions_writer.writerow({
-                "split_id": split["split_id"], "row_index": int(row_index),
-                "split_group": group, "y_true": truth, "y_pred": prediction,
+                "split_id": split["split_id"], "row_index": int(row_index[position]),
+                "split_group": group_labels[group_codes[position]],
+                "y_true": truth, "y_pred": prediction,
             })
-    return metrics, list(encoder.classes_), list(X.columns)
+        del test_positions, y_test, predicted, true_labels, predicted_labels
+        gc.collect()
+    return metrics, list(classes), list(arrays["features"])
 
 
 def parse_args(argv=None):
@@ -357,7 +611,9 @@ def parse_args(argv=None):
     parser.add_argument("--preparation-report", required=True)
     parser.add_argument("--splits", required=True)
     parser.add_argument("--out-dir", required=True)
-    parser.add_argument("--model", choices=["decision-tree", "xgboost"], default="decision-tree")
+    parser.add_argument("--model", choices=list(MODEL_CHOICES), default="decision-tree",
+                        help="Checklist D.3: model family, at library defaults. "
+                             "Tuning is card D.4 and happens inside train folds.")
     parser.add_argument("--group-column", default="split_group")
     parser.add_argument("--target-column", default="class")
     parser.add_argument("--seed", type=int, default=42)
@@ -373,6 +629,16 @@ def parse_args(argv=None):
     parser.add_argument("--smote-max-target", type=int, default=200_000,
                         help="balance=smote only: absolute cap on a class's oversampled "
                              "count, regardless of --smote-oversample-factor.")
+    parser.add_argument("--max-train-rows-per-fold", type=int, default=0,
+                        help="Checklist D.3: cap each fold's TRAIN partition at this many "
+                             "rows, sampled proportionally within every (split_group, class) "
+                             "stratum. Unlike --max-rows-per-group-class this is NOT a smoke "
+                             "flag: the test partition and the evaluated distribution are "
+                             "untouched, so the run stays a full_grouped_run. Applied before "
+                             "--balance. See ablations_baselines.md SS7.")
+    parser.add_argument("--n-jobs", type=int, default=-1,
+                        help="Threads for the model that supports it (-1 = all cores). "
+                             "A throughput knob, not a hyperparameter; recorded in the report.")
     return parser.parse_args(argv)
 
 
@@ -405,7 +671,9 @@ def main(argv=None):
                     IDENTIFIER_COLUMNS | BASE_DISCARD_COLUMNS | set(args.discard_column)
                 ) - {args.group_column, args.target_column}
                 columns = [c for c in schema_columns if c not in drop_cols]
-            frame = load_frame(args.dataset, columns=columns)
+            frame = load_frame(args.dataset, columns=columns,
+                               group_column=args.group_column,
+                               target_column=args.target_column)
             if args.group_column not in frame or args.target_column not in frame:
                 raise GroupedRunError("dataset is missing group or target column")
             frame = technical_sample(
@@ -413,6 +681,14 @@ def main(argv=None):
                 args.max_rows_per_group_class, args.seed,
             )
         os.makedirs(args.out_dir, exist_ok=True)
+        rows_used = len(frame)
+        # The frame is released here, before the first fit: `prepare_arrays`
+        # has already copied everything the fold loop reads into compact
+        # arrays, and on a full run keeping both costs ~3.5 GB that a Random
+        # Forest needs for its trees.
+        arrays = prepare_arrays(frame, args.group_column, args.target_column,
+                                args.discard_column)
+        del frame
         predictions_path = os.path.join(args.out_dir, "grouped_predictions.csv")
         # Predictions are written straight to disk as each fold finishes
         # instead of being collected into one Python list first (on a full
@@ -428,11 +704,12 @@ def main(argv=None):
             )
             writer.writeheader()
             metrics, classes, features = run_folds(
-                frame, split_payload["splits"], args.group_column, args.target_column,
-                args.model, args.seed, args.discard_column, writer,
+                arrays, split_payload["splits"], args.model, args.seed, writer,
                 balance_strategy=args.balance,
                 smote_factor=args.smote_oversample_factor,
                 smote_max_target=args.smote_max_target,
+                max_train_rows=args.max_train_rows_per_fold,
+                n_jobs=args.n_jobs,
             )
         report = {
             "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
@@ -449,7 +726,9 @@ def main(argv=None):
             "smote_oversample_factor": args.smote_oversample_factor if args.balance == "smote" else None,
             "smote_max_target": args.smote_max_target if args.balance == "smote" else None,
             "sample_cap_per_group_class": args.max_rows_per_group_class or None,
-            "rows_used": len(frame),
+            "max_train_rows_per_fold": args.max_train_rows_per_fold or None,
+            "n_jobs": args.n_jobs,
+            "rows_used": rows_used,
             "classes": classes,
             "features": features,
             "fold_metrics": metrics,
@@ -468,7 +747,7 @@ def main(argv=None):
         print("GROUPED VALIDATION FAILED\n%s" % exc, file=sys.stderr)
         return 1
     print("Completed %d grouped folds on %d rows (%s)." %
-          (len(metrics), len(frame), report["status"]))
+          (len(metrics), rows_used, report["status"]))
     return 0
 
 

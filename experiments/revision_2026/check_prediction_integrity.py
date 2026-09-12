@@ -460,16 +460,20 @@ def build_report(runs, pairings, generated=None):
         "",
         "## 1. Runs audited",
         "",
-        "| run | status | model | balance | folds | rows |",
-        "|---|---|---|---|---:|---:|",
+        "| run | status | model | balance | train cap | folds | rows |",
+        "|---|---|---|---|---:|---:|---:|",
     ]
     for run in runs:
         meta = run["report"]
+        # The train cap is surfaced here because ablations_baselines.md SS7
+        # forbids comparing a capped run against an uncapped one without
+        # saying so, and this table is where cross-run comparison starts.
+        cap = meta.get("max_train_rows_per_fold")
         lines.append(
-            "| `%s` | %s | %s | %s | %d | %s |" % (
+            "| `%s` | %s | %s | %s | %s | %d | %s |" % (
                 run["label"], meta.get("status", "?"), meta.get("model", "?"),
-                meta.get("balance", "none"), len(run["fold_ids"]),
-                f"{run['pooled']['rows']:,}",
+                meta.get("balance", "none"), f"{cap:,}" if cap else "—",
+                len(run["fold_ids"]), f"{run['pooled']['rows']:,}",
             )
         )
     lines.append("")
@@ -671,6 +675,8 @@ def main(argv=None):
                     "directory": run["directory"],
                     "status": run["report"].get("status"),
                     "balance": run["report"].get("balance", "none"),
+                    "model": run["report"].get("model"),
+                    "max_train_rows_per_fold": run["report"].get("max_train_rows_per_fold"),
                     "dataset_checked": run["dataset_checked"],
                     "checks": run["checks"],
                     "pooled": run["pooled"],
