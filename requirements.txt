@@ -7,3 +7,4 @@ scipy==1.15.2
 xgboost==3.0.0
 shap==0.47.1
 jupyter==1.1.1
+imbalanced-learn==0.14.2

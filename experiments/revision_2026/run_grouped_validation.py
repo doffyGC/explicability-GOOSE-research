@@ -6,6 +6,11 @@ and records one prediction with its ``split_group`` and fold identifier.
 
 Use ``--max-rows-per-group-class`` for a fast technical smoke test.  A capped
 run validates wiring only and must not be reported as scientific performance.
+
+``--balance {none,downsample,smote}`` implements checklist E: each fold's
+TRAIN partition is rebalanced (test is always the untouched original
+distribution). ``none`` is the already-reported unbalanced baseline;
+``downsample``/``smote`` require ``pip install imbalanced-learn``.
 """
 
 from __future__ import annotations
@@ -181,8 +186,73 @@ def classifier(name, seed):
     raise GroupedRunError("unknown model: %s" % name)
 
 
+def class_counts(y, class_names):
+    import numpy as np
+    counts = np.bincount(y, minlength=len(class_names))
+    return {name: int(counts[index]) for index, name in enumerate(class_names)}
+
+
+def resample_train(X_train, y_train, class_names, strategy, seed,
+                    smote_factor, smote_max_target):
+    """Rebalance one fold's TRAIN partition only (checklist E).
+
+    Never touches the test partition - callers must apply this after
+    splitting and before ``fit()``. ``strategy="none"`` is a no-op (the
+    already-reported unbalanced baseline). Both real strategies are
+    deliberately bounded rather than aiming for exact parity with the
+    majority class: on this dataset the majority (`normal`) fold-train count
+    is ~16M rows against ~14-50k for the rarest attack classes, so plain
+    SMOTE-to-parity would synthesise on the order of 60M+ rows - infeasible
+    on a 16GB-RAM machine (the same class of failure fixed in this script's
+    2026-09-12 OOM). See validation_protocol.md, "Balancing scenarios".
+    """
+    if strategy == "none":
+        return X_train, y_train
+    try:
+        import imblearn  # noqa: F401
+    except ImportError as exc:
+        raise GroupedRunError(
+            "balance=%r requires the 'imbalanced-learn' package (pip install imbalanced-learn)"
+            % strategy
+        ) from exc
+
+    if strategy == "downsample":
+        # Undersample every class down to the size of the smallest class
+        # present in this fold's train partition. Fast and bounded by
+        # construction: the resampled train set never exceeds
+        # num_classes * min_class_count rows.
+        from imblearn.under_sampling import RandomUnderSampler
+        sampler = RandomUnderSampler(sampling_strategy="not minority", random_state=seed)
+        return sampler.fit_resample(X_train, y_train)
+
+    if strategy == "smote":
+        from imblearn.over_sampling import SMOTE
+        counts = class_counts(y_train, class_names)
+        targets = {}
+        for label, name in enumerate(class_names):
+            count = counts[name]
+            if count >= smote_max_target:
+                continue  # already at/above the cap - leave untouched, never downsampled here
+            target = min(int(count * smote_factor), smote_max_target)
+            if target <= count:
+                continue
+            if count <= 5:
+                raise GroupedRunError(
+                    "class %r has only %d train rows in this fold - too few for SMOTE's "
+                    "default 5 neighbours" % (name, count)
+                )
+            targets[label] = target
+        if not targets:
+            return X_train, y_train
+        sampler = SMOTE(sampling_strategy=targets, random_state=seed)
+        return sampler.fit_resample(X_train, y_train)
+
+    raise GroupedRunError("unknown balance strategy: %s" % strategy)
+
+
 def run_folds(frame, splits, group_column, target_column, model_name, seed,
-              extra_discard, predictions_writer):
+              extra_discard, predictions_writer, balance_strategy="none",
+              smote_factor=20.0, smote_max_target=200_000):
     import numpy as np
     from sklearn.metrics import accuracy_score, classification_report
     from sklearn.preprocessing import LabelEncoder
@@ -208,8 +278,16 @@ def run_folds(frame, splits, group_column, target_column, model_name, seed,
             missing = encoder.inverse_transform(sorted(test_classes - train_classes)).tolist()
             raise GroupedRunError("%s test-only classes: %s" % (split["split_id"], missing))
 
+        X_train, y_train = X.loc[train_mask], y[train_mask]
+        counts_before = class_counts(y_train, encoder.classes_)
+        X_train, y_train = resample_train(
+            X_train, y_train, encoder.classes_, balance_strategy,
+            seed + fold_index, smote_factor, smote_max_target,
+        )
+        counts_after = class_counts(y_train, encoder.classes_)
+
         model = classifier(model_name, seed + fold_index)
-        model.fit(X.loc[train_mask], y[train_mask])
+        model.fit(X_train, y_train)
         predicted = model.predict(X.loc[test_mask])
         report = classification_report(
             y[test_mask], predicted, labels=all_labels,
@@ -227,6 +305,12 @@ def run_folds(frame, splits, group_column, target_column, model_name, seed,
                     for key in ("precision", "recall", "f1-score", "support")
                 }
                 for label in encoder.classes_
+            },
+            "balance": {
+                "strategy": balance_strategy,
+                "train_rows_resampled": int(len(y_train)),
+                "train_class_counts_before": counts_before,
+                "train_class_counts_after": counts_after,
             },
         })
         test_indices = frame.index[test_mask]
@@ -257,6 +341,15 @@ def parse_args(argv=None):
     parser.add_argument("--max-rows-per-group-class", type=int, default=0,
                         help="Non-zero enables a technical smoke sample.")
     parser.add_argument("--discard-column", action="append", default=[])
+    parser.add_argument("--balance", choices=["none", "downsample", "smote"], default="none",
+                        help="Checklist E: rebalance each fold's TRAIN partition only; "
+                             "test is always evaluated on the original distribution.")
+    parser.add_argument("--smote-oversample-factor", type=float, default=20.0,
+                        help="balance=smote only: oversample a minority class up to this "
+                             "many times its original per-fold count (see --smote-max-target).")
+    parser.add_argument("--smote-max-target", type=int, default=200_000,
+                        help="balance=smote only: absolute cap on a class's oversampled "
+                             "count, regardless of --smote-oversample-factor.")
     return parser.parse_args(argv)
 
 
@@ -314,6 +407,9 @@ def main(argv=None):
             metrics, classes, features = run_folds(
                 frame, split_payload["splits"], args.group_column, args.target_column,
                 args.model, args.seed, args.discard_column, writer,
+                balance_strategy=args.balance,
+                smote_factor=args.smote_oversample_factor,
+                smote_max_target=args.smote_max_target,
             )
         report = {
             "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
@@ -324,6 +420,9 @@ def main(argv=None):
             "protocol": split_payload["protocol"],
             "model": args.model,
             "seed": args.seed,
+            "balance": args.balance,
+            "smote_oversample_factor": args.smote_oversample_factor if args.balance == "smote" else None,
+            "smote_max_target": args.smote_max_target if args.balance == "smote" else None,
             "sample_cap_per_group_class": args.max_rows_per_group_class or None,
             "rows_used": len(frame),
             "classes": classes,

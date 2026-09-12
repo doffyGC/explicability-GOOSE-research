@@ -15,7 +15,7 @@ from generate_grouped_splits import (
     validate_class_coverage,
 )
 from prepare_grouped_dataset import PreparationError, recompute_trace_deltas
-from run_grouped_validation import GroupedRunError, verify_artifacts
+from run_grouped_validation import GroupedRunError, class_counts, resample_train, verify_artifacts
 
 
 class EventTypeTests(unittest.TestCase):
@@ -146,6 +146,54 @@ class GroupedSplitterTests(unittest.TestCase):
             splits = {"dataset_sha256": digest, "open_set_diagnostic": True}
             with self.assertRaisesRegex(GroupedRunError, "open-set"):
                 verify_artifacts(dataset, preparation, splits)
+
+
+class BalanceTests(unittest.TestCase):
+    """Checklist E: train-only rebalancing (run_grouped_validation.resample_train)."""
+
+    class_names = ["A", "B", "normal"]
+
+    @classmethod
+    def frame(cls, counts):
+        # counts keyed by class index into class_names, e.g. {0: 20, 1: 8, 2: 100}
+        import numpy as np
+        rng = np.random.RandomState(0)
+        rows = []
+        labels = []
+        for label, n in counts.items():
+            rows.append(rng.normal(size=(n, 2)))
+            labels.extend([label] * n)
+        X = pd.DataFrame(np.vstack(rows), columns=["f1", "f2"])
+        y = np.array(labels)
+        return X, y
+
+    def test_none_is_a_no_op(self):
+        X, y = self.frame({0: 20, 1: 8, 2: 100})
+        X_out, y_out = resample_train(X, y, self.class_names, "none", 0, 20.0, 200_000)
+        self.assertIs(X_out, X)
+        self.assertIs(y_out, y)
+
+    def test_downsample_equalizes_every_class_to_the_smallest(self):
+        X, y = self.frame({0: 20, 1: 8, 2: 100})
+        X_out, y_out = resample_train(X, y, self.class_names, "downsample", 0, 20.0, 200_000)
+        counts = class_counts(y_out, self.class_names)
+        self.assertEqual(counts, {"A": 8, "B": 8, "normal": 8})
+        self.assertEqual(len(X_out), 24)
+
+    def test_smote_oversamples_minority_up_to_the_cap_and_leaves_majority_alone(self):
+        X, y = self.frame({0: 20, 1: 8, 2: 100})
+        X_out, y_out = resample_train(X, y, self.class_names, "smote", 0,
+                                       smote_factor=3.0, smote_max_target=50)
+        counts = class_counts(y_out, self.class_names)
+        # A: 20 * 3 = 60, capped at 50. B: 8 * 3 = 24, under the cap. normal:
+        # already >= the 50 cap, so left at its original count untouched.
+        self.assertEqual(counts, {"A": 50, "B": 24, "normal": 100})
+
+    def test_smote_rejects_a_class_with_too_few_rows_for_its_neighbourhood(self):
+        X, y = self.frame({0: 3, 1: 8, 2: 100})
+        with self.assertRaisesRegex(GroupedRunError, "too few"):
+            resample_train(X, y, self.class_names, "smote", 0,
+                            smote_factor=3.0, smote_max_target=50)
 
 
 if __name__ == "__main__":
