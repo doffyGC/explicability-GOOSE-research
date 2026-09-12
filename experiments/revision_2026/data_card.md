@@ -103,6 +103,38 @@ The hierarchy used by the revised evaluation is:
 Messages, retransmissions and events from one `split_group` must never occur on
 both sides of a train/test split. `check_no_leakage.py` enforces this invariant.
 
+### Effective sample size per attack class
+
+Because `split_group` is the unit, **the effective sample size of an attack
+class is its number of runs, not its number of rows.** The row counts look
+comfortable; the unit counts do not:
+
+| Class | rows | % of pool | independent runs | rows per run (min–median–max) |
+|---|---:|---:|---:|---:|
+| `SAG.DB` (`DETERMINISTIC_BURST`) | 17,094 | 0.082% | **15** | 1,046 – 1,081 – 1,307 |
+| `FRG` (`FULLY_RANDOMIZED`) | 21,436 | 0.103% | **15** | 1,126 – 1,284 – 1,871 |
+| `SAG.PB` (`RANDOMIC_BURST`) | 46,959 | 0.226% | 45 | 1,001 – 1,035 – 1,145 |
+| `SAG.PBM` (`RANDOMIC_MESSAGE`) | 54,828 | 0.264% | 45 | 1,004 – 1,153 – 1,544 |
+| `benign_degradation` | 270,680 | 1.302% | 85 | — |
+| `normal` | 20,385,924 | 98.024% | 205 | — |
+| **all attack** | **140,317** | **0.675%** | 120 | — |
+
+`SAG.DB` and `FRG` have 15 runs each because the matrix does not duplicate
+their inactive dimension (`DETERMINISTIC_BURST` is always 100% effective loss;
+`FULLY_RANDOMIZED` always burst size 1 — see `README.md`, "Regeneration
+matrix"). Under 5-fold grouped CV that leaves as little as **one** independent
+run of a class in a fold's test partition, so a per-fold metric for it is a
+measurement of one run. Consequences are worked through in
+`validation_protocol.md`, "How many attack rows are actually being counted".
+
+**Attack prevalence in this pool is a configured quantity, not a measured
+one.** Each run targets ~1,000 malicious messages against a full traffic
+capture, which is what puts attack rows at 0.675% of the pool. That single
+design parameter dominates every card-D and card-E result. Any claim about
+detectability must either justify 0.675% as the operating prevalence of
+interest or report across prevalences; it is not an estimate of how often
+grayhole traffic occurs in a real substation.
+
 ## 5. Labels and attack definitions
 
 | Raw `class` | `attack_variant` | Description |

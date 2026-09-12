@@ -257,6 +257,13 @@ the family, not §7's cap.
   is what separates "predicts nothing" from "predicts something precisely but
   rarely", which makes tree depth / estimator count the hyperparameters D.4
   should spend its subsampled grid on first.
+- **Two attack classes are under-powered at the unit level, and this bounds
+  D.1 and D.4.** `SAG.DB` and `FRG` have only 15 independent runs each, so a
+  fold's test partition can hold a single run of them and its per-fold recall
+  becomes a one-run measurement (`validation_protocol.md`, "How many attack
+  rows are actually being counted"). An ablation or tuning result that moves
+  only `SAG.DB`/`FRG` is not yet evidence; one that moves `SAG.PB`/`SAG.PBM`
+  (45 runs, 6–13 test runs per fold) is. Read the ablation tables that way.
 - **A caveat travels with the logistic-regression rows.** It did not converge
   in `downsample` (`n_iter_` = `max_iter` = 100 in all 5 folds), though it did
   in `none` (49–61 iterations). Raising `max_iter` is D.4's business, not

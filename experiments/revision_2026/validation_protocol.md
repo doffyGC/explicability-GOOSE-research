@@ -395,13 +395,17 @@ the detail matters more than the macro average:
 | `SAG.PB` | 0.0120–0.0618 | 0.0574–0.2814 |
 | `SAG.PBM` | 0.0470–0.0777 | 0.1693–0.2477 |
 
-At ≤8% recall this is **not a detector**. But it is the first operating point
-in this revision where attack predictions carry non-trivial precision
-(0.17–0.28 on `SAG.PBM`/`SAG.PB`) at a false-positive rate on ideal `normal`
-traffic of **0.11%** — against 43.46% for the downsampled tree, the only other
-configuration that detects anything. Fully grown, unpruned trees do carve out
-small genuine attack regions that a depth-8 tree and a default-depth XGBoost
-never look for; they are just far too small to cover the class.
+At ≤8% recall this is **not a detector**, and in absolute counts the result
+splits sharply by class: on `SAG.DB` it found 15 true positives against 4,634
+false alarms, and on `FRG` 30 against 2,430 — that is noise, not detection.
+Only `SAG.PB` (1,780 true / 8,760 false) and `SAG.PBM` (3,125 true / 11,020
+false) carry signal, at 17–22% precision. Those two are still the first
+attack predictions in this revision that beat chance while the false-positive
+rate on ideal `normal` traffic stays at **0.11%** — against 43.46% for the
+downsampled tree, the only other configuration that detects anything. Fully
+grown, unpruned trees do carve out small genuine attack regions that a depth-8
+tree and a default-depth XGBoost never look for; they are just far too small
+to cover the class.
 
 **The cap is not doing this.** The decision tree run under the identical 4M
 cap is indistinguishable from the tree on the full partition — macro F1 0.2759
@@ -438,6 +442,71 @@ converge in the `downsample` scenario** — `n_iter_` hit its default
 `max_iter` would be tuning, which is card D.4; the D.3 number stands with the
 caveat attached.
 
+### How many attack rows are actually being counted
+
+Rates hide the scale this evaluation operates at, so the same results in
+counts. The pool holds **140,317 attack rows, 0.675% of 20,796,921**:
+
+| Class | rows | % of pool | independent runs | test rows per fold (min–max) | test runs per fold (min–max) |
+|---|---:|---:|---:|---:|---:|
+| `SAG.DB` | 17,094 | 0.082% | **15** | 1,081 – 4,593 | **1** – 4 |
+| `FRG` | 21,436 | 0.103% | **15** | 1,127 – 5,604 | **1** – 4 |
+| `SAG.PB` | 46,959 | 0.226% | 45 | 6,306 – 13,535 | 6 – 13 |
+| `SAG.PBM` | 54,828 | 0.264% | 45 | 8,580 – 14,760 | 7 – 12 |
+| `benign_degradation` | 270,680 | 1.302% | 85 | 39,576 – 64,325 | — |
+| `normal` | 20,385,924 | 98.024% | 205 | 2,418,310 – 5,486,576 | — |
+
+Three things follow, and they are not the same thing.
+
+**1. The rows are learnable; the unbalanced models simply never look for
+them.** The low attack counts in the `none` scenario are a property of the
+training prior, not of how much attack data exists. The same 17,094 `SAG.DB`
+rows, the same folds and the same features give:
+
+| Run | `SAG.DB` found | of | recall |
+|---|---:|---:|---:|
+| xgboost, `none` | **0** | 17,094 | 0.000 |
+| xgboost, `downsample` | **15,342** | 17,094 | 0.898 |
+
+Nothing changed but the balance of the training partition. "Too few attack
+samples to learn from" is therefore not the explanation for the `none` results.
+
+**2. The alert burden, in counts.** The flip side of that recall:
+
+| Run | attack alerts raised | of which real | precision |
+|---|---:|---:|---:|
+| random-forest, `none` (4M cap) | 31,794 | 4,950 | 15.6% |
+| xgboost, `downsample` | 8,774,397 | 90,293 | 1.0% |
+
+The champion configuration raises **8.8 million** attack alerts across the
+pool to find 90,293 real attack rows. That is card E's "43% false-positive
+rate" expressed the way an operator would meet it.
+
+**3. The real statistical limit is units, not rows — and it binds on `SAG.DB`
+and `FRG`.** Grouped CV makes the run the experimental unit, and those two
+classes have only **15 runs each** (the matrix does not duplicate their
+inactive dimension — `README.md`, "Regeneration matrix"). A fold's test
+partition can therefore hold a *single* independent run of a class, and its
+per-fold recall is then a measurement of that one run's ~1,000 correlated
+messages. The per-fold spread is exactly what that predicts:
+
+| Fold | `SAG.DB` test runs | `SAG.DB` test rows | recall (tree, `downsample`) | recall (xgboost, `downsample`) |
+|---|---:|---:|---:|---:|
+| fold-02 | 2 | 2,583 | 0.7379 | 0.7228 |
+| fold-00 | 4 | 4,470 | 0.9470 | 0.9438 |
+| fold-01 | 4 | 4,593 | 0.9046 | 0.8883 |
+| fold-03 | 4 | 4,367 | 0.9998 | 0.9391 |
+| fold-04 | **1** | 1,081 | **1.0000** | **0.9944** |
+
+The perfect and near-perfect `SAG.DB` recalls come from the fold holding one
+run; the worst comes from the fold holding two. **`SAG.DB` and `FRG` per-fold
+metrics must not be read as five independent estimates** — they are 15 runs
+split five ways, two folds of which rest on a single run. `SAG.PB` and
+`SAG.PBM`, at 45 runs and 6–13 test runs per fold, do not have this problem,
+which is why they are the classes any detectability claim in this revision
+should be built on. Narrowing the gap needs more DB/FRG *runs* — more seeds
+for those two cells of the matrix — not more rows per run.
+
 ### What D.3 settles, and what it does not
 
 - Card E's class-imbalance explanation **survives the family comparison**. No
@@ -452,6 +521,10 @@ caveat attached.
   numbers in this card are either ≤8% recall (Random Forest, `none`) or bought
   at a ~39% false-positive rate (XGBoost, `downsample`). D.1's feature-group
   ablation and D.4's tuning are what remain before any detectability claim.
+- Two of the four attack classes are **under-powered at the unit level**
+  (`SAG.DB` and `FRG`, 15 runs each, as little as one test run per fold — see
+  above). Their per-fold numbers are reported, but conclusions should rest on
+  `SAG.PB`/`SAG.PBM` until the matrix gains more seeds for those cells.
 - Cost note for D.1: the champion's `downsample` run takes **2.2 min**, so the
   six-run ablation is ~15 min of compute rather than the 4–6 h `ablations_baselines.md`
   §4 budgeted against a possibly-expensive champion.
