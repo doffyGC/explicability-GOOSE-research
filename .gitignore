@@ -18,4 +18,8 @@ __pycache__/
 /data/CSV files/*.csv
 /data/CSV files/*.parquet
 
+# Internal revision planning document ("uso interno"), not repository content.
+# The docs reference it by name for the checklist item numbering.
+/prioridades_revisao_gray_goose.pdf
+
 CLAUDE.md
