@@ -192,6 +192,27 @@ def class_counts(y, class_names):
     return {name: int(counts[index]) for index, name in enumerate(class_names)}
 
 
+def average_block(report):
+    """Both averaging schemes, each named for what it actually is.
+
+    Checklist E.4: a single unlabelled "F1" is exactly what makes an
+    imbalanced-class result unreadable. `macro` is the unweighted mean over
+    classes (every class counts the same, so the four rare attack classes
+    dominate the average as much as `normal` does); `weighted` averages the
+    same per-class numbers weighted by support (so it tracks `normal` and
+    reads far higher). `accuracy`, reported separately per fold, is the
+    overall/micro figure. Per-class values stay in `per_class`, never folded
+    into either average.
+    """
+    return {
+        scheme: {
+            key: float(report["%s avg" % scheme][key])
+            for key in ("precision", "recall", "f1-score")
+        }
+        for scheme in ("macro", "weighted")
+    }
+
+
 def resample_train(X_train, y_train, class_names, strategy, seed,
                     smote_factor, smote_max_target):
     """Rebalance one fold's TRAIN partition only (checklist E).
@@ -299,6 +320,8 @@ def run_folds(frame, splits, group_column, target_column, model_name, seed,
             "test_rows": int(test_mask.sum()),
             "accuracy": float(accuracy_score(y[test_mask], predicted)),
             "macro_f1": float(report["macro avg"]["f1-score"]),
+            "weighted_f1": float(report["weighted avg"]["f1-score"]),
+            "averages": average_block(report),
             "per_class": {
                 label: {
                     key: float(report[label][key])
@@ -420,6 +443,8 @@ def main(argv=None):
             "protocol": split_payload["protocol"],
             "model": args.model,
             "seed": args.seed,
+            "group_column": args.group_column,
+            "target_column": args.target_column,
             "balance": args.balance,
             "smote_oversample_factor": args.smote_oversample_factor if args.balance == "smote" else None,
             "smote_max_target": args.smote_max_target if args.balance == "smote" else None,
