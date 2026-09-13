@@ -1,0 +1,662 @@
+{
+  "generated": "2026-09-13 03:01:12 UTC",
+  "purpose": "Independent grouped-validation runs for the Gray-GOOSE major revision",
+  "design": {
+    "seeds": [
+      20260106,
+      20260107,
+      20260108,
+      20260109,
+      20260110,
+      20260111,
+      20260112,
+      20260113,
+      20260114,
+      20260115
+    ],
+    "target_malicious_per_run": 1000,
+    "batch_size": 9000,
+    "max_iterations": 500,
+    "attack": {
+      "loss_rates_config": [
+        5,
+        15,
+        30
+      ],
+      "burst_sizes_config": [
+        3,
+        5,
+        10
+      ],
+      "inactive_dimensions": {
+        "DETERMINISTIC_BURST": "discard_rate (effective loss_rate=100)",
+        "FULLY_RANDOMIZED": "burst_size (effective burst_size=1)"
+      }
+    }
+  },
+  "summary": {
+    "total_runs": 60,
+    "runs_by_family": {
+      "attack": 60
+    },
+    "runs_by_variant": {
+      "DETERMINISTIC_BURST": 30,
+      "FULLY_RANDOMIZED": 30
+    },
+    "distinct_seeds": 10,
+    "effective_loss_rates": [
+      5,
+      15,
+      30,
+      100
+    ],
+    "effective_burst_sizes": [
+      1,
+      3,
+      5,
+      10
+    ]
+  },
+  "runs": [
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260106,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260106"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260106,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260106"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260106,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260106"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260107,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260107"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260107,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260107"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260107,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260107"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260108,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260108"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260108,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260108"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260108,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260108"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260109,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260109"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260109,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260109"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260109,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260109"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260110,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260110"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260110,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260110"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260110,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260110"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260111,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260111"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260111,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260111"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260111,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260111"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260112,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260112"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260112,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260112"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260112,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260112"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260113,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260113"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260113,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260113"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260113,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260113"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260114,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260114"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260114,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260114"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260114,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260114"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260115,
+      "loss_rate": 100,
+      "burst_size": 3,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "DETERMINISTIC_BURST-l100-b3-s20260115"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260115,
+      "loss_rate": 100,
+      "burst_size": 5,
+      "discard_rate_config": 5,
+      "burst_size_config": 5,
+      "run_id": "DETERMINISTIC_BURST-l100-b5-s20260115"
+    },
+    {
+      "family": "attack",
+      "variant": "DETERMINISTIC_BURST",
+      "seed": 20260115,
+      "loss_rate": 100,
+      "burst_size": 10,
+      "discard_rate_config": 5,
+      "burst_size_config": 10,
+      "run_id": "DETERMINISTIC_BURST-l100-b10-s20260115"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260106,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260106"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260106,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260106"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260106,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260106"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260107,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260107"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260107,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260107"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260107,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260107"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260108,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260108"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260108,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260108"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260108,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260108"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260109,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260109"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260109,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260109"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260109,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260109"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260110,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260110"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260110,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260110"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260110,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260110"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260111,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260111"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260111,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260111"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260111,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260111"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260112,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260112"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260112,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260112"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260112,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260112"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260113,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260113"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260113,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260113"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260113,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260113"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260114,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260114"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260114,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260114"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260114,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260114"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260115,
+      "loss_rate": 5,
+      "burst_size": 1,
+      "discard_rate_config": 5,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l5-b1-s20260115"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260115,
+      "loss_rate": 15,
+      "burst_size": 1,
+      "discard_rate_config": 15,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l15-b1-s20260115"
+    },
+    {
+      "family": "attack",
+      "variant": "FULLY_RANDOMIZED",
+      "seed": 20260115,
+      "loss_rate": 30,
+      "burst_size": 1,
+      "discard_rate_config": 30,
+      "burst_size_config": 3,
+      "run_id": "FULLY_RANDOMIZED-l30-b1-s20260115"
+    }
+  ]
+}
