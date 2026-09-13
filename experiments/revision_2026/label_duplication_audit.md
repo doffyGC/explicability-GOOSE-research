@@ -1,8 +1,18 @@
-# The label is not a function of the features (2026-09-13)
+# The attack label is attached to an unmodified copy of benign traffic (2026-09-13)
 
 **Status: blocking. Every attack-detection number in cards D and E is measured
-on a dataset where the label cannot be predicted from the features, because
-the same message appears twice under two different labels.**
+on a dataset where the attack class consists of the grayhole IED's *forwarded,
+unmodified copies* of the legitimate publisher's messages - so every attack
+row has a byte-identical `normal` row beside it, and what a model separates is
+which copy a row is, not whether an attack occurred.**
+
+> **Correction (same day).** This file first said "the label is not a function
+> of the features". Measured, that is true only of the 3.98% of attack rows
+> that are identical on *every* model feature; for the rest the eight delta
+> columns do differ. §5b has the measurement and what it does and does not
+> license. The defect is **semantic** - an ordinary forwarded message carrying
+> an attack label - rather than information-theoretic, and that is a sharper
+> problem, not a milder one.
 
 Found while designing card D.2's rule-based baseline: the `sqDiff`/`stDiff`
 conventions did not behave like GOOSE sequence deltas, and the reason turned
@@ -162,9 +172,44 @@ cheapest available fix if one of those settings is sufficient.
 **Sharpened rather than invalidated:** the observation that the attack signal
 lives entirely in the delta columns. That is now explained - the content
 features *cannot* carry it, because every attack row's content also occurs
-under `normal`. What looked like "the model keys on sequence gaps" may be
-partly "the model keys on whether this row is the second copy", which is a
-property of the writer.
+under `normal`.
+
+## 5b. What the model actually learned, measured rather than assumed
+
+The obvious next inference is that the model is just reading "am I the
+duplicate copy". **It is not**, and this had to be measured rather than
+reasoned to (`feature_signal_probe.py`, `feature_signal.md`):
+
+| Score | AP | x chance |
+|---|---:|---:|
+| `[model] xgboost/none` | 0.0724 | **7.8x** |
+| `timeFromLastChange` | 0.0168 | 1.8x |
+| `timestampDiff` | 0.0103 | 1.1x |
+| `stDiff` | 0.0102 | 1.1x |
+| `[rule] stDiff != 0` | 0.0101 | 1.1x |
+| `sqDiff` | 0.0097 | 1.0x |
+| `[rule] sqDiff != 0` | 0.0091 | **1.0x - exactly chance** |
+| `delay` | 0.0090 | 1.0x |
+
+Attack rows are 46.29% `sqDiff == 0` against 43.87% for non-attack rows, so
+the duplicate marker is very nearly independent of the label and the trivial
+rule built on it scores chance. Nor does any single delta column explain the
+model: the best marginal is 1.8x against the model's 7.8x.
+
+Two things follow, and they point in opposite directions:
+
+- **The audit must not claim the results are pure artifact.** The model found
+  a real, multivariate pattern that no single feature and no duplicate-marker
+  rule reproduces.
+- **That does not rescue the dataset.** The pattern is a way of telling the
+  grayhole IED's copy from the legitimate IED's copy of *the same message*.
+  Separating those two rows is not detecting a grayhole; a real monitor sees
+  one stream, not two, and the copy it would see is the one labelled `normal`
+  here. The quantity being optimised is not the quantity the paper claims.
+
+It also settles a card-D question for free: because the lift is multivariate,
+D.1 has to ablate feature *groups*. Ranking features one at a time would have
+found nothing above 1.8x and concluded, wrongly, that there is no signal.
 
 ## 6. What has to happen before any more model runs
 
@@ -217,3 +262,11 @@ expensive and there is only reason to do it once.
       --dataset data/runs/gray-GOOSE-runs-prepared.parquet
 
 Exit code 1 on any content twin, so it can gate a regeneration.
+
+And for §5b:
+
+    python experiments/revision_2026/feature_signal_probe.py \
+      --run results/d5-xgboost-none \
+      --dataset data/runs/gray-GOOSE-runs-prepared.parquet \
+      --rule "sqDiff != 0" --rule "stDiff != 0" \
+      --out experiments/revision_2026/feature_signal.md

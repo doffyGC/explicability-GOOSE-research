@@ -4,12 +4,17 @@
 >
 > **Every attack row in the regenerated pool has a `normal` row, in the same
 > run, whose content features are bit-identical** - 216,547 of 216,547, in the
-> raw ERENO output. The label is not a function of the features, so every
-> attack precision, recall, F1 and average precision in this file is capped by
-> an artifact rather than by the phenomenon. See
-> `label_duplication_audit.md`; the root cause is that ERENO models a
-> *dropping* attack as an *emitting* one, which is a design mismatch rather
-> than a coding slip.
+> raw ERENO output. The attack class is the grayhole IED's *forwarded,
+> unmodified copies* of the legitimate publisher's messages, so what any model
+> here separates is which copy a row is, not whether an attack occurred. A
+> real monitor sees one stream, and the copy it sees is the one labelled
+> `normal`. See `label_duplication_audit.md`; the root cause is that ERENO
+> models a *dropping* attack as an *emitting* one, which is a design mismatch
+> rather than a coding slip.
+>
+> The models are not merely fitting noise - the champion scores 7.8x chance
+> and does not reduce to any single feature or to the duplicate marker
+> (`feature_signal.md`). It is the *target* that is wrong, not the fit.
 >
 > The **protocol** in this file - grouped splitting, the leakage audit, the
 > run-level bootstrap, the threshold axis - is unaffected: it describes how an

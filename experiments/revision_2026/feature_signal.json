@@ -1,0 +1,20 @@
+{
+  "run": "results/d5-xgboost-none",
+  "rows": 23226530,
+  "prevalence": 0.00932317483498396,
+  "average_precision": {
+    "[model] xgboost/none": 0.07242342152902467,
+    "[rule] sqDiff != 0": 0.009108929744486405,
+    "[rule] stDiff != 0": 0.01009532051407369,
+    "stDiff": 0.010224841411154161,
+    "sqDiff": 0.009742089296295275,
+    "gooseLengthDiff": 0.00932317483498396,
+    "cbStatusDiff": 0.009856130518249465,
+    "apduSizeDiff": 0.00932317483498396,
+    "frameLengthDiff": 0.00932317483498396,
+    "timestampDiff": 0.010258020800603687,
+    "tDiff": 0.009536832195904912,
+    "timeFromLastChange": 0.016844616064302136,
+    "delay": 0.008956584693497485
+  }
+}
