@@ -1,6 +1,6 @@
 # Prediction integrity audit - Gray-GOOSE (checklist E.4/E.5)
 
-- Generated: 2026-09-12 20:58:37 UTC
+- Generated: 2026-09-13 06:51:27 UTC
 - Recomputed independently of `run_grouped_validation.py`: every number below
   comes from a `numpy.bincount` confusion matrix over the persisted
   `grouped_predictions.csv`, not from the `sklearn` helpers the runner used.
@@ -9,15 +9,16 @@
 
 | run | status | model | balance | train cap | folds | rows |
 |---|---|---|---|---:|---:|---:|
-| `d3-decision-tree-none` | full_grouped_run | decision-tree | none | — | 5 | 20,796,921 |
-| `d3-decision-tree-none-cap4m` | full_grouped_run | decision-tree | none | 4,000,000 | 5 | 20,796,921 |
-| `d3-xgboost-none` | full_grouped_run | xgboost | none | — | 5 | 20,796,921 |
-| `d3-random-forest-none-cap4m` | full_grouped_run | random-forest | none | 4,000,000 | 5 | 20,796,921 |
-| `d3-logistic-regression-none` | full_grouped_run | logistic-regression | none | — | 5 | 20,796,921 |
-| `d3-decision-tree-downsample` | full_grouped_run | decision-tree | downsample | — | 5 | 20,796,921 |
-| `d3-xgboost-downsample` | full_grouped_run | xgboost | downsample | — | 5 | 20,796,921 |
-| `d3-random-forest-downsample` | full_grouped_run | random-forest | downsample | — | 5 | 20,796,921 |
-| `d3-logistic-regression-downsample` | full_grouped_run | logistic-regression | downsample | — | 5 | 20,796,921 |
+| `d3-decision-tree-none` | full_grouped_run | decision-tree | none | — | 5 | 23,226,530 |
+| `d3-decision-tree-none-cap4m` | full_grouped_run | decision-tree | none | 4,000,000 | 5 | 23,226,530 |
+| `d3-xgboost-none` | full_grouped_run | xgboost | none | — | 5 | 23,226,530 |
+| `d3-random-forest-none-cap4m` | full_grouped_run | random-forest | none | 4,000,000 | 5 | 23,226,530 |
+| `d3-logistic-regression-none` | full_grouped_run | logistic-regression | none | — | 5 | 23,226,530 |
+| `d3-decision-tree-downsample` | full_grouped_run | decision-tree | downsample | — | 5 | 23,226,530 |
+| `d3-xgboost-downsample` | full_grouped_run | xgboost | downsample | — | 5 | 23,226,530 |
+| `d3-random-forest-downsample` | full_grouped_run | random-forest | downsample | — | 5 | 23,226,530 |
+| `d3-logistic-regression-downsample` | full_grouped_run | logistic-regression | downsample | — | 5 | 23,226,530 |
+| `grouped-validation-full-smote` | full_grouped_run | decision-tree | smote | — | 5 | 23,226,530 |
 
 ## 2. Count reconciliation
 
@@ -33,40 +34,40 @@ statistical test is written.
 | check | expected | observed | result |
 |---|---|---|---|
 | each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
-| prediction rows == report rows_used | 20796921 | 20796921 | pass |
-| full run covers dataset rows 0..N-1 with no gaps | 0..20796920 | 0..20796920 over 20796921 rows | pass |
-| fold-00: predictions == test_rows == sum(per-class support) | 4716325 == 4716325 | 4716325 predictions | pass |
-| fold-01: predictions == test_rows == sum(per-class support) | 5582606 == 5582606 | 5582606 predictions | pass |
-| fold-02: predictions == test_rows == sum(per-class support) | 4236815 == 4236815 | 4236815 predictions | pass |
-| fold-03: predictions == test_rows == sum(per-class support) | 2502792 == 2502792 | 2502792 predictions | pass |
-| fold-04: predictions == test_rows == sum(per-class support) | 3758383 == 3758383 | 3758383 predictions | pass |
-| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 | 17094 | pass |
-| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 | 21436 | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
 | class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
 | class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
 | class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
-| class sum (predictions vs. report support): normal | 20385924 | 20385924 | pass |
-| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 in dataset | 17094 predicted | pass |
-| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 in dataset | 21436 predicted | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
 | class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
-| class sum (predictions vs. dataset): normal | 20385924 in dataset | 20385924 predicted | pass |
-| fold-00: recorded accuracy matches recomputation | 0.987345443751 | 0.987345443751 | pass |
-| fold-00: recorded macro_f1 matches recomputation | 0.266570309458 | 0.266570309458 | pass |
-| fold-00: recorded weighted_f1 matches recomputation | 0.983555825684 | 0.983555825684 | pass |
-| fold-01: recorded accuracy matches recomputation | 0.991661242079 | 0.991661242079 | pass |
-| fold-01: recorded macro_f1 matches recomputation | 0.312134197122 | 0.312134197122 | pass |
-| fold-01: recorded weighted_f1 matches recomputation | 0.988749489295 | 0.988749489295 | pass |
-| fold-02: recorded accuracy matches recomputation | 0.985178253004 | 0.985178253004 | pass |
-| fold-02: recorded macro_f1 matches recomputation | 0.277688959121 | 0.277688959121 | pass |
-| fold-02: recorded weighted_f1 matches recomputation | 0.981437602706 | 0.981437602706 | pass |
-| fold-03: recorded accuracy matches recomputation | 0.973625854646 | 0.973625854646 | pass |
-| fold-03: recorded macro_f1 matches recomputation | 0.261737131411 | 0.261737131411 | pass |
-| fold-03: recorded weighted_f1 matches recomputation | 0.967021131065 | 0.967021131065 | pass |
-| fold-04: recorded accuracy matches recomputation | 0.986145105488 | 0.986145105488 | pass |
-| fold-04: recorded macro_f1 matches recomputation | 0.260803886658 | 0.260803886658 | pass |
-| fold-04: recorded weighted_f1 matches recomputation | 0.981618676736 | 0.981618676736 | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.987973798672 | 0.987973798672 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.296479204554 | 0.296479204554 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.984260703325 | 0.984260703325 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.986811570911 | 0.986811570911 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.280787473512 | 0.280787473512 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.982518428042 | 0.982518428042 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.977622678093 | 0.977622678093 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.262471137691 | 0.262471137691 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.970737813288 | 0.970737813288 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.981388353564 | 0.981388353564 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.279171270132 | 0.279171270132 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.975861483106 | 0.975861483106 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.984508689005 | 0.984508689005 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.207738388374 | 0.207738388374 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.977197548918 | 0.977197548918 | pass |
 
 </details>
 
@@ -79,40 +80,40 @@ statistical test is written.
 | check | expected | observed | result |
 |---|---|---|---|
 | each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
-| prediction rows == report rows_used | 20796921 | 20796921 | pass |
-| full run covers dataset rows 0..N-1 with no gaps | 0..20796920 | 0..20796920 over 20796921 rows | pass |
-| fold-00: predictions == test_rows == sum(per-class support) | 4716325 == 4716325 | 4716325 predictions | pass |
-| fold-01: predictions == test_rows == sum(per-class support) | 5582606 == 5582606 | 5582606 predictions | pass |
-| fold-02: predictions == test_rows == sum(per-class support) | 4236815 == 4236815 | 4236815 predictions | pass |
-| fold-03: predictions == test_rows == sum(per-class support) | 2502792 == 2502792 | 2502792 predictions | pass |
-| fold-04: predictions == test_rows == sum(per-class support) | 3758383 == 3758383 | 3758383 predictions | pass |
-| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 | 17094 | pass |
-| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 | 21436 | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
 | class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
 | class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
 | class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
-| class sum (predictions vs. report support): normal | 20385924 | 20385924 | pass |
-| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 in dataset | 17094 predicted | pass |
-| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 in dataset | 21436 predicted | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
 | class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
-| class sum (predictions vs. dataset): normal | 20385924 in dataset | 20385924 predicted | pass |
-| fold-00: recorded accuracy matches recomputation | 0.987323392684 | 0.987323392684 | pass |
-| fold-00: recorded macro_f1 matches recomputation | 0.266551507895 | 0.266551507895 | pass |
-| fold-00: recorded weighted_f1 matches recomputation | 0.983543839624 | 0.983543839624 | pass |
-| fold-01: recorded accuracy matches recomputation | 0.991653718711 | 0.991653718711 | pass |
-| fold-01: recorded macro_f1 matches recomputation | 0.312088043060 | 0.312088043060 | pass |
-| fold-01: recorded weighted_f1 matches recomputation | 0.988742681330 | 0.988742681330 | pass |
-| fold-02: recorded accuracy matches recomputation | 0.985191234453 | 0.985191234453 | pass |
-| fold-02: recorded macro_f1 matches recomputation | 0.278396086121 | 0.278396086121 | pass |
-| fold-02: recorded weighted_f1 matches recomputation | 0.981506021567 | 0.981506021567 | pass |
-| fold-03: recorded accuracy matches recomputation | 0.973563923810 | 0.973563923810 | pass |
-| fold-03: recorded macro_f1 matches recomputation | 0.261314068234 | 0.261314068234 | pass |
-| fold-03: recorded weighted_f1 matches recomputation | 0.966931465156 | 0.966931465156 | pass |
-| fold-04: recorded accuracy matches recomputation | 0.986130205463 | 0.986130205463 | pass |
-| fold-04: recorded macro_f1 matches recomputation | 0.261233121044 | 0.261233121044 | pass |
-| fold-04: recorded weighted_f1 matches recomputation | 0.981638026315 | 0.981638026315 | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.987934417919 | 0.987934417919 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.296309259320 | 0.296309259320 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.984223641284 | 0.984223641284 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.986736015281 | 0.986736015281 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.279543636229 | 0.279543636229 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.982404050289 | 0.982404050289 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.977627502688 | 0.977627502688 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.262701410137 | 0.262701410137 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.970771063198 | 0.970771063198 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.981385924258 | 0.981385924258 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.279336437068 | 0.279336437068 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.975874748925 | 0.975874748925 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.984470715207 | 0.984470715207 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.209308649278 | 0.209308649278 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.977205689175 | 0.977205689175 | pass |
 
 </details>
 
@@ -125,40 +126,40 @@ statistical test is written.
 | check | expected | observed | result |
 |---|---|---|---|
 | each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
-| prediction rows == report rows_used | 20796921 | 20796921 | pass |
-| full run covers dataset rows 0..N-1 with no gaps | 0..20796920 | 0..20796920 over 20796921 rows | pass |
-| fold-00: predictions == test_rows == sum(per-class support) | 4716325 == 4716325 | 4716325 predictions | pass |
-| fold-01: predictions == test_rows == sum(per-class support) | 5582606 == 5582606 | 5582606 predictions | pass |
-| fold-02: predictions == test_rows == sum(per-class support) | 4236815 == 4236815 | 4236815 predictions | pass |
-| fold-03: predictions == test_rows == sum(per-class support) | 2502792 == 2502792 | 2502792 predictions | pass |
-| fold-04: predictions == test_rows == sum(per-class support) | 3758383 == 3758383 | 3758383 predictions | pass |
-| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 | 17094 | pass |
-| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 | 21436 | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
 | class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
 | class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
 | class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
-| class sum (predictions vs. report support): normal | 20385924 | 20385924 | pass |
-| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 in dataset | 17094 predicted | pass |
-| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 in dataset | 21436 predicted | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
 | class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
-| class sum (predictions vs. dataset): normal | 20385924 in dataset | 20385924 predicted | pass |
-| fold-00: recorded accuracy matches recomputation | 0.987691475884 | 0.987691475884 | pass |
-| fold-00: recorded macro_f1 matches recomputation | 0.269189626313 | 0.269189626313 | pass |
-| fold-00: recorded weighted_f1 matches recomputation | 0.983875046291 | 0.983875046291 | pass |
-| fold-01: recorded accuracy matches recomputation | 0.991966654999 | 0.991966654999 | pass |
-| fold-01: recorded macro_f1 matches recomputation | 0.314738276886 | 0.314738276886 | pass |
-| fold-01: recorded weighted_f1 matches recomputation | 0.989079349768 | 0.989079349768 | pass |
-| fold-02: recorded accuracy matches recomputation | 0.984731455114 | 0.984731455114 | pass |
-| fold-02: recorded macro_f1 matches recomputation | 0.263316364084 | 0.263316364084 | pass |
-| fold-02: recorded weighted_f1 matches recomputation | 0.979951136932 | 0.979951136932 | pass |
-| fold-03: recorded accuracy matches recomputation | 0.974701852971 | 0.974701852971 | pass |
-| fold-03: recorded macro_f1 matches recomputation | 0.267042262789 | 0.267042262789 | pass |
-| fold-03: recorded weighted_f1 matches recomputation | 0.968292795187 | 0.968292795187 | pass |
-| fold-04: recorded accuracy matches recomputation | 0.986064751783 | 0.986064751783 | pass |
-| fold-04: recorded macro_f1 matches recomputation | 0.259437054538 | 0.259437054538 | pass |
-| fold-04: recorded weighted_f1 matches recomputation | 0.981493215114 | 0.981493215114 | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.988196794212 | 0.988196794212 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.298063379656 | 0.298063379656 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.984487246726 | 0.984487246726 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.987223894052 | 0.987223894052 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.284247384393 | 0.284247384393 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.982932311475 | 0.982932311475 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.977943087945 | 0.977943087945 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.264093392879 | 0.264093392879 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.971078414382 | 0.971078414382 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.982087265065 | 0.982087265065 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.284596926965 | 0.284596926965 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.976712792315 | 0.976712792315 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.984601874706 | 0.984601874706 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.220348534164 | 0.220348534164 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.977459112528 | 0.977459112528 | pass |
 
 </details>
 
@@ -171,40 +172,40 @@ statistical test is written.
 | check | expected | observed | result |
 |---|---|---|---|
 | each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
-| prediction rows == report rows_used | 20796921 | 20796921 | pass |
-| full run covers dataset rows 0..N-1 with no gaps | 0..20796920 | 0..20796920 over 20796921 rows | pass |
-| fold-00: predictions == test_rows == sum(per-class support) | 4716325 == 4716325 | 4716325 predictions | pass |
-| fold-01: predictions == test_rows == sum(per-class support) | 5582606 == 5582606 | 5582606 predictions | pass |
-| fold-02: predictions == test_rows == sum(per-class support) | 4236815 == 4236815 | 4236815 predictions | pass |
-| fold-03: predictions == test_rows == sum(per-class support) | 2502792 == 2502792 | 2502792 predictions | pass |
-| fold-04: predictions == test_rows == sum(per-class support) | 3758383 == 3758383 | 3758383 predictions | pass |
-| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 | 17094 | pass |
-| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 | 21436 | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
 | class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
 | class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
 | class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
-| class sum (predictions vs. report support): normal | 20385924 | 20385924 | pass |
-| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 in dataset | 17094 predicted | pass |
-| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 in dataset | 21436 predicted | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
 | class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
-| class sum (predictions vs. dataset): normal | 20385924 in dataset | 20385924 predicted | pass |
-| fold-00: recorded accuracy matches recomputation | 0.986391311031 | 0.986391311031 | pass |
-| fold-00: recorded macro_f1 matches recomputation | 0.289269645185 | 0.289269645185 | pass |
-| fold-00: recorded weighted_f1 matches recomputation | 0.983424644811 | 0.983424644811 | pass |
-| fold-01: recorded accuracy matches recomputation | 0.990395883213 | 0.990395883213 | pass |
-| fold-01: recorded macro_f1 matches recomputation | 0.332257902979 | 0.332257902979 | pass |
-| fold-01: recorded weighted_f1 matches recomputation | 0.988168455288 | 0.988168455288 | pass |
-| fold-02: recorded accuracy matches recomputation | 0.984606833199 | 0.984606833199 | pass |
-| fold-02: recorded macro_f1 matches recomputation | 0.306593817980 | 0.306593817980 | pass |
-| fold-02: recorded weighted_f1 matches recomputation | 0.981719884063 | 0.981719884063 | pass |
-| fold-03: recorded accuracy matches recomputation | 0.972900664538 | 0.972900664538 | pass |
-| fold-03: recorded macro_f1 matches recomputation | 0.294112384552 | 0.294112384552 | pass |
-| fold-03: recorded weighted_f1 matches recomputation | 0.967611606483 | 0.967611606483 | pass |
-| fold-04: recorded accuracy matches recomputation | 0.985046494729 | 0.985046494729 | pass |
-| fold-04: recorded macro_f1 matches recomputation | 0.294759520493 | 0.294759520493 | pass |
-| fold-04: recorded weighted_f1 matches recomputation | 0.981860293658 | 0.981860293658 | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.986814578398 | 0.986814578398 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.335879329845 | 0.335879329845 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.984159483024 | 0.984159483024 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.985432911589 | 0.985432911589 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.316668673170 | 0.316668673170 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.982365069997 | 0.982365069997 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.975659351824 | 0.975659351824 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.304252713604 | 0.304252713604 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.970632257234 | 0.970632257234 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.979927368592 | 0.979927368592 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.316816784247 | 0.316816784247 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.975970588422 | 0.975970588422 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.981942709530 | 0.981942709530 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.255704186038 | 0.255704186038 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.976855589231 | 0.976855589231 | pass |
 
 </details>
 
@@ -217,40 +218,40 @@ statistical test is written.
 | check | expected | observed | result |
 |---|---|---|---|
 | each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
-| prediction rows == report rows_used | 20796921 | 20796921 | pass |
-| full run covers dataset rows 0..N-1 with no gaps | 0..20796920 | 0..20796920 over 20796921 rows | pass |
-| fold-00: predictions == test_rows == sum(per-class support) | 4716325 == 4716325 | 4716325 predictions | pass |
-| fold-01: predictions == test_rows == sum(per-class support) | 5582606 == 5582606 | 5582606 predictions | pass |
-| fold-02: predictions == test_rows == sum(per-class support) | 4236815 == 4236815 | 4236815 predictions | pass |
-| fold-03: predictions == test_rows == sum(per-class support) | 2502792 == 2502792 | 2502792 predictions | pass |
-| fold-04: predictions == test_rows == sum(per-class support) | 3758383 == 3758383 | 3758383 predictions | pass |
-| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 | 17094 | pass |
-| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 | 21436 | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
 | class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
 | class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
 | class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
-| class sum (predictions vs. report support): normal | 20385924 | 20385924 | pass |
-| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 in dataset | 17094 predicted | pass |
-| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 in dataset | 21436 predicted | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
 | class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
-| class sum (predictions vs. dataset): normal | 20385924 in dataset | 20385924 predicted | pass |
-| fold-00: recorded accuracy matches recomputation | 0.984134681134 | 0.984134681134 | pass |
-| fold-00: recorded macro_f1 matches recomputation | 0.165341481806 | 0.165341481806 | pass |
-| fold-00: recorded weighted_f1 matches recomputation | 0.976283751902 | 0.976283751902 | pass |
-| fold-01: recorded accuracy matches recomputation | 0.982785279850 | 0.982785279850 | pass |
-| fold-01: recorded macro_f1 matches recomputation | 0.165219651675 | 0.165219651675 | pass |
-| fold-01: recorded weighted_f1 matches recomputation | 0.974265612449 | 0.974265612449 | pass |
-| fold-02: recorded accuracy matches recomputation | 0.978761404498 | 0.978761404498 | pass |
-| fold-02: recorded macro_f1 matches recomputation | 0.164877787063 | 0.164877787063 | pass |
-| fold-02: recorded weighted_f1 matches recomputation | 0.968274065581 | 0.968274065581 | pass |
-| fold-03: recorded accuracy matches recomputation | 0.966227716886 | 0.966227716886 | pass |
-| fold-03: recorded macro_f1 matches recomputation | 0.163803969837 | 0.163803969837 | pass |
-| fold-03: recorded weighted_f1 matches recomputation | 0.949648500464 | 0.949648500464 | pass |
-| fold-04: recorded accuracy matches recomputation | 0.982464799357 | 0.982464799357 | pass |
-| fold-04: recorded macro_f1 matches recomputation | 0.165192474821 | 0.165192474821 | pass |
-| fold-04: recorded weighted_f1 matches recomputation | 0.973792418919 | 0.973792418919 | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.980586909352 | 0.980586909352 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.165033092873 | 0.165033092873 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.970994197197 | 0.970994197197 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.982057108233 | 0.982057108233 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.165157889776 | 0.165157889776 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.973180973452 | 0.973180973452 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.971138706532 | 0.971138706532 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.164226343435 | 0.164226343435 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.956938368266 | 0.956938368266 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.974363041890 | 0.974363041890 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.164507674947 | 0.164507674947 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.961729954775 | 0.961729954775 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.984139693611 | 0.984139693611 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.165334409464 | 0.165334409464 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.976290030752 | 0.976290030752 | pass |
 
 </details>
 
@@ -263,40 +264,40 @@ statistical test is written.
 | check | expected | observed | result |
 |---|---|---|---|
 | each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
-| prediction rows == report rows_used | 20796921 | 20796921 | pass |
-| full run covers dataset rows 0..N-1 with no gaps | 0..20796920 | 0..20796920 over 20796921 rows | pass |
-| fold-00: predictions == test_rows == sum(per-class support) | 4716325 == 4716325 | 4716325 predictions | pass |
-| fold-01: predictions == test_rows == sum(per-class support) | 5582606 == 5582606 | 5582606 predictions | pass |
-| fold-02: predictions == test_rows == sum(per-class support) | 4236815 == 4236815 | 4236815 predictions | pass |
-| fold-03: predictions == test_rows == sum(per-class support) | 2502792 == 2502792 | 2502792 predictions | pass |
-| fold-04: predictions == test_rows == sum(per-class support) | 3758383 == 3758383 | 3758383 predictions | pass |
-| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 | 17094 | pass |
-| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 | 21436 | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
 | class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
 | class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
 | class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
-| class sum (predictions vs. report support): normal | 20385924 | 20385924 | pass |
-| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 in dataset | 17094 predicted | pass |
-| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 in dataset | 21436 predicted | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
 | class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
-| class sum (predictions vs. dataset): normal | 20385924 in dataset | 20385924 predicted | pass |
-| fold-00: recorded accuracy matches recomputation | 0.545757766905 | 0.545757766905 | pass |
-| fold-00: recorded macro_f1 matches recomputation | 0.202142402762 | 0.202142402762 | pass |
-| fold-00: recorded weighted_f1 matches recomputation | 0.697729742137 | 0.697729742137 | pass |
-| fold-01: recorded accuracy matches recomputation | 0.558658089072 | 0.558658089072 | pass |
-| fold-01: recorded macro_f1 matches recomputation | 0.204966839720 | 0.204966839720 | pass |
-| fold-01: recorded weighted_f1 matches recomputation | 0.705941071361 | 0.705941071361 | pass |
-| fold-02: recorded accuracy matches recomputation | 0.524415864275 | 0.524415864275 | pass |
-| fold-02: recorded macro_f1 matches recomputation | 0.204858981772 | 0.204858981772 | pass |
-| fold-02: recorded weighted_f1 matches recomputation | 0.677787975417 | 0.677787975417 | pass |
-| fold-03: recorded accuracy matches recomputation | 0.441600021096 | 0.441600021096 | pass |
-| fold-03: recorded macro_f1 matches recomputation | 0.200140965270 | 0.200140965270 | pass |
-| fold-03: recorded weighted_f1 matches recomputation | 0.596943721587 | 0.596943721587 | pass |
-| fold-04: recorded accuracy matches recomputation | 0.496356544823 | 0.496356544823 | pass |
-| fold-04: recorded macro_f1 matches recomputation | 0.172889275658 | 0.172889275658 | pass |
-| fold-04: recorded weighted_f1 matches recomputation | 0.653838242237 | 0.653838242237 | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.563167295111 | 0.563167295111 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.217521034573 | 0.217521034573 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.709850636260 | 0.709850636260 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.537908790131 | 0.537908790131 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.210428885931 | 0.210428885931 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.689630883907 | 0.689630883907 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.478001550682 | 0.478001550682 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.193061122559 | 0.193061122559 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.633129457273 | 0.633129457273 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.502497205690 | 0.502497205690 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.227967213084 | 0.227967213084 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.655898370290 | 0.655898370290 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.506475282055 | 0.506475282055 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.153984094741 | 0.153984094741 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.660879335093 | 0.660879335093 | pass |
 
 </details>
 
@@ -309,40 +310,40 @@ statistical test is written.
 | check | expected | observed | result |
 |---|---|---|---|
 | each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
-| prediction rows == report rows_used | 20796921 | 20796921 | pass |
-| full run covers dataset rows 0..N-1 with no gaps | 0..20796920 | 0..20796920 over 20796921 rows | pass |
-| fold-00: predictions == test_rows == sum(per-class support) | 4716325 == 4716325 | 4716325 predictions | pass |
-| fold-01: predictions == test_rows == sum(per-class support) | 5582606 == 5582606 | 5582606 predictions | pass |
-| fold-02: predictions == test_rows == sum(per-class support) | 4236815 == 4236815 | 4236815 predictions | pass |
-| fold-03: predictions == test_rows == sum(per-class support) | 2502792 == 2502792 | 2502792 predictions | pass |
-| fold-04: predictions == test_rows == sum(per-class support) | 3758383 == 3758383 | 3758383 predictions | pass |
-| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 | 17094 | pass |
-| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 | 21436 | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
 | class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
 | class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
 | class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
-| class sum (predictions vs. report support): normal | 20385924 | 20385924 | pass |
-| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 in dataset | 17094 predicted | pass |
-| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 in dataset | 21436 predicted | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
 | class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
-| class sum (predictions vs. dataset): normal | 20385924 in dataset | 20385924 predicted | pass |
-| fold-00: recorded accuracy matches recomputation | 0.586860744330 | 0.586860744330 | pass |
-| fold-00: recorded macro_f1 matches recomputation | 0.193009622382 | 0.193009622382 | pass |
-| fold-00: recorded weighted_f1 matches recomputation | 0.730116732749 | 0.730116732749 | pass |
-| fold-01: recorded accuracy matches recomputation | 0.617519667338 | 0.617519667338 | pass |
-| fold-01: recorded macro_f1 matches recomputation | 0.218598423555 | 0.218598423555 | pass |
-| fold-01: recorded weighted_f1 matches recomputation | 0.753212775278 | 0.753212775278 | pass |
-| fold-02: recorded accuracy matches recomputation | 0.560367870676 | 0.560367870676 | pass |
-| fold-02: recorded macro_f1 matches recomputation | 0.208985308452 | 0.208985308452 | pass |
-| fold-02: recorded weighted_f1 matches recomputation | 0.707881406774 | 0.707881406774 | pass |
-| fold-03: recorded accuracy matches recomputation | 0.440779737190 | 0.440779737190 | pass |
-| fold-03: recorded macro_f1 matches recomputation | 0.185467157662 | 0.185467157662 | pass |
-| fold-03: recorded weighted_f1 matches recomputation | 0.593787056625 | 0.593787056625 | pass |
-| fold-04: recorded accuracy matches recomputation | 0.515612166190 | 0.515612166190 | pass |
-| fold-04: recorded macro_f1 matches recomputation | 0.179870345324 | 0.179870345324 | pass |
-| fold-04: recorded weighted_f1 matches recomputation | 0.670747531831 | 0.670747531831 | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.622006353752 | 0.622006353752 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.224066570305 | 0.224066570305 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.755511141086 | 0.755511141086 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.581238003927 | 0.581238003927 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.217696578180 | 0.217696578180 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.724442757314 | 0.724442757314 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.520959742446 | 0.520959742446 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.194577665939 | 0.194577665939 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.670262045697 | 0.670262045697 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.529647378863 | 0.529647378863 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.218236474593 | 0.218236474593 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.677193690091 | 0.677193690091 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.524808632044 | 0.524808632044 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.158131061569 | 0.158131061569 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.676728546992 | 0.676728546992 | pass |
 
 </details>
 
@@ -355,40 +356,40 @@ statistical test is written.
 | check | expected | observed | result |
 |---|---|---|---|
 | each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
-| prediction rows == report rows_used | 20796921 | 20796921 | pass |
-| full run covers dataset rows 0..N-1 with no gaps | 0..20796920 | 0..20796920 over 20796921 rows | pass |
-| fold-00: predictions == test_rows == sum(per-class support) | 4716325 == 4716325 | 4716325 predictions | pass |
-| fold-01: predictions == test_rows == sum(per-class support) | 5582606 == 5582606 | 5582606 predictions | pass |
-| fold-02: predictions == test_rows == sum(per-class support) | 4236815 == 4236815 | 4236815 predictions | pass |
-| fold-03: predictions == test_rows == sum(per-class support) | 2502792 == 2502792 | 2502792 predictions | pass |
-| fold-04: predictions == test_rows == sum(per-class support) | 3758383 == 3758383 | 3758383 predictions | pass |
-| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 | 17094 | pass |
-| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 | 21436 | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
 | class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
 | class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
 | class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
-| class sum (predictions vs. report support): normal | 20385924 | 20385924 | pass |
-| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 in dataset | 17094 predicted | pass |
-| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 in dataset | 21436 predicted | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
 | class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
-| class sum (predictions vs. dataset): normal | 20385924 in dataset | 20385924 predicted | pass |
-| fold-00: recorded accuracy matches recomputation | 0.581721149412 | 0.581721149412 | pass |
-| fold-00: recorded macro_f1 matches recomputation | 0.173017710845 | 0.173017710845 | pass |
-| fold-00: recorded weighted_f1 matches recomputation | 0.725328758356 | 0.725328758356 | pass |
-| fold-01: recorded accuracy matches recomputation | 0.621619902963 | 0.621619902963 | pass |
-| fold-01: recorded macro_f1 matches recomputation | 0.197108286828 | 0.197108286828 | pass |
-| fold-01: recorded weighted_f1 matches recomputation | 0.755017121037 | 0.755017121037 | pass |
-| fold-02: recorded accuracy matches recomputation | 0.564517450018 | 0.564517450018 | pass |
-| fold-02: recorded macro_f1 matches recomputation | 0.186181430771 | 0.186181430771 | pass |
-| fold-02: recorded weighted_f1 matches recomputation | 0.709125047978 | 0.709125047978 | pass |
-| fold-03: recorded accuracy matches recomputation | 0.443979363846 | 0.443979363846 | pass |
-| fold-03: recorded macro_f1 matches recomputation | 0.165681524653 | 0.165681524653 | pass |
-| fold-03: recorded weighted_f1 matches recomputation | 0.595537293639 | 0.595537293639 | pass |
-| fold-04: recorded accuracy matches recomputation | 0.525519086267 | 0.525519086267 | pass |
-| fold-04: recorded macro_f1 matches recomputation | 0.161073749465 | 0.161073749465 | pass |
-| fold-04: recorded weighted_f1 matches recomputation | 0.678158333256 | 0.678158333256 | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.618427567046 | 0.618427567046 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.201870859218 | 0.201870859218 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.751157844794 | 0.751157844794 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.591676873142 | 0.591676873142 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.194125796914 | 0.194125796914 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.731363605361 | 0.731363605361 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.517835391638 | 0.517835391638 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.175172731207 | 0.175172731207 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.664916016173 | 0.664916016173 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.537517360432 | 0.537517360432 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.194189080987 | 0.194189080987 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.681753268576 | 0.681753268576 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.519192507170 | 0.519192507170 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.150555708166 | 0.150555708166 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.672388647357 | 0.672388647357 | pass |
 
 </details>
 
@@ -401,40 +402,86 @@ statistical test is written.
 | check | expected | observed | result |
 |---|---|---|---|
 | each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
-| prediction rows == report rows_used | 20796921 | 20796921 | pass |
-| full run covers dataset rows 0..N-1 with no gaps | 0..20796920 | 0..20796920 over 20796921 rows | pass |
-| fold-00: predictions == test_rows == sum(per-class support) | 4716325 == 4716325 | 4716325 predictions | pass |
-| fold-01: predictions == test_rows == sum(per-class support) | 5582606 == 5582606 | 5582606 predictions | pass |
-| fold-02: predictions == test_rows == sum(per-class support) | 4236815 == 4236815 | 4236815 predictions | pass |
-| fold-03: predictions == test_rows == sum(per-class support) | 2502792 == 2502792 | 2502792 predictions | pass |
-| fold-04: predictions == test_rows == sum(per-class support) | 3758383 == 3758383 | 3758383 predictions | pass |
-| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 | 17094 | pass |
-| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 | 21436 | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
 | class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
 | class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
 | class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
-| class sum (predictions vs. report support): normal | 20385924 | 20385924 | pass |
-| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 17094 in dataset | 17094 predicted | pass |
-| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 21436 in dataset | 21436 predicted | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
 | class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
 | class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
-| class sum (predictions vs. dataset): normal | 20385924 in dataset | 20385924 predicted | pass |
-| fold-00: recorded accuracy matches recomputation | 0.484908694799 | 0.484908694799 | pass |
-| fold-00: recorded macro_f1 matches recomputation | 0.136177609199 | 0.136177609199 | pass |
-| fold-00: recorded weighted_f1 matches recomputation | 0.643335949616 | 0.643335949616 | pass |
-| fold-01: recorded accuracy matches recomputation | 0.543724024228 | 0.543724024228 | pass |
-| fold-01: recorded macro_f1 matches recomputation | 0.156698795738 | 0.156698795738 | pass |
-| fold-01: recorded weighted_f1 matches recomputation | 0.693470296339 | 0.693470296339 | pass |
-| fold-02: recorded accuracy matches recomputation | 0.470122485877 | 0.470122485877 | pass |
-| fold-02: recorded macro_f1 matches recomputation | 0.139238982188 | 0.139238982188 | pass |
-| fold-02: recorded weighted_f1 matches recomputation | 0.627349402900 | 0.627349402900 | pass |
-| fold-03: recorded accuracy matches recomputation | 0.351356005613 | 0.351356005613 | pass |
-| fold-03: recorded macro_f1 matches recomputation | 0.123348826497 | 0.123348826497 | pass |
-| fold-03: recorded weighted_f1 matches recomputation | 0.499773525626 | 0.499773525626 | pass |
-| fold-04: recorded accuracy matches recomputation | 0.419454323841 | 0.419454323841 | pass |
-| fold-04: recorded macro_f1 matches recomputation | 0.122169100572 | 0.122169100572 | pass |
-| fold-04: recorded weighted_f1 matches recomputation | 0.580504087847 | 0.580504087847 | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.474830431825 | 0.474830431825 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.146301245333 | 0.146301245333 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.631792900447 | 0.631792900447 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.482754473762 | 0.482754473762 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.140021744874 | 0.140021744874 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.639578114706 | 0.639578114706 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.391644142431 | 0.391644142431 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.126655657692 | 0.126655657692 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.546297540997 | 0.546297540997 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.421253420160 | 0.421253420160 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.136506431806 | 0.136506431806 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.576330866559 | 0.576330866559 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.410959687815 | 0.410959687815 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.118557845198 | 0.118557845198 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.572418648620 | 0.572418648620 | pass |
+
+</details>
+
+### `grouped-validation-full-smote`
+
+35 checks, 0 failed.
+
+<details><summary>All checks passed - expand for detail</summary>
+
+| check | expected | observed | result |
+|---|---|---|---|
+| each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
+| prediction rows == report rows_used | 23226530 | 23226530 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..23226529 | 0..23226529 over 23226530 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 6170527 == 6170527 | 6170527 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 5413230 == 5413230 | 5413230 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 3523612 == 3523612 | 3523612 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 4116401 == 4116401 | 4116401 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 4002760 == 4002760 | 4002760 predictions | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 | 50782 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 | 63976 | pass |
+| class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
+| class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
+| class sum (predictions vs. report support): benign_degradation | 270680 | 270680 | pass |
+| class sum (predictions vs. report support): normal | 22739305 | 22739305 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50782 in dataset | 50782 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63976 in dataset | 63976 predicted | pass |
+| class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
+| class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
+| class sum (predictions vs. dataset): benign_degradation | 270680 in dataset | 270680 predicted | pass |
+| class sum (predictions vs. dataset): normal | 22739305 in dataset | 22739305 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.984384153898 | 0.984384153898 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.273863510723 | 0.273863510723 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.980921755253 | 0.980921755253 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.986431575972 | 0.986431575972 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.278756854939 | 0.278756854939 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.982234346238 | 0.982234346238 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.977248913899 | 0.977248913899 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.261548600807 | 0.261548600807 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.970517398559 | 0.970517398559 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.980590569286 | 0.980590569286 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.276082693535 | 0.276082693535 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.975156036007 | 0.975156036007 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.984290839321 | 0.984290839321 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.203269478254 | 0.203269478254 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.977019037287 | 0.977019037287 | pass |
 
 </details>
 
@@ -448,15 +495,16 @@ on the original (never rebalanced) test distribution.
 
 | run | accuracy (micro) | macro P | macro R | macro F1 | weighted P | weighted R | weighted F1 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `d3-decision-tree-none` | 0.9862 | 0.3014 | 0.2640 | 0.2794 | 0.9789 | 0.9862 | 0.9823 |
-| `d3-decision-tree-none-cap4m` | 0.9862 | 0.3009 | 0.2644 | 0.2795 | 0.9789 | 0.9862 | 0.9823 |
-| `d3-xgboost-none` | 0.9864 | 0.3085 | 0.2598 | 0.2788 | 0.9792 | 0.9864 | 0.9823 |
-| `d3-random-forest-none-cap4m` | 0.9852 | 0.3677 | 0.2807 | 0.3055 | 0.9802 | 0.9852 | 0.9822 |
-| `d3-logistic-regression-none` | 0.9802 | 0.1639 | 0.1667 | 0.1650 | 0.9609 | 0.9802 | 0.9704 |
-| `d3-decision-tree-downsample` | 0.5234 | 0.2263 | 0.6530 | 0.1993 | 0.9826 | 0.5234 | 0.6766 |
-| `d3-xgboost-downsample` | 0.5592 | 0.2213 | 0.6608 | 0.2008 | 0.9825 | 0.5592 | 0.7063 |
-| `d3-random-forest-downsample` | 0.5622 | 0.2026 | 0.5789 | 0.1799 | 0.9806 | 0.5622 | 0.7074 |
-| `d3-logistic-regression-downsample` | 0.4698 | 0.1841 | 0.5096 | 0.1386 | 0.9793 | 0.4698 | 0.6272 |
+| `d3-decision-tree-none` | 0.9844 | 0.3702 | 0.2635 | 0.2791 | 0.9756 | 0.9844 | 0.9792 |
+| `d3-decision-tree-none-cap4m` | 0.9843 | 0.3258 | 0.2632 | 0.2789 | 0.9749 | 0.9843 | 0.9792 |
+| `d3-xgboost-none` | 0.9847 | 0.3056 | 0.2665 | 0.2823 | 0.9751 | 0.9847 | 0.9796 |
+| `d3-random-forest-none-cap4m` | 0.9827 | 0.3964 | 0.2883 | 0.3176 | 0.9764 | 0.9827 | 0.9790 |
+| `d3-logistic-regression-none` | 0.9790 | 0.1636 | 0.1667 | 0.1649 | 0.9585 | 0.9790 | 0.9686 |
+| `d3-decision-tree-downsample` | 0.5238 | 0.2321 | 0.6466 | 0.2076 | 0.9808 | 0.5238 | 0.6756 |
+| `d3-xgboost-downsample` | 0.5641 | 0.2253 | 0.6721 | 0.2099 | 0.9806 | 0.5641 | 0.7085 |
+| `d3-random-forest-downsample` | 0.5655 | 0.2053 | 0.6402 | 0.1874 | 0.9789 | 0.5655 | 0.7081 |
+| `d3-logistic-regression-downsample` | 0.4436 | 0.1840 | 0.5161 | 0.1351 | 0.9775 | 0.4436 | 0.6012 |
+| `grouped-validation-full-smote` | 0.9831 | 0.3015 | 0.2521 | 0.2706 | 0.9739 | 0.9831 | 0.9780 |
 
 ### Per-class (pooled over folds)
 
@@ -464,100 +512,111 @@ on the original (never rebalanced) test distribution.
 
 | class | precision | recall | f1 | support |
 |---|---:|---:|---:|---:|
-| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 17,094 |
-| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 21,436 |
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.1250 | 0.0000 | 0.0000 | 63,976 |
 | RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 46,959 |
-| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 54,828 |
-| benign_degradation | 0.8209 | 0.5855 | 0.6835 | 270,680 |
-| normal | 0.9877 | 0.9983 | 0.9930 | 20,385,924 |
+| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.2857 | 0.0000 | 0.0001 | 54,828 |
+| benign_degradation | 0.8249 | 0.5823 | 0.6827 | 270,680 |
+| normal | 0.9857 | 0.9985 | 0.9921 | 22,739,305 |
 
 #### `d3-decision-tree-none-cap4m`
 
 | class | precision | recall | f1 | support |
 |---|---:|---:|---:|---:|
-| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 17,094 |
-| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 21,436 |
-| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 46,959 |
-| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 54,828 |
-| benign_degradation | 0.8173 | 0.5882 | 0.6841 | 270,680 |
-| normal | 0.9878 | 0.9983 | 0.9930 | 20,385,924 |
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0667 | 0.0000 | 0.0001 | 63,976 |
+| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0556 | 0.0000 | 0.0001 | 46,959 |
+| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0233 | 0.0000 | 0.0000 | 54,828 |
+| benign_degradation | 0.8234 | 0.5808 | 0.6811 | 270,680 |
+| normal | 0.9857 | 0.9985 | 0.9921 | 22,739,305 |
 
 #### `d3-xgboost-none`
 
 | class | precision | recall | f1 | support |
 |---|---:|---:|---:|---:|
-| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 17,094 |
-| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 21,436 |
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0039 | 0.0000 | 0.0000 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 63,976 |
 | RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 46,959 |
 | RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 54,828 |
-| benign_degradation | 0.8638 | 0.5602 | 0.6796 | 270,680 |
-| normal | 0.9874 | 0.9988 | 0.9931 | 20,385,924 |
+| benign_degradation | 0.8438 | 0.6003 | 0.7015 | 270,680 |
+| normal | 0.9859 | 0.9987 | 0.9922 | 22,739,305 |
 
 #### `d3-random-forest-none-cap4m`
 
 | class | precision | recall | f1 | support |
 |---|---:|---:|---:|---:|
-| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0032 | 0.0009 | 0.0014 | 17,094 |
-| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0122 | 0.0014 | 0.0025 | 21,436 |
-| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.1689 | 0.0379 | 0.0619 | 46,959 |
-| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.2209 | 0.0570 | 0.0906 | 54,828 |
-| benign_degradation | 0.8130 | 0.5901 | 0.6838 | 270,680 |
-| normal | 0.9882 | 0.9970 | 0.9926 | 20,385,924 |
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0362 | 0.0116 | 0.0176 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.1543 | 0.0406 | 0.0643 | 63,976 |
+| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.1652 | 0.0357 | 0.0587 | 46,959 |
+| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.2202 | 0.0565 | 0.0899 | 54,828 |
+| benign_degradation | 0.8161 | 0.5888 | 0.6841 | 270,680 |
+| normal | 0.9863 | 0.9964 | 0.9913 | 22,739,305 |
 
 #### `d3-logistic-regression-none`
 
 | class | precision | recall | f1 | support |
 |---|---:|---:|---:|---:|
-| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 17,094 |
-| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 21,436 |
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 63,976 |
 | RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 46,959 |
 | RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 54,828 |
-| benign_degradation | 0.0030 | 0.0000 | 0.0000 | 270,680 |
-| normal | 0.9802 | 1.0000 | 0.9900 | 20,385,924 |
+| benign_degradation | 0.0027 | 0.0000 | 0.0000 | 270,680 |
+| normal | 0.9790 | 1.0000 | 0.9894 | 22,739,305 |
 
 #### `d3-decision-tree-downsample`
 
 | class | precision | recall | f1 | support |
 |---|---:|---:|---:|---:|
-| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0150 | 0.9208 | 0.0294 | 17,094 |
-| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0050 | 0.5641 | 0.0099 | 21,436 |
-| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0088 | 0.6392 | 0.0174 | 46,959 |
-| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0123 | 0.6088 | 0.0240 | 54,828 |
-| benign_degradation | 0.3183 | 0.6644 | 0.4304 | 270,680 |
-| normal | 0.9982 | 0.5207 | 0.6844 | 20,385,924 |
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0348 | 0.9156 | 0.0670 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0119 | 0.5718 | 0.0233 | 63,976 |
+| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0090 | 0.6365 | 0.0177 | 46,959 |
+| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0107 | 0.6026 | 0.0210 | 54,828 |
+| benign_degradation | 0.3283 | 0.6319 | 0.4321 | 270,680 |
+| normal | 0.9978 | 0.5211 | 0.6847 | 22,739,305 |
 
 #### `d3-xgboost-downsample`
 
 | class | precision | recall | f1 | support |
 |---|---:|---:|---:|---:|
-| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0151 | 0.8975 | 0.0296 | 17,094 |
-| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0046 | 0.5971 | 0.0091 | 21,436 |
-| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0127 | 0.6651 | 0.0249 | 46,959 |
-| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0123 | 0.5640 | 0.0241 | 54,828 |
-| benign_degradation | 0.2847 | 0.6843 | 0.4021 | 270,680 |
-| normal | 0.9985 | 0.5570 | 0.7151 | 20,385,924 |
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0370 | 0.9024 | 0.0712 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0126 | 0.6292 | 0.0248 | 63,976 |
+| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0124 | 0.6765 | 0.0243 | 46,959 |
+| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0112 | 0.5716 | 0.0221 | 54,828 |
+| benign_degradation | 0.2801 | 0.6916 | 0.3988 | 270,680 |
+| normal | 0.9981 | 0.5613 | 0.7186 | 22,739,305 |
 
 #### `d3-random-forest-downsample`
 
 | class | precision | recall | f1 | support |
 |---|---:|---:|---:|---:|
-| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0105 | 0.4964 | 0.0206 | 17,094 |
-| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0044 | 0.5952 | 0.0088 | 21,436 |
-| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0113 | 0.6109 | 0.0221 | 46,959 |
-| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0136 | 0.5108 | 0.0266 | 54,828 |
-| benign_degradation | 0.1776 | 0.6996 | 0.2833 | 270,680 |
-| normal | 0.9980 | 0.5604 | 0.7178 | 20,385,924 |
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0367 | 0.6606 | 0.0696 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0121 | 0.6217 | 0.0238 | 63,976 |
+| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0118 | 0.6626 | 0.0233 | 46,959 |
+| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0144 | 0.6217 | 0.0282 | 54,828 |
+| benign_degradation | 0.1587 | 0.7115 | 0.2595 | 270,680 |
+| normal | 0.9978 | 0.5630 | 0.7199 | 22,739,305 |
 
 #### `d3-logistic-regression-downsample`
 
 | class | precision | recall | f1 | support |
 |---|---:|---:|---:|---:|
-| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0076 | 0.6879 | 0.0149 | 17,094 |
-| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0033 | 0.3380 | 0.0066 | 21,436 |
-| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0068 | 0.5212 | 0.0134 | 46,959 |
-| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0143 | 0.5307 | 0.0279 | 54,828 |
-| benign_degradation | 0.0748 | 0.5111 | 0.1305 | 270,680 |
-| normal | 0.9980 | 0.4689 | 0.6380 | 20,385,924 |
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0195 | 0.7368 | 0.0381 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0079 | 0.3322 | 0.0155 | 63,976 |
+| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0064 | 0.5378 | 0.0127 | 46,959 |
+| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0127 | 0.5383 | 0.0248 | 54,828 |
+| benign_degradation | 0.0598 | 0.5093 | 0.1070 | 270,680 |
+| normal | 0.9976 | 0.4420 | 0.6126 | 22,739,305 |
+
+#### `grouped-validation-full-smote`
+
+| class | precision | recall | f1 | support |
+|---|---:|---:|---:|---:|
+| DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 0.0007 | 0.0001 | 0.0001 | 50,782 |
+| FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 0.0014 | 0.0000 | 0.0000 | 63,976 |
+| RANDOMIC_BURST_ORIENTEDGRAYHOLE | 0.0053 | 0.0012 | 0.0019 | 46,959 |
+| RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 0.0000 | 0.0000 | 0.0000 | 54,828 |
+| benign_degradation | 0.8169 | 0.5131 | 0.6303 | 270,680 |
+| normal | 0.9850 | 0.9980 | 0.9915 | 22,739,305 |
 
 ## 4. Paired predictions across runs
 
@@ -567,12 +626,13 @@ the two got it right - the only cells a McNemar-style paired test consumes.
 
 | run A | run B | pairable | n paired | both correct | only A | only B | neither | discordant |
 |---|---|---|---:|---:|---:|---:|---:|---:|
-| `d3-decision-tree-none` | `d3-decision-tree-none-cap4m` | yes | 20,796,921 | 20,506,942 | 2,866 | 2,564 | 284,549 | 5,430 |
-| `d3-decision-tree-none` | `d3-xgboost-none` | yes | 20,796,921 | 20,491,195 | 18,613 | 22,448 | 264,665 | 41,061 |
-| `d3-decision-tree-none` | `d3-random-forest-none-cap4m` | yes | 20,796,921 | 20,465,386 | 44,422 | 24,493 | 262,620 | 68,915 |
-| `d3-decision-tree-none` | `d3-logistic-regression-none` | yes | 20,796,921 | 20,350,980 | 158,828 | 34,599 | 252,514 | 193,427 |
-| `d3-decision-tree-none` | `d3-decision-tree-downsample` | yes | 20,796,921 | 10,768,091 | 9,741,717 | 117,232 | 169,881 | 9,858,949 |
-| `d3-decision-tree-none` | `d3-xgboost-downsample` | yes | 20,796,921 | 11,511,024 | 8,998,784 | 119,394 | 167,719 | 9,118,178 |
-| `d3-decision-tree-none` | `d3-random-forest-downsample` | yes | 20,796,921 | 11,581,785 | 8,928,023 | 110,106 | 177,007 | 9,038,129 |
-| `d3-decision-tree-none` | `d3-logistic-regression-downsample` | yes | 20,796,921 | 9,675,236 | 10,834,572 | 94,811 | 192,302 | 10,929,383 |
+| `d3-decision-tree-none` | `d3-decision-tree-none-cap4m` | yes | 23,226,530 | 22,860,241 | 3,219 | 2,422 | 360,648 | 5,641 |
+| `d3-decision-tree-none` | `d3-xgboost-none` | yes | 23,226,530 | 22,854,835 | 8,625 | 16,612 | 346,458 | 25,237 |
+| `d3-decision-tree-none` | `d3-random-forest-none-cap4m` | yes | 23,226,530 | 22,799,289 | 64,171 | 26,352 | 336,718 | 90,523 |
+| `d3-decision-tree-none` | `d3-logistic-regression-none` | yes | 23,226,530 | 22,705,439 | 158,021 | 33,460 | 329,610 | 191,481 |
+| `d3-decision-tree-none` | `d3-decision-tree-downsample` | yes | 23,226,530 | 11,995,484 | 10,867,976 | 171,450 | 191,620 | 11,039,426 |
+| `d3-decision-tree-none` | `d3-xgboost-downsample` | yes | 23,226,530 | 12,920,303 | 9,943,157 | 180,763 | 182,307 | 10,123,920 |
+| `d3-decision-tree-none` | `d3-random-forest-downsample` | yes | 23,226,530 | 12,960,420 | 9,903,040 | 173,978 | 189,092 | 10,077,018 |
+| `d3-decision-tree-none` | `d3-logistic-regression-downsample` | yes | 23,226,530 | 10,166,405 | 12,697,055 | 135,833 | 227,237 | 12,832,888 |
+| `d3-decision-tree-none` | `grouped-validation-full-smote` | yes | 23,226,530 | 22,828,808 | 34,652 | 4,972 | 358,098 | 39,624 |
 

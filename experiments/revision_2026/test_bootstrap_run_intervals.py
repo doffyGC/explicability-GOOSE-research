@@ -14,6 +14,7 @@ from bootstrap_run_intervals import (
     bootstrap,
     main,
     metrics_from_matrix,
+    paired_difference,
     per_run_confusion,
 )
 
@@ -59,6 +60,37 @@ class MetricTests(unittest.TestCase):
         self.assertTrue(np.isnan(got["precision"][0]))
         self.assertTrue(np.isnan(got["f1"][0]))
         self.assertAlmostEqual(float(got["macro_f1"]), 1.0)  # nanmean over the defined class
+
+    def test_present_but_never_predicted_class_scores_zero_and_stays_in_macro(self):
+        # This is the case that matters most on this dataset: the unbalanced
+        # models predict no attack row at all. Treating that as "undefined"
+        # and dropping it from the macro average is how a detector that finds
+        # nothing ends up looking good - the bug this test exists to prevent.
+        from sklearn.metrics import classification_report
+        y_true = np.array([0] * 3 + [1] * 7)
+        y_pred = np.array([1] * 10)                     # class 0 never predicted
+        matrix = np.bincount(y_true * 2 + y_pred, minlength=4).reshape(2, 2)
+        got = metrics_from_matrix(matrix)
+        self.assertEqual(float(got["recall"][0]), 0.0)
+        self.assertEqual(float(got["precision"][0]), 0.0)
+        self.assertEqual(float(got["f1"][0]), 0.0)
+        reference = classification_report(y_true, y_pred, labels=[0, 1],
+                                          output_dict=True, zero_division=0)
+        self.assertAlmostEqual(float(got["macro_f1"]), reference["macro avg"]["f1-score"])
+
+    def test_macro_f1_matches_sklearn_on_a_six_class_matrix_with_dead_classes(self):
+        # The shape of the real `none` runs: four classes present in the data
+        # and never predicted, two classes carrying everything.
+        from sklearn.metrics import classification_report
+        rng = np.random.RandomState(0)
+        y_true = np.concatenate([np.full(50, c) for c in range(4)]
+                                + [np.full(400, 4), np.full(5000, 5)])
+        y_pred = np.where(rng.rand(len(y_true)) < 0.1, 4, 5)
+        matrix = np.bincount(y_true * 6 + y_pred, minlength=36).reshape(6, 6)
+        got = metrics_from_matrix(matrix)
+        reference = classification_report(y_true, y_pred, labels=list(range(6)),
+                                          output_dict=True, zero_division=0)
+        self.assertAlmostEqual(float(got["macro_f1"]), reference["macro avg"]["f1-score"])
 
     def test_batched_matrices_give_the_same_answer_as_one_at_a_time(self):
         rng = np.random.RandomState(0)
@@ -162,6 +194,66 @@ class BootstrapTests(unittest.TestCase):
                         wide["recall"]["upper"][0] - wide["recall"]["lower"][0])
 
 
+class PairedComparisonTests(unittest.TestCase):
+    """The comparison overlapping marginal intervals cannot make."""
+
+    @staticmethod
+    def run_fixture(label, counts, groups=None):
+        groups = groups or ["R%d" % i for i in range(len(counts))]
+        return {"label": label, "groups": groups, "counts": np.asarray(counts)}
+
+    def test_a_consistently_better_model_separates_even_when_margins_overlap(self):
+        # Both models vary a lot run to run (so their marginal intervals are
+        # wide and overlap), but B beats A on *every* run by the same margin.
+        # Paired resampling sees that; comparing two marginal CIs does not.
+        rng = np.random.RandomState(0)
+        a_counts, b_counts = [], []
+        for _ in range(40):
+            # Large shared run-to-run difficulty (so both marginals are wide),
+            # and a small constant edge for B (so the paired difference is
+            # tiny but never negative). That is exactly the regime where
+            # comparing marginal intervals gives the wrong answer.
+            hard = rng.randint(0, 38)
+            a_counts.append([[20 - hard // 2, 20 + hard // 2], [0, 100]])
+            b_counts.append([[21 - hard // 2, 19 + hard // 2], [0, 100]])
+        first = self.run_fixture("a", a_counts)
+        second = self.run_fixture("b", b_counts)
+        marginal_a = bootstrap(first["counts"], 600, 1, 0.95)
+        marginal_b = bootstrap(second["counts"], 600, 1, 0.95)
+        overlap = (marginal_a["macro_f1"]["upper"] >= marginal_b["macro_f1"]["lower"])
+        self.assertTrue(overlap, "fixture should have overlapping marginal intervals")
+        paired = paired_difference(first, second, "macro_f1", 600, 1, 0.95)
+        self.assertGreater(paired["observed_difference"], 0)
+        self.assertTrue(paired["separates"])
+        self.assertGreater(paired["lower"], 0)
+
+    def test_identical_models_do_not_separate(self):
+        counts = np.tile(np.array([[7, 3], [2, 88]]), (25, 1, 1))
+        first = self.run_fixture("a", counts)
+        second = self.run_fixture("b", counts.copy())
+        paired = paired_difference(first, second, "macro_f1", 400, 2, 0.95)
+        self.assertAlmostEqual(paired["observed_difference"], 0.0)
+        self.assertFalse(paired["separates"])
+
+    def test_runs_are_realigned_by_group_label_not_by_position(self):
+        # Same per-run results, but the second run lists its groups in a
+        # different order. Pairing by position would fabricate a difference.
+        counts = np.array([[[9, 1], [0, 50]], [[2, 8], [0, 50]], [[5, 5], [0, 50]]])
+        first = self.run_fixture("a", counts, groups=["R0", "R1", "R2"])
+        shuffled = np.array([counts[2], counts[0], counts[1]])
+        second = self.run_fixture("b", shuffled, groups=["R2", "R0", "R1"])
+        paired = paired_difference(first, second, "macro_f1", 200, 3, 0.95)
+        self.assertAlmostEqual(paired["observed_difference"], 0.0)
+        self.assertFalse(paired["separates"])
+
+    def test_runs_over_different_run_sets_are_refused(self):
+        counts = np.tile(np.array([[7, 3], [2, 88]]), (3, 1, 1))
+        first = self.run_fixture("a", counts, groups=["R0", "R1", "R2"])
+        second = self.run_fixture("b", counts, groups=["R0", "R1", "R9"])
+        with self.assertRaisesRegex(BootstrapError, "not pairable"):
+            paired_difference(first, second, "macro_f1", 100, 4, 0.95)
+
+
 class CliTests(unittest.TestCase):
     def test_end_to_end_writes_a_report_and_flags_thin_classes(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -180,6 +272,7 @@ class CliTests(unittest.TestCase):
                                    "--iterations", "200"]), 0)
             text = open(out, encoding="utf-8").read()
             self.assertIn("Resampling unit: `split_group`", text)
+            self.assertNotIn("Paired comparison", text)  # only one run given
             self.assertIn("Thin classes:", text)
             payload = json.load(open(js, encoding="utf-8"))
             self.assertEqual(payload["resampling_unit"], "split_group")

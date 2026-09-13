@@ -1,11 +1,13 @@
 {
-  "generated": "2026-09-12 17:02:26 UTC",
+  "generated": "2026-09-13 07:15:11 UTC",
   "runs": [
     {
-      "label": "grouped-validation-full",
-      "directory": "results/grouped-validation-full",
+      "label": "d3-decision-tree-none",
+      "directory": "results/d3-decision-tree-none",
       "status": "full_grouped_run",
       "balance": "none",
+      "model": "decision-tree",
+      "max_train_rows_per_fold": null,
       "dataset_checked": true,
       "checks": [
         {
@@ -16,56 +18,56 @@
         },
         {
           "check": "prediction rows == report rows_used",
-          "expected": "20796921",
-          "observed": "20796921",
+          "expected": "23226530",
+          "observed": "23226530",
           "passed": true
         },
         {
           "check": "full run covers dataset rows 0..N-1 with no gaps",
-          "expected": "0..20796920",
-          "observed": "0..20796920 over 20796921 rows",
+          "expected": "0..23226529",
+          "observed": "0..23226529 over 23226530 rows",
           "passed": true
         },
         {
           "check": "fold-00: predictions == test_rows == sum(per-class support)",
-          "expected": "4716325 == 4716325",
-          "observed": "4716325 predictions",
+          "expected": "6170527 == 6170527",
+          "observed": "6170527 predictions",
           "passed": true
         },
         {
           "check": "fold-01: predictions == test_rows == sum(per-class support)",
-          "expected": "5582606 == 5582606",
-          "observed": "5582606 predictions",
+          "expected": "5413230 == 5413230",
+          "observed": "5413230 predictions",
           "passed": true
         },
         {
           "check": "fold-02: predictions == test_rows == sum(per-class support)",
-          "expected": "4236815 == 4236815",
-          "observed": "4236815 predictions",
+          "expected": "3523612 == 3523612",
+          "observed": "3523612 predictions",
           "passed": true
         },
         {
           "check": "fold-03: predictions == test_rows == sum(per-class support)",
-          "expected": "2502792 == 2502792",
-          "observed": "2502792 predictions",
+          "expected": "4116401 == 4116401",
+          "observed": "4116401 predictions",
           "passed": true
         },
         {
           "check": "fold-04: predictions == test_rows == sum(per-class support)",
-          "expected": "3758383 == 3758383",
-          "observed": "3758383 predictions",
+          "expected": "4002760 == 4002760",
+          "observed": "4002760 predictions",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE",
-          "expected": "17094",
-          "observed": "17094",
+          "expected": "50782",
+          "observed": "50782",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
-          "expected": "21436",
-          "observed": "21436",
+          "expected": "63976",
+          "observed": "63976",
           "passed": true
         },
         {
@@ -88,20 +90,20 @@
         },
         {
           "check": "class sum (predictions vs. report support): normal",
-          "expected": "20385924",
-          "observed": "20385924",
+          "expected": "22739305",
+          "observed": "22739305",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE",
-          "expected": "17094 in dataset",
-          "observed": "17094 predicted",
+          "expected": "50782 in dataset",
+          "observed": "50782 predicted",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
-          "expected": "21436 in dataset",
-          "observed": "21436 predicted",
+          "expected": "63976 in dataset",
+          "observed": "63976 predicted",
           "passed": true
         },
         {
@@ -124,86 +126,116 @@
         },
         {
           "check": "class sum (predictions vs. dataset): normal",
-          "expected": "20385924 in dataset",
-          "observed": "20385924 predicted",
+          "expected": "22739305 in dataset",
+          "observed": "22739305 predicted",
           "passed": true
         },
         {
           "check": "fold-00: recorded accuracy matches recomputation",
-          "expected": "0.987345443751",
-          "observed": "0.987345443751",
+          "expected": "0.987973798672",
+          "observed": "0.987973798672",
           "passed": true
         },
         {
           "check": "fold-00: recorded macro_f1 matches recomputation",
-          "expected": "0.266570309458",
-          "observed": "0.266570309458",
+          "expected": "0.296479204554",
+          "observed": "0.296479204554",
+          "passed": true
+        },
+        {
+          "check": "fold-00: recorded weighted_f1 matches recomputation",
+          "expected": "0.984260703325",
+          "observed": "0.984260703325",
           "passed": true
         },
         {
           "check": "fold-01: recorded accuracy matches recomputation",
-          "expected": "0.991661242079",
-          "observed": "0.991661242079",
+          "expected": "0.986811570911",
+          "observed": "0.986811570911",
           "passed": true
         },
         {
           "check": "fold-01: recorded macro_f1 matches recomputation",
-          "expected": "0.312134197122",
-          "observed": "0.312134197122",
+          "expected": "0.280787473512",
+          "observed": "0.280787473512",
+          "passed": true
+        },
+        {
+          "check": "fold-01: recorded weighted_f1 matches recomputation",
+          "expected": "0.982518428042",
+          "observed": "0.982518428042",
           "passed": true
         },
         {
           "check": "fold-02: recorded accuracy matches recomputation",
-          "expected": "0.985178253004",
-          "observed": "0.985178253004",
+          "expected": "0.977622678093",
+          "observed": "0.977622678093",
           "passed": true
         },
         {
           "check": "fold-02: recorded macro_f1 matches recomputation",
-          "expected": "0.277688959121",
-          "observed": "0.277688959121",
+          "expected": "0.262471137691",
+          "observed": "0.262471137691",
+          "passed": true
+        },
+        {
+          "check": "fold-02: recorded weighted_f1 matches recomputation",
+          "expected": "0.970737813288",
+          "observed": "0.970737813288",
           "passed": true
         },
         {
           "check": "fold-03: recorded accuracy matches recomputation",
-          "expected": "0.973625854646",
-          "observed": "0.973625854646",
+          "expected": "0.981388353564",
+          "observed": "0.981388353564",
           "passed": true
         },
         {
           "check": "fold-03: recorded macro_f1 matches recomputation",
-          "expected": "0.261737131411",
-          "observed": "0.261737131411",
+          "expected": "0.279171270132",
+          "observed": "0.279171270132",
+          "passed": true
+        },
+        {
+          "check": "fold-03: recorded weighted_f1 matches recomputation",
+          "expected": "0.975861483106",
+          "observed": "0.975861483106",
           "passed": true
         },
         {
           "check": "fold-04: recorded accuracy matches recomputation",
-          "expected": "0.986145105488",
-          "observed": "0.986145105488",
+          "expected": "0.984508689005",
+          "observed": "0.984508689005",
           "passed": true
         },
         {
           "check": "fold-04: recorded macro_f1 matches recomputation",
-          "expected": "0.260803886658",
-          "observed": "0.260803886658",
+          "expected": "0.207738388374",
+          "observed": "0.207738388374",
+          "passed": true
+        },
+        {
+          "check": "fold-04: recorded weighted_f1 matches recomputation",
+          "expected": "0.977197548918",
+          "observed": "0.977197548918",
           "passed": true
         }
       ],
       "pooled": {
-        "accuracy": 0.9861944467644994,
-        "rows": 20796921,
+        "accuracy": 0.984368306415121,
+        "rows": 23226530,
         "per_class": {
           "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
             "precision": 0.0,
             "recall": 0.0,
             "f1-score": 0.0,
-            "support": 17094
+            "support": 50782
           },
           "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-            "precision": 0.0,
-            "recall": 0.0,
-            "f1-score": 0.0,
-            "support": 21436
+            "precision": 0.125,
+            "recall": 1.5630861573089908e-05,
+            "f1-score": 3.125781445361341e-05,
+            "support": 63976
           },
           "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
             "precision": 0.0,
@@ -212,320 +244,322 @@
             "support": 46959
           },
           "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
-            "precision": 0.0,
-            "recall": 0.0,
-            "f1-score": 0.0,
+            "precision": 0.2857142857142857,
+            "recall": 3.6477712117895966e-05,
+            "f1-score": 7.294611106045409e-05,
             "support": 54828
           },
           "benign_degradation": {
-            "precision": 0.8208826896083784,
-            "recall": 0.585514260381262,
-            "f1-score": 0.683503360654147,
+            "precision": 0.8249354918062818,
+            "recall": 0.5822853554012117,
+            "f1-score": 0.6826900795034445,
             "support": 270680
           },
           "normal": {
-            "precision": 0.9877445601133381,
-            "recall": 0.9983026033060851,
-            "f1-score": 0.9929955178555109,
-            "support": 20385924
+            "precision": 0.9856912299488966,
+            "recall": 0.9985284950441538,
+            "f1-score": 0.9920683360029997,
+            "support": 22739305
           }
         },
         "averages": {
           "macro": {
-            "precision": 0.30143787495361946,
-            "recall": 0.2639694772812245,
-            "f1-score": 0.27941647975160966
+            "precision": 0.37022350124491066,
+            "recall": 0.2634776598365094,
+            "f1-score": 0.27914376990532636
           },
           "weighted": {
-            "precision": 0.9789084672825914,
-            "recall": 0.9861944467644994,
-            "f1-score": 0.9822676082197432
+            "precision": 0.9756467795840515,
+            "recall": 0.984368306415121,
+            "f1-score": 0.9792138999314144
           }
         }
       },
       "per_fold": [
         {
           "split_id": "fold-00",
-          "accuracy": 0.9873454437512258,
-          "rows": 4716325,
+          "accuracy": 0.9879737986723014,
+          "rows": 6170527,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 4470
+              "support": 6936
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 5604
+              "support": 9630
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 8387
+              "support": 12512
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 11905
+              "support": 14808
             },
             "benign_degradation": {
-              "precision": 0.7511588354953813,
-              "recall": 0.5076056338028169,
-              "f1-score": 0.6058201769721093,
-              "support": 44375
+              "precision": 0.848563368188648,
+              "recall": 0.7302607272919196,
+              "f1-score": 0.7849797886674704,
+              "support": 75788
             },
             "normal": {
-              "precision": 0.9888578127077183,
-              "recall": 0.998391281941682,
-              "f1-score": 0.9936016797748094,
-              "support": 4641584
+              "precision": 0.9894634222085292,
+              "recall": 0.9983673376299176,
+              "f1-score": 0.9938954386567596,
+              "support": 6050853
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.2900027747005166,
-              "recall": 0.2509994859574165,
-              "f1-score": 0.2665703094578198
+              "precision": 0.3063377983995295,
+              "recall": 0.2881046774869729,
+              "f1-score": 0.2964792045540383
             },
             "weighted": {
-              "precision": 0.9802545997284431,
-              "recall": 0.9873454437512258,
-              "f1-score": 0.983555825683984
+              "precision": 0.9806955932951962,
+              "recall": 0.9879737986723014,
+              "f1-score": 0.984260703325032
             }
           }
         },
         {
           "split_id": "fold-01",
-          "accuracy": 0.991661242079416,
-          "rows": 5582606,
+          "accuracy": 0.9868115709105285,
+          "rows": 5413230,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 4593
+              "support": 9695
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 4997
+              "support": 13301
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 13535
+              "support": 10449
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 8580
+              "support": 8755
             },
             "benign_degradation": {
-              "precision": 0.9385258978267806,
-              "recall": 0.8231014380101049,
-              "f1-score": 0.8770322762322033,
-              "support": 64325
+              "precision": 0.8228160225442834,
+              "recall": 0.5961861007802814,
+              "f1-score": 0.6914034420060045,
+              "support": 54852
             },
             "normal": {
-              "precision": 0.9922036729813224,
-              "recall": 0.9993679117905229,
-              "f1-score": 0.9957729065027067,
-              "support": 5486576
+              "precision": 0.9880245337942631,
+              "recall": 0.998675364143187,
+              "f1-score": 0.9933213990636187,
+              "support": 5316178
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.3217882618013505,
-              "recall": 0.303744891633438,
-              "f1-score": 0.31213419712248497
+              "precision": 0.30180675938975776,
+              "recall": 0.2658102441539114,
+              "f1-score": 0.2807874735116039
             },
             "weighted": {
-              "precision": 0.9859502063496652,
-              "recall": 0.991661242079416,
-              "f1-score": 0.9887494892952557
+              "precision": 0.9786481258852694,
+              "recall": 0.9868115709105285,
+              "f1-score": 0.9825184280424337
             }
           }
         },
         {
           "split_id": "fold-02",
-          "accuracy": 0.9851782530037304,
-          "rows": 4236815,
+          "accuracy": 0.9776226780928207,
+          "rows": 3523612,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 2583
+              "support": 3162
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 5428
+              "support": 17276
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 9438
+              "support": 7356
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
-              "precision": 0.0,
-              "recall": 0.0,
-              "f1-score": 0.0,
-              "support": 9372
+              "precision": 0.5,
+              "recall": 0.00020590960568310512,
+              "f1-score": 0.00041164968611711434,
+              "support": 9713
             },
             "benign_degradation": {
-              "precision": 0.7879128810393139,
-              "recall": 0.5883555780997368,
-              "f1-score": 0.6736664428190282,
-              "support": 63086
+              "precision": 0.819060425245819,
+              "recall": 0.4559816596746776,
+              "f1-score": 0.5858262036907171,
+              "support": 64121
             },
             "normal": {
-              "precision": 0.9874000254434038,
-              "recall": 0.9975868767766249,
-              "f1-score": 0.9924673119098089,
-              "support": 4146908
+              "precision": 0.9792460300735885,
+              "recall": 0.998111914024145,
+              "f1-score": 0.9885889727702085,
+              "support": 3421984
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.2958854844137863,
-              "recall": 0.2643237424793936,
-              "f1-score": 0.27768895912147284
+              "precision": 0.3830510758865679,
+              "recall": 0.24238324721741764,
+              "f1-score": 0.26247113769117375
             },
             "weighted": {
-              "precision": 0.9781789709309235,
-              "recall": 0.9851782530037304,
-              "f1-score": 0.9814376027060334
+              "precision": 0.9672857625931929,
+              "recall": 0.9776226780928207,
+              "f1-score": 0.9707378132882799
             }
           }
         },
         {
           "split_id": "fold-03",
-          "accuracy": 0.9736258546455319,
-          "rows": 2502792,
+          "accuracy": 0.9813883535641936,
+          "rows": 4116401,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 4367
+              "support": 12183
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-              "precision": 0.0,
-              "recall": 0.0,
-              "f1-score": 0.0,
-              "support": 4280
+              "precision": 0.2,
+              "recall": 0.00010979358805445762,
+              "f1-score": 0.00021946669592889278,
+              "support": 9108
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 6306
+              "support": 7363
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 10211
+              "support": 12318
             },
             "benign_degradation": {
-              "precision": 0.7376981675931645,
-              "recall": 0.48322600222529416,
-              "f1-score": 0.5839427954448224,
-              "support": 59318
+              "precision": 0.7980781153130813,
+              "recall": 0.5989020361955865,
+              "f1-score": 0.6842911945283637,
+              "support": 64483
             },
             "normal": {
-              "precision": 0.9773464083482688,
-              "recall": 0.9957859000707106,
-              "f1-score": 0.9864799930196061,
-              "support": 2418310
+              "precision": 0.9835705627552389,
+              "recall": 0.9975621711187336,
+              "f1-score": 0.990516959569865,
+              "support": 4010946
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.28584076265690556,
-              "recall": 0.24650198371600077,
-              "f1-score": 0.2617371314107381
+              "precision": 0.33027477967805335,
+              "recall": 0.2660956668170624,
+              "f1-score": 0.2791712701323596
             },
             "weighted": {
-              "precision": 0.9618399661969484,
-              "recall": 0.9736258546455319,
-              "f1-score": 0.967021131064603
+              "precision": 0.971317538187025,
+              "recall": 0.9813883535641936,
+              "f1-score": 0.975861483105837
             }
           }
         },
         {
           "split_id": "fold-04",
-          "accuracy": 0.9861451054881847,
-          "rows": 3758383,
+          "accuracy": 0.9845086890045869,
+          "rows": 4002760,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 1081
+              "support": 18806
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 1127
+              "support": 14661
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 9293
+              "support": 9279
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 14760
+              "support": 9234
             },
             "benign_degradation": {
-              "precision": 0.8324478361669243,
-              "recall": 0.43549120679199516,
-              "f1-score": 0.5718314532183145,
-              "support": 39576
+              "precision": 0.8510956175298805,
+              "recall": 0.14944036376355369,
+              "f1-score": 0.254239809580482,
+              "support": 11436
             },
             "normal": {
-              "precision": 0.9869967396870464,
-              "recall": 0.9990602689851392,
-              "f1-score": 0.9929918667324161,
-              "support": 3692546
+              "precision": 0.98457614197338,
+              "recall": 0.9999235913390656,
+              "f1-score": 0.9921905206663801,
+              "support": 3939344
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.3032407626423284,
-              "recall": 0.23909191262952242,
-              "f1-score": 0.2608038866584551
+              "precision": 0.30594529325054337,
+              "recall": 0.19156065918376988,
+              "f1-score": 0.207738388374477
             },
             "weighted": {
-              "precision": 0.9784728748263779,
-              "recall": 0.9861451054881847,
-              "f1-score": 0.9816186767362145
+              "precision": 0.9714090394897656,
+              "recall": 0.9845086890045869,
+              "f1-score": 0.9771975489178325
             }
           }
         }
       ]
     },
     {
-      "label": "grouped-validation-full-downsample",
-      "directory": "results/grouped-validation-full-downsample",
+      "label": "d3-decision-tree-downsample",
+      "directory": "results/d3-decision-tree-downsample",
       "status": "full_grouped_run",
       "balance": "downsample",
+      "model": "decision-tree",
+      "max_train_rows_per_fold": null,
       "dataset_checked": true,
       "checks": [
         {
@@ -536,56 +570,56 @@
         },
         {
           "check": "prediction rows == report rows_used",
-          "expected": "20796921",
-          "observed": "20796921",
+          "expected": "23226530",
+          "observed": "23226530",
           "passed": true
         },
         {
           "check": "full run covers dataset rows 0..N-1 with no gaps",
-          "expected": "0..20796920",
-          "observed": "0..20796920 over 20796921 rows",
+          "expected": "0..23226529",
+          "observed": "0..23226529 over 23226530 rows",
           "passed": true
         },
         {
           "check": "fold-00: predictions == test_rows == sum(per-class support)",
-          "expected": "4716325 == 4716325",
-          "observed": "4716325 predictions",
+          "expected": "6170527 == 6170527",
+          "observed": "6170527 predictions",
           "passed": true
         },
         {
           "check": "fold-01: predictions == test_rows == sum(per-class support)",
-          "expected": "5582606 == 5582606",
-          "observed": "5582606 predictions",
+          "expected": "5413230 == 5413230",
+          "observed": "5413230 predictions",
           "passed": true
         },
         {
           "check": "fold-02: predictions == test_rows == sum(per-class support)",
-          "expected": "4236815 == 4236815",
-          "observed": "4236815 predictions",
+          "expected": "3523612 == 3523612",
+          "observed": "3523612 predictions",
           "passed": true
         },
         {
           "check": "fold-03: predictions == test_rows == sum(per-class support)",
-          "expected": "2502792 == 2502792",
-          "observed": "2502792 predictions",
+          "expected": "4116401 == 4116401",
+          "observed": "4116401 predictions",
           "passed": true
         },
         {
           "check": "fold-04: predictions == test_rows == sum(per-class support)",
-          "expected": "3758383 == 3758383",
-          "observed": "3758383 predictions",
+          "expected": "4002760 == 4002760",
+          "observed": "4002760 predictions",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE",
-          "expected": "17094",
-          "observed": "17094",
+          "expected": "50782",
+          "observed": "50782",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
-          "expected": "21436",
-          "observed": "21436",
+          "expected": "63976",
+          "observed": "63976",
           "passed": true
         },
         {
@@ -608,20 +642,20 @@
         },
         {
           "check": "class sum (predictions vs. report support): normal",
-          "expected": "20385924",
-          "observed": "20385924",
+          "expected": "22739305",
+          "observed": "22739305",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE",
-          "expected": "17094 in dataset",
-          "observed": "17094 predicted",
+          "expected": "50782 in dataset",
+          "observed": "50782 predicted",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
-          "expected": "21436 in dataset",
-          "observed": "21436 predicted",
+          "expected": "63976 in dataset",
+          "observed": "63976 predicted",
           "passed": true
         },
         {
@@ -644,398 +678,428 @@
         },
         {
           "check": "class sum (predictions vs. dataset): normal",
-          "expected": "20385924 in dataset",
-          "observed": "20385924 predicted",
+          "expected": "22739305 in dataset",
+          "observed": "22739305 predicted",
           "passed": true
         },
         {
           "check": "fold-00: recorded accuracy matches recomputation",
-          "expected": "0.545757766905",
-          "observed": "0.545757766905",
+          "expected": "0.563167295111",
+          "observed": "0.563167295111",
           "passed": true
         },
         {
           "check": "fold-00: recorded macro_f1 matches recomputation",
-          "expected": "0.202142402762",
-          "observed": "0.202142402762",
+          "expected": "0.217521034573",
+          "observed": "0.217521034573",
+          "passed": true
+        },
+        {
+          "check": "fold-00: recorded weighted_f1 matches recomputation",
+          "expected": "0.709850636260",
+          "observed": "0.709850636260",
           "passed": true
         },
         {
           "check": "fold-01: recorded accuracy matches recomputation",
-          "expected": "0.558658089072",
-          "observed": "0.558658089072",
+          "expected": "0.537908790131",
+          "observed": "0.537908790131",
           "passed": true
         },
         {
           "check": "fold-01: recorded macro_f1 matches recomputation",
-          "expected": "0.204966839720",
-          "observed": "0.204966839720",
+          "expected": "0.210428885931",
+          "observed": "0.210428885931",
+          "passed": true
+        },
+        {
+          "check": "fold-01: recorded weighted_f1 matches recomputation",
+          "expected": "0.689630883907",
+          "observed": "0.689630883907",
           "passed": true
         },
         {
           "check": "fold-02: recorded accuracy matches recomputation",
-          "expected": "0.524415864275",
-          "observed": "0.524415864275",
+          "expected": "0.478001550682",
+          "observed": "0.478001550682",
           "passed": true
         },
         {
           "check": "fold-02: recorded macro_f1 matches recomputation",
-          "expected": "0.204858981772",
-          "observed": "0.204858981772",
+          "expected": "0.193061122559",
+          "observed": "0.193061122559",
+          "passed": true
+        },
+        {
+          "check": "fold-02: recorded weighted_f1 matches recomputation",
+          "expected": "0.633129457273",
+          "observed": "0.633129457273",
           "passed": true
         },
         {
           "check": "fold-03: recorded accuracy matches recomputation",
-          "expected": "0.441600021096",
-          "observed": "0.441600021096",
+          "expected": "0.502497205690",
+          "observed": "0.502497205690",
           "passed": true
         },
         {
           "check": "fold-03: recorded macro_f1 matches recomputation",
-          "expected": "0.200140965270",
-          "observed": "0.200140965270",
+          "expected": "0.227967213084",
+          "observed": "0.227967213084",
+          "passed": true
+        },
+        {
+          "check": "fold-03: recorded weighted_f1 matches recomputation",
+          "expected": "0.655898370290",
+          "observed": "0.655898370290",
           "passed": true
         },
         {
           "check": "fold-04: recorded accuracy matches recomputation",
-          "expected": "0.496356544823",
-          "observed": "0.496356544823",
+          "expected": "0.506475282055",
+          "observed": "0.506475282055",
           "passed": true
         },
         {
           "check": "fold-04: recorded macro_f1 matches recomputation",
-          "expected": "0.172889275658",
-          "observed": "0.172889275658",
+          "expected": "0.153984094741",
+          "observed": "0.153984094741",
+          "passed": true
+        },
+        {
+          "check": "fold-04: recorded weighted_f1 matches recomputation",
+          "expected": "0.660879335093",
+          "observed": "0.660879335093",
           "passed": true
         }
       ],
       "pooled": {
-        "accuracy": 0.5234103163636579,
-        "rows": 20796921,
+        "accuracy": 0.5238377837757082,
+        "rows": 23226530,
         "per_class": {
           "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-            "precision": 0.014961960633723296,
-            "recall": 0.9208494208494209,
-            "f1-score": 0.02944549095459809,
-            "support": 17094
+            "precision": 0.0347560624646336,
+            "recall": 0.9156000157536135,
+            "f1-score": 0.06696995382996668,
+            "support": 50782
           },
           "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-            "precision": 0.004979039524291915,
-            "recall": 0.5640511289419667,
-            "f1-score": 0.009870945409777714,
-            "support": 21436
+            "precision": 0.011888704641791792,
+            "recall": 0.5717612854820557,
+            "f1-score": 0.023293073464337635,
+            "support": 63976
           },
           "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-            "precision": 0.008836440188728182,
-            "recall": 0.6391958942907643,
-            "f1-score": 0.017431896491145543,
+            "precision": 0.00899832316293016,
+            "recall": 0.6365127025703273,
+            "f1-score": 0.017745775878984377,
             "support": 46959
           },
           "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
-            "precision": 0.012267086338206551,
-            "recall": 0.6087582986795068,
-            "f1-score": 0.024049550273337838,
+            "precision": 0.010680777090627059,
+            "recall": 0.6025570876194645,
+            "f1-score": 0.020989499532236007,
             "support": 54828
           },
           "benign_degradation": {
-            "precision": 0.3183125616203883,
-            "recall": 0.6643675188414364,
-            "f1-score": 0.43040767994485596,
+            "precision": 0.3283039220578808,
+            "recall": 0.6319159154721442,
+            "f1-score": 0.4321103675465654,
             "support": 270680
           },
           "normal": {
-            "precision": 0.998161150164179,
-            "recall": 0.5206664657437161,
-            "f1-score": 0.6843555290348132,
-            "support": 20385924
+            "precision": 0.9977922894578896,
+            "recall": 0.5211190491529974,
+            "f1-score": 0.6846595399176131,
+            "support": 22739305
           }
         },
         "averages": {
           "macro": {
-            "precision": 0.22625303974491953,
-            "recall": 0.652981454557802,
-            "f1-score": 0.19926018201808807
+            "precision": 0.23207001314595885,
+            "recall": 0.6465776760084337,
+            "f1-score": 0.20762803502828386
           },
           "weighted": {
-            "precision": 0.9826477780932013,
-            "recall": 0.5234103163636579,
-            "f1-score": 0.6765700875946429
+            "precision": 0.9808396792069171,
+            "recall": 0.5238377837757082,
+            "f1-score": 0.675629159227271
           }
         }
       },
       "per_fold": [
         {
           "split_id": "fold-00",
-          "accuracy": 0.5457577669053766,
-          "rows": 4716325,
+          "accuracy": 0.5631672951110983,
+          "rows": 6170527,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.018415397064325552,
-              "recall": 0.946979865771812,
-              "f1-score": 0.03612822832562347,
-              "support": 4470
+              "precision": 0.022916573540148706,
+              "recall": 0.8869665513264129,
+              "f1-score": 0.04467878048426221,
+              "support": 6936
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-              "precision": 0.005906996143501996,
-              "recall": 0.5130264097073519,
-              "f1-score": 0.011679514132212099,
-              "support": 5604
+              "precision": 0.010179626694978103,
+              "recall": 0.5416407061266875,
+              "f1-score": 0.019983678973844215,
+              "support": 9630
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.007068102188028702,
-              "recall": 0.6669846190532968,
-              "f1-score": 0.013987972444144382,
-              "support": 8387
+              "precision": 0.007523870032482931,
+              "recall": 0.671994884910486,
+              "f1-score": 0.014881126208162319,
+              "support": 12512
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
-              "precision": 0.012546982368161595,
-              "recall": 0.6317513649727006,
-              "f1-score": 0.02460528812494684,
-              "support": 11905
+              "precision": 0.012196093727064173,
+              "recall": 0.5891410048622366,
+              "f1-score": 0.02389747424734872,
+              "support": 14808
             },
             "benign_degradation": {
-              "precision": 0.3350865309266712,
-              "recall": 0.5685408450704226,
-              "f1-score": 0.42165694516403995,
-              "support": 44375
+              "precision": 0.3529422437254309,
+              "recall": 0.7700295561302581,
+              "f1-score": 0.48402989159734267,
+              "support": 75788
             },
             "normal": {
-              "precision": 0.9979980983513125,
-              "recall": 0.5447534720905622,
-              "f1-score": 0.7047964683788202,
-              "support": 4641584
+              "precision": 0.9990187255934528,
+              "recall": 0.5599508036304964,
+              "f1-score": 0.7176552559259278,
+              "support": 6050853
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.22950368450700023,
-              "recall": 0.6453394294443576,
-              "f1-score": 0.20214240276163112
+              "precision": 0.23412952221892627,
+              "recall": 0.6699539178310961,
+              "f1-score": 0.2175210345728147
             },
             "weighted": {
-              "precision": 0.9854040045537912,
-              "recall": 0.5457577669053766,
-              "f1-score": 0.6977297421367529
+              "precision": 0.984064401169898,
+              "recall": 0.5631672951110983,
+              "f1-score": 0.709850636259962
             }
           }
         },
         {
           "split_id": "fold-01",
-          "accuracy": 0.5586580890716629,
-          "rows": 5582606,
+          "accuracy": 0.5379087901308461,
+          "rows": 5413230,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.019940968972716147,
-              "recall": 0.9046374918354017,
-              "f1-score": 0.03902177894232666,
-              "support": 4593
+              "precision": 0.03444267574871358,
+              "recall": 0.9596699329551315,
+              "f1-score": 0.06649870454748504,
+              "support": 9695
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-              "precision": 0.005899754038423187,
-              "recall": 0.5683410046027617,
-              "f1-score": 0.0116782798387246,
-              "support": 4997
+              "precision": 0.011896460671564883,
+              "recall": 0.6977670851815653,
+              "f1-score": 0.023394068175774375,
+              "support": 13301
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.008113975276608605,
-              "recall": 0.650609530845955,
-              "f1-score": 0.01602805911416124,
-              "support": 13535
+              "precision": 0.008323832199791156,
+              "recall": 0.6644654990908221,
+              "f1-score": 0.016441697451927632,
+              "support": 10449
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
-              "precision": 0.009099579775739617,
-              "recall": 0.6026806526806526,
-              "f1-score": 0.0179284664244307,
-              "support": 8580
+              "precision": 0.008201281707844794,
+              "recall": 0.5455168475157053,
+              "f1-score": 0.016159620235390446,
+              "support": 8755
             },
             "benign_degradation": {
-              "precision": 0.28727338000359004,
-              "recall": 0.8707967353284104,
-              "f1-score": 0.43202344683969,
-              "support": 64325
+              "precision": 0.3515618295717841,
+              "recall": 0.5974987238386932,
+              "f1-score": 0.44266457764931527,
+              "support": 54852
             },
             "normal": {
-              "precision": 0.9991650034621807,
-              "recall": 0.5544044227219308,
-              "f1-score": 0.7131210071621986,
-              "support": 5486576
+              "precision": 0.9984148007075393,
+              "recall": 0.535863547082133,
+              "f1-score": 0.6974146475275499,
+              "support": 5316178
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.2215821102548764,
-              "recall": 0.6919116396691853,
-              "f1-score": 0.2049668397202553
+              "precision": 0.2354734801012063,
+              "recall": 0.6667969392773418,
+              "f1-score": 0.21042888593124043
             },
             "weighted": {
-              "precision": 0.9853431453331142,
-              "recall": 0.5586580890716629,
-              "f1-score": 0.7059410713611131
+              "precision": 0.9841971618387286,
+              "recall": 0.537908790130846,
+              "f1-score": 0.6896308839066815
             }
           }
         },
         {
           "split_id": "fold-02",
-          "accuracy": 0.524415864275405,
-          "rows": 4236815,
+          "accuracy": 0.47800155068151656,
+          "rows": 3523612,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.010475462904440255,
-              "recall": 0.737901664730933,
-              "f1-score": 0.020657663711443,
-              "support": 2583
+              "precision": 0.011531938535315877,
+              "recall": 0.997786211258697,
+              "f1-score": 0.022800361336946705,
+              "support": 3162
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-              "precision": 0.006702203428005592,
-              "recall": 0.6085114222549742,
-              "f1-score": 0.013258377805563862,
-              "support": 5428
+              "precision": 0.01632192580487709,
+              "recall": 0.5284209307710118,
+              "f1-score": 0.03166575613309399,
+              "support": 17276
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.008542688447374706,
-              "recall": 0.6518330154693791,
-              "f1-score": 0.016864358691093307,
-              "support": 9438
+              "precision": 0.01206929802005657,
+              "recall": 0.6125611745513866,
+              "f1-score": 0.023672182821118996,
+              "support": 7356
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
-              "precision": 0.009935617342298158,
-              "recall": 0.5944302176696543,
-              "f1-score": 0.019544556747976605,
-              "support": 9372
+              "precision": 0.010043406063209866,
+              "recall": 0.6065067435395861,
+              "f1-score": 0.019759604338324945,
+              "support": 9713
             },
             "benign_degradation": {
-              "precision": 0.36666434939779974,
-              "recall": 0.6688488729670609,
-              "f1-score": 0.4736647134101165,
-              "support": 63086
+              "precision": 0.35241763220920447,
+              "recall": 0.5094586796837229,
+              "f1-score": 0.41663106207952044,
+              "support": 64121
             },
             "normal": {
-              "precision": 0.9984391352781742,
-              "recall": 0.521527364484575,
-              "f1-score": 0.6851642202655942,
-              "support": 4146908
+              "precision": 0.9943966356616689,
+              "recall": 0.47602326603514217,
+              "f1-score": 0.6438377686479752,
+              "support": 3421984
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.23345990946634876,
-              "recall": 0.6305087595960961,
-              "f1-score": 0.2048589817719646
+              "precision": 0.23279680604905548,
+              "recall": 0.621792834306591,
+              "f1-score": 0.1930611225594967
             },
             "weighted": {
-              "precision": 0.982767433773823,
-              "recall": 0.524415864275405,
-              "f1-score": 0.6777879754170548
+              "precision": 0.9722726346777477,
+              "recall": 0.47800155068151656,
+              "f1-score": 0.6331294572728061
             }
           }
         },
         {
           "split_id": "fold-03",
-          "accuracy": 0.4416000210964395,
-          "rows": 2502792,
+          "accuracy": 0.5024972056901162,
+          "rows": 4116401,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.022009154517774687,
-              "recall": 0.9997710098465766,
-              "f1-score": 0.0430701542377145,
-              "support": 4367
+              "precision": 0.0442570117990596,
+              "recall": 0.9479602725108758,
+              "f1-score": 0.08456593052545253,
+              "support": 12183
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-              "precision": 0.004988998946980917,
-              "recall": 0.5446261682242991,
-              "f1-score": 0.009887425027783196,
-              "support": 4280
+              "precision": 0.009405653806848878,
+              "recall": 0.634606938954765,
+              "f1-score": 0.018536572850655516,
+              "support": 9108
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.014912172287537271,
-              "recall": 0.6122740247383445,
-              "f1-score": 0.0291152317681037,
-              "support": 6306
+              "precision": 0.008737155556207505,
+              "recall": 0.647154692380823,
+              "f1-score": 0.017241535274589086,
+              "support": 7363
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
-              "precision": 0.015070610227840604,
-              "recall": 0.6379394770345705,
-              "f1-score": 0.029445600902263117,
-              "support": 10211
+              "precision": 0.01299760064689741,
+              "recall": 0.6367916869621691,
+              "f1-score": 0.025475224661992094,
+              "support": 12318
             },
             "benign_degradation": {
-              "precision": 0.3997820151488462,
-              "recall": 0.6121750564752689,
-              "f1-score": 0.48368964368964373,
-              "support": 59318
+              "precision": 0.4721510162492626,
+              "recall": 0.6826760541538079,
+              "f1-score": 0.5582241722568128,
+              "support": 64483
             },
             "normal": {
-              "precision": 0.9968120150263644,
-              "recall": 0.43495168113269184,
-              "f1-score": 0.6056377359924595,
-              "support": 2418310
+              "precision": 0.9978487318274123,
+              "recall": 0.49726947208962674,
+              "f1-score": 0.6637598429356746,
+              "support": 4010946
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.242262494359224,
-              "recall": 0.6402895695752919,
-              "f1-score": 0.2001409652696613
+              "precision": 0.25756619498094807,
+              "recall": 0.6744098528420114,
+              "f1-score": 0.2279672130841961
             },
             "weighted": {
-              "precision": 0.9727856420692412,
-              "recall": 0.4416000210964395,
-              "f1-score": 0.596943721586662
+              "precision": 0.9798881060178012,
+              "recall": 0.5024972056901162,
+              "f1-score": 0.6558983702904155
             }
           }
         },
         {
           "split_id": "fold-04",
-          "accuracy": 0.49635654482260055,
-          "rows": 3758383,
+          "accuracy": 0.5064752820553818,
+          "rows": 4002760,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.004629153819801302,
-              "recall": 1.0,
-              "f1-score": 0.009215646992127059,
-              "support": 1081
+              "precision": 0.06172494313415804,
+              "recall": 0.8686589386366054,
+              "f1-score": 0.1152597860751277,
+              "support": 18806
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-              "precision": 0.0014832820914677297,
-              "recall": 0.6583850931677019,
-              "f1-score": 0.002959895805285129,
-              "support": 1127
+              "precision": 0.011751137352168792,
+              "recall": 0.4892572130141191,
+              "f1-score": 0.022951029484697717,
+              "support": 14661
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.01035582794872174,
-              "recall": 0.6029269342515872,
-              "f1-score": 0.020361921063486093,
-              "support": 9293
+              "precision": 0.011670539862160025,
+              "recall": 0.5677335919818945,
+              "f1-score": 0.022870936371214224,
+              "support": 9279
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
-              "precision": 0.015351084661231907,
-              "recall": 0.5826558265582655,
-              "f1-score": 0.02991403194192504,
-              "support": 14760
+              "precision": 0.00958346134406311,
+              "recall": 0.6283300844704354,
+              "f1-score": 0.018878975420237795,
+              "support": 9234
             },
             "benign_degradation": {
-              "precision": 0.2262152875570326,
-              "recall": 0.507378209015565,
-              "f1-score": 0.3129163712297707,
-              "support": 39576
+              "precision": 0.04217048588870443,
+              "recall": 0.2820916404337181,
+              "f1-score": 0.0733723773241599,
+              "support": 11436
             },
             "normal": {
-              "precision": 0.9971683000043061,
-              "recall": 0.4954283575614224,
-              "f1-score": 0.6619677869159291,
-              "support": 3692546
+              "precision": 0.9975486152860308,
+              "recall": 0.5050318022493085,
+              "f1-score": 0.6705714637697354,
+              "support": 3939344
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.20920048934709357,
-              "recall": 0.6411290700924236,
-              "f1-score": 0.17288927565808718
+              "precision": 0.1890748638112142,
+              "recall": 0.5568505451310135,
+              "f1-score": 0.15398409474086214
             },
             "weighted": {
-              "precision": 0.9821702599817478,
-              "recall": 0.49635654482260055,
-              "f1-score": 0.6538382422371356
+              "precision": 0.9822470698564715,
+              "recall": 0.5064752820553818,
+              "f1-score": 0.6608793350931423
             }
           }
         }
@@ -1046,6 +1110,8 @@
       "directory": "results/grouped-validation-full-smote",
       "status": "full_grouped_run",
       "balance": "smote",
+      "model": "decision-tree",
+      "max_train_rows_per_fold": null,
       "dataset_checked": true,
       "checks": [
         {
@@ -1056,56 +1122,56 @@
         },
         {
           "check": "prediction rows == report rows_used",
-          "expected": "20796921",
-          "observed": "20796921",
+          "expected": "23226530",
+          "observed": "23226530",
           "passed": true
         },
         {
           "check": "full run covers dataset rows 0..N-1 with no gaps",
-          "expected": "0..20796920",
-          "observed": "0..20796920 over 20796921 rows",
+          "expected": "0..23226529",
+          "observed": "0..23226529 over 23226530 rows",
           "passed": true
         },
         {
           "check": "fold-00: predictions == test_rows == sum(per-class support)",
-          "expected": "4716325 == 4716325",
-          "observed": "4716325 predictions",
+          "expected": "6170527 == 6170527",
+          "observed": "6170527 predictions",
           "passed": true
         },
         {
           "check": "fold-01: predictions == test_rows == sum(per-class support)",
-          "expected": "5582606 == 5582606",
-          "observed": "5582606 predictions",
+          "expected": "5413230 == 5413230",
+          "observed": "5413230 predictions",
           "passed": true
         },
         {
           "check": "fold-02: predictions == test_rows == sum(per-class support)",
-          "expected": "4236815 == 4236815",
-          "observed": "4236815 predictions",
+          "expected": "3523612 == 3523612",
+          "observed": "3523612 predictions",
           "passed": true
         },
         {
           "check": "fold-03: predictions == test_rows == sum(per-class support)",
-          "expected": "2502792 == 2502792",
-          "observed": "2502792 predictions",
+          "expected": "4116401 == 4116401",
+          "observed": "4116401 predictions",
           "passed": true
         },
         {
           "check": "fold-04: predictions == test_rows == sum(per-class support)",
-          "expected": "3758383 == 3758383",
-          "observed": "3758383 predictions",
+          "expected": "4002760 == 4002760",
+          "observed": "4002760 predictions",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE",
-          "expected": "17094",
-          "observed": "17094",
+          "expected": "50782",
+          "observed": "50782",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
-          "expected": "21436",
-          "observed": "21436",
+          "expected": "63976",
+          "observed": "63976",
           "passed": true
         },
         {
@@ -1128,20 +1194,20 @@
         },
         {
           "check": "class sum (predictions vs. report support): normal",
-          "expected": "20385924",
-          "observed": "20385924",
+          "expected": "22739305",
+          "observed": "22739305",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE",
-          "expected": "17094 in dataset",
-          "observed": "17094 predicted",
+          "expected": "50782 in dataset",
+          "observed": "50782 predicted",
           "passed": true
         },
         {
           "check": "class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
-          "expected": "21436 in dataset",
-          "observed": "21436 predicted",
+          "expected": "63976 in dataset",
+          "observed": "63976 predicted",
           "passed": true
         },
         {
@@ -1164,91 +1230,121 @@
         },
         {
           "check": "class sum (predictions vs. dataset): normal",
-          "expected": "20385924 in dataset",
-          "observed": "20385924 predicted",
+          "expected": "22739305 in dataset",
+          "observed": "22739305 predicted",
           "passed": true
         },
         {
           "check": "fold-00: recorded accuracy matches recomputation",
-          "expected": "0.986673734316",
-          "observed": "0.986673734316",
+          "expected": "0.984384153898",
+          "observed": "0.984384153898",
           "passed": true
         },
         {
           "check": "fold-00: recorded macro_f1 matches recomputation",
-          "expected": "0.263953121484",
-          "observed": "0.263953121484",
+          "expected": "0.273863510723",
+          "observed": "0.273863510723",
+          "passed": true
+        },
+        {
+          "check": "fold-00: recorded weighted_f1 matches recomputation",
+          "expected": "0.980921755253",
+          "observed": "0.980921755253",
           "passed": true
         },
         {
           "check": "fold-01: recorded accuracy matches recomputation",
-          "expected": "0.990791397423",
-          "observed": "0.990791397423",
+          "expected": "0.986431575972",
+          "observed": "0.986431575972",
           "passed": true
         },
         {
           "check": "fold-01: recorded macro_f1 matches recomputation",
-          "expected": "0.310963398268",
-          "observed": "0.310963398268",
+          "expected": "0.278756854939",
+          "observed": "0.278756854939",
+          "passed": true
+        },
+        {
+          "check": "fold-01: recorded weighted_f1 matches recomputation",
+          "expected": "0.982234346238",
+          "observed": "0.982234346238",
           "passed": true
         },
         {
           "check": "fold-02: recorded accuracy matches recomputation",
-          "expected": "0.984641057020",
-          "observed": "0.984641057020",
+          "expected": "0.977248913899",
+          "observed": "0.977248913899",
           "passed": true
         },
         {
           "check": "fold-02: recorded macro_f1 matches recomputation",
-          "expected": "0.276415181400",
-          "observed": "0.276415181400",
+          "expected": "0.261548600807",
+          "observed": "0.261548600807",
+          "passed": true
+        },
+        {
+          "check": "fold-02: recorded weighted_f1 matches recomputation",
+          "expected": "0.970517398559",
+          "observed": "0.970517398559",
           "passed": true
         },
         {
           "check": "fold-03: recorded accuracy matches recomputation",
-          "expected": "0.973247077664",
-          "observed": "0.973247077664",
+          "expected": "0.980590569286",
+          "observed": "0.980590569286",
           "passed": true
         },
         {
           "check": "fold-03: recorded macro_f1 matches recomputation",
-          "expected": "0.261138749729",
-          "observed": "0.261138749729",
+          "expected": "0.276082693535",
+          "observed": "0.276082693535",
+          "passed": true
+        },
+        {
+          "check": "fold-03: recorded weighted_f1 matches recomputation",
+          "expected": "0.975156036007",
+          "observed": "0.975156036007",
           "passed": true
         },
         {
           "check": "fold-04: recorded accuracy matches recomputation",
-          "expected": "0.985382277432",
-          "observed": "0.985382277432",
+          "expected": "0.984290839321",
+          "observed": "0.984290839321",
           "passed": true
         },
         {
           "check": "fold-04: recorded macro_f1 matches recomputation",
-          "expected": "0.260013235805",
-          "observed": "0.260013235805",
+          "expected": "0.203269478254",
+          "observed": "0.203269478254",
+          "passed": true
+        },
+        {
+          "check": "fold-04: recorded weighted_f1 matches recomputation",
+          "expected": "0.977019037287",
+          "observed": "0.977019037287",
           "passed": true
         }
       ],
       "pooled": {
-        "accuracy": 0.9855157405271675,
-        "rows": 20796921,
+        "accuracy": 0.9830904573347805,
+        "rows": 23226530,
         "per_class": {
           "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-            "precision": 0.0018067935437244037,
-            "recall": 0.0008775008775008775,
-            "f1-score": 0.0011812883918727358,
-            "support": 17094
+            "precision": 0.0007040600797934757,
+            "recall": 5.9076050569099284e-05,
+            "f1-score": 0.00010900568646331049,
+            "support": 50782
           },
           "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-            "precision": 0.0009363295880149813,
-            "recall": 4.665049449524165e-05,
-            "f1-score": 8.88730892285816e-05,
-            "support": 21436
+            "precision": 0.0013908205841446453,
+            "recall": 1.5630861573089908e-05,
+            "f1-score": 3.091429013061287e-05,
+            "support": 63976
           },
           "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-            "precision": 0.006898817345597897,
-            "recall": 0.0004471986200728295,
-            "f1-score": 0.0008399496030238186,
+            "precision": 0.005312084993359893,
+            "recall": 0.0011925296535275453,
+            "f1-score": 0.0019477922123093514,
             "support": 46959
           },
           "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
@@ -1258,304 +1354,304 @@
             "support": 54828
           },
           "benign_degradation": {
-            "precision": 0.8149749111436337,
-            "recall": 0.5760344318013891,
-            "f1-score": 0.674982683982684,
+            "precision": 0.8168728273720245,
+            "recall": 0.5130744790897,
+            "f1-score": 0.6302754979089752,
             "support": 270680
           },
           "normal": {
-            "precision": 0.9877089336329131,
-            "recall": 0.9977342699796192,
-            "f1-score": 0.9926962907400313,
-            "support": 20385924
+            "precision": 0.9849951142684801,
+            "recall": 0.9980446192176937,
+            "f1-score": 0.9914769302409725,
+            "support": 22739305
           }
         },
         "averages": {
           "macro": {
-            "precision": 0.302054297542314,
-            "recall": 0.2625233419621796,
-            "f1-score": 0.27829818096780673
+            "precision": 0.3015458178829671,
+            "recall": 0.2520643891455106,
+            "f1-score": 0.27064002338980847
           },
           "weighted": {
-            "precision": 0.9788146804117582,
-            "recall": 0.9855157405271675,
-            "f1-score": 0.981866353785223
+            "precision": 0.9738686599629711,
+            "recall": 0.9830904573347805,
+            "f1-score": 0.978028068276281
           }
         }
       },
       "per_fold": [
         {
           "split_id": "fold-00",
-          "accuracy": 0.9866737343164435,
-          "rows": 4716325,
+          "accuracy": 0.9843841538980382,
+          "rows": 6170527,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.0064612326043737576,
-              "recall": 0.0029082774049217002,
-              "f1-score": 0.004011107682813946,
-              "support": 4470
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1-score": 0.0,
+              "support": 6936
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-              "precision": 0.0030864197530864196,
-              "recall": 0.00017844396859386153,
-              "f1-score": 0.00033738191632928474,
-              "support": 5604
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1-score": 0.0,
+              "support": 9630
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.0032626427406199023,
-              "recall": 0.0002384642899725766,
-              "f1-score": 0.0004444444444444444,
-              "support": 8387
+              "precision": 0.003386960203217612,
+              "recall": 0.002237851662404092,
+              "f1-score": 0.0026950286346792435,
+              "support": 12512
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 11905
+              "support": 14808
             },
             "benign_degradation": {
-              "precision": 0.7477938086566746,
-              "recall": 0.4812169014084507,
-              "f1-score": 0.5855946031180156,
-              "support": 44375
+              "precision": 0.8318693810065103,
+              "recall": 0.5310867155750251,
+              "f1-score": 0.648289080556965,
+              "support": 75788
             },
             "normal": {
-              "precision": 0.9887474865629843,
-              "recall": 0.9979575937869486,
-              "f1-score": 0.9933311917433557,
-              "support": 4641584
+              "precision": 0.9872470379190538,
+              "recall": 0.9971967588701957,
+              "f1-score": 0.992196955146757,
+              "support": 6050853
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.29155859838628984,
-              "recall": 0.24708328014314793,
-              "f1-score": 0.26395312148415984
+              "precision": 0.30375056318813026,
+              "recall": 0.25508688768460414,
+              "f1-score": 0.27386351072306686
             },
             "weighted": {
-              "precision": 0.9801299540894248,
-              "recall": 0.9866737343164435,
-              "f1-score": 0.9831043184482431
+              "precision": 0.978324022474483,
+              "recall": 0.9843841538980382,
+              "f1-score": 0.9809217552530195
             }
           }
         },
         {
           "split_id": "fold-01",
-          "accuracy": 0.9907913974226373,
-          "rows": 5582606,
+          "accuracy": 0.9864315759722014,
+          "rows": 5413230,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.0005314908317831517,
-              "recall": 0.00043544524276072284,
-              "f1-score": 0.00047869794159885107,
-              "support": 4593
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1-score": 0.0,
+              "support": 9695
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 4997
+              "support": 13301
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.0,
-              "recall": 0.0,
-              "f1-score": 0.0,
-              "support": 13535
+              "precision": 0.012249443207126948,
+              "recall": 0.0010527323188821898,
+              "f1-score": 0.001938838459504715,
+              "support": 10449
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 8580
+              "support": 8755
             },
             "benign_degradation": {
-              "precision": 0.9310473218559955,
-              "recall": 0.8163544500582977,
-              "f1-score": 0.8699368818647184,
-              "support": 64325
+              "precision": 0.8292934093789607,
+              "recall": 0.5725771166046817,
+              "f1-score": 0.6774297916397048,
+              "support": 54852
             },
             "normal": {
-              "precision": 0.9921884422847692,
-              "recall": 0.9985615801184564,
-              "f1-score": 0.9953648097987771,
-              "support": 5486576
+              "precision": 0.9878722225902814,
+              "recall": 0.9985299589291404,
+              "f1-score": 0.9931724995345992,
+              "support": 5316178
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.32062787582875796,
-              "recall": 0.3025585792365858,
-              "f1-score": 0.31096339826751573
+              "precision": 0.3049025125293949,
+              "recall": 0.2620266346421174,
+              "f1-score": 0.2787568549389681
             },
             "weighted": {
-              "precision": 0.9858495038039182,
-              "recall": 0.9907913974226373,
-              "f1-score": 0.9882670504191283
+              "precision": 0.9785878252113586,
+              "recall": 0.9864315759722014,
+              "f1-score": 0.9822343462378156
             }
           }
         },
         {
           "split_id": "fold-02",
-          "accuracy": 0.9846410570204269,
-          "rows": 4236815,
+          "accuracy": 0.977248913898579,
+          "rows": 3523612,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 2583
+              "support": 3162
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 5428
+              "support": 17276
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.006528835690968444,
-              "recall": 0.0006357279084551812,
-              "f1-score": 0.0011586366708506324,
-              "support": 9438
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1-score": 0.0,
+              "support": 7356
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 9372
+              "support": 9713
             },
             "benign_degradation": {
-              "precision": 0.7781506892962593,
-              "recall": 0.5806835113971404,
-              "f1-score": 0.6650690340676997,
-              "support": 63086
+              "precision": 0.8148586234088093,
+              "recall": 0.4512406231967686,
+              "f1-score": 0.5808348974696124,
+              "support": 64121
             },
             "normal": {
-              "precision": 0.9874212589964134,
-              "recall": 0.9971533007242986,
-              "f1-score": 0.9922634176588254,
-              "support": 4146908
+              "precision": 0.9792709053312646,
+              "recall": 0.9978164713803455,
+              "f1-score": 0.9884567073694986,
+              "support": 3421984
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.29535013066394017,
-              "recall": 0.26307875667164904,
-              "f1-score": 0.2764151813995626
+              "precision": 0.2990215881233456,
+              "recall": 0.24150951576285232,
+              "f1-score": 0.2615486008065185
             },
             "weighted": {
-              "precision": 0.9780689390116146,
-              "recall": 0.9846410570204269,
-              "f1-score": 0.9811126011149457
+              "precision": 0.9658551848219096,
+              "recall": 0.977248913898579,
+              "f1-score": 0.9705173985591363
             }
           }
         },
         {
           "split_id": "fold-03",
-          "accuracy": 0.9732470776636652,
-          "rows": 2502792,
+          "accuracy": 0.9805905692861313,
+          "rows": 4116401,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.0,
-              "recall": 0.0,
-              "f1-score": 0.0,
-              "support": 4367
+              "precision": 0.0023752969121140144,
+              "recall": 8.208158909956496e-05,
+              "f1-score": 0.00015867978419549348,
+              "support": 12183
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 4280
+              "support": 9108
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.004106776180698152,
-              "recall": 0.0003171582619727244,
-              "f1-score": 0.0005888414544383924,
-              "support": 6306
+              "precision": 0.01977401129943503,
+              "recall": 0.0019013988863235095,
+              "f1-score": 0.003469210754553339,
+              "support": 7363
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 10211
+              "support": 12318
             },
             "benign_degradation": {
-              "precision": 0.740703859961741,
-              "recall": 0.4765164031154118,
-              "f1-score": 0.5799402948327331,
-              "support": 59318
+              "precision": 0.7900566718186501,
+              "recall": 0.5707550827349844,
+              "f1-score": 0.6627351058370172,
+              "support": 64483
             },
             "normal": {
-              "precision": 0.9772195457953128,
-              "recall": 0.9955576414934396,
-              "f1-score": 0.9863033620845224,
-              "support": 2418310
+              "precision": 0.9831731413307165,
+              "recall": 0.997192432907349,
+              "f1-score": 0.9901331648324038,
+              "support": 4010946
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.28700503032295865,
-              "recall": 0.24539853381180401,
-              "f1-score": 0.26113874972861567
+              "precision": 0.2992298535601526,
+              "recall": 0.2616551660196261,
+              "f1-score": 0.27608269353469495
             },
             "weighted": {
-              "precision": 0.9617989703851014,
-              "recall": 0.9732470776636652,
-              "f1-score": 0.9667570837711329
+              "precision": 0.9704045201583209,
+              "recall": 0.9805905692861313,
+              "f1-score": 0.9751560360072199
             }
           }
         },
         {
           "split_id": "fold-04",
-          "accuracy": 0.9853822774315444,
-          "rows": 3758383,
+          "accuracy": 0.9842908393208686,
+          "rows": 4002760,
           "per_class": {
             "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.0,
-              "recall": 0.0,
-              "f1-score": 0.0,
-              "support": 1081
+              "precision": 0.00468384074941452,
+              "recall": 0.00010634903754121025,
+              "f1-score": 0.0002079758747985234,
+              "support": 18806
             },
             "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
-              "precision": 0.0,
-              "recall": 0.0,
-              "f1-score": 0.0,
-              "support": 1127
+              "precision": 0.04,
+              "recall": 6.82081713389264e-05,
+              "f1-score": 0.00013618412093149938,
+              "support": 14661
             },
             "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
-              "precision": 0.014193548387096775,
-              "recall": 0.0011836866458624772,
-              "f1-score": 0.002185141040921732,
-              "support": 9293
+              "precision": 0.007936507936507936,
+              "recall": 0.00032331070158422246,
+              "f1-score": 0.0006213109661385523,
+              "support": 9279
             },
             "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
               "precision": 0.0,
               "recall": 0.0,
               "f1-score": 0.0,
-              "support": 14760
+              "support": 9234
             },
             "benign_degradation": {
-              "precision": 0.8121183431952663,
-              "recall": 0.4334950475035375,
-              "f1-score": 0.5652625162682658,
-              "support": 39576
+              "precision": 0.8918269230769231,
+              "recall": 0.1297656523259881,
+              "f1-score": 0.22656488549618323,
+              "support": 11436
             },
             "normal": {
-              "precision": 0.9870253142526348,
-              "recall": 0.9983022554085988,
-              "f1-score": 0.992631757520923,
-              "support": 3692546
+              "precision": 0.9845320286200968,
+              "recall": 0.9997578276992312,
+              "f1-score": 0.9920865130655032,
+              "support": 3939344
             }
           },
           "averages": {
             "macro": {
-              "precision": 0.30222286763916634,
-              "recall": 0.23883016492633313,
-              "f1-score": 0.26001323580501845
+              "precision": 0.32149655006382377,
+              "recall": 0.18833689132261391,
+              "f1-score": 0.20326947825392583
             },
             "weighted": {
-              "precision": 0.9783219731032646,
-              "recall": 0.9853822774315444,
-              "f1-score": 0.9812011073821855
+              "precision": 0.9716689083559821,
+              "recall": 0.9842908393208686,
+              "f1-score": 0.9770190372868219
             }
           }
         }
@@ -1564,33 +1660,33 @@
   ],
   "pairings": [
     {
-      "first": "grouped-validation-full",
-      "second": "grouped-validation-full-downsample",
+      "first": "d3-decision-tree-none",
+      "second": "d3-decision-tree-downsample",
       "result": {
         "paired": true,
         "same_rows": true,
         "same_y_true": true,
-        "n_paired": 20796921,
-        "both_correct": 10768091,
-        "only_first_correct": 9741717,
-        "only_second_correct": 117232,
-        "neither_correct": 169881,
-        "discordant": 9858949
+        "n_paired": 23226530,
+        "both_correct": 11995484,
+        "only_first_correct": 10867976,
+        "only_second_correct": 171450,
+        "neither_correct": 191620,
+        "discordant": 11039426
       }
     },
     {
-      "first": "grouped-validation-full",
+      "first": "d3-decision-tree-none",
       "second": "grouped-validation-full-smote",
       "result": {
         "paired": true,
         "same_rows": true,
         "same_y_true": true,
-        "n_paired": 20796921,
-        "both_correct": 20489507,
-        "only_first_correct": 20301,
-        "only_second_correct": 6186,
-        "neither_correct": 280927,
-        "discordant": 26487
+        "n_paired": 23226530,
+        "both_correct": 22828808,
+        "only_first_correct": 34652,
+        "only_second_correct": 4972,
+        "neither_correct": 358098,
+        "discordant": 39624
       }
     }
   ]

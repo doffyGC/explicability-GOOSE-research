@@ -13,7 +13,7 @@ This card distinguishes two artifacts that must not be presented as equivalent:
 |---|---|---|
 | `gray-GOOSE.csv` | Dataset used by the submitted paper; available locally | Audit and baseline reproduction only. Its run identity and random state were not recorded. |
 | `gray-GOOSE-metadata.parquet` | Legacy dataset annotated after generation | Data-quality analysis only. Some metadata is recovered or derived, not generator-emitted. |
-| Regenerated run matrix (`gray-GOOSE-runs-prepared.parquet`) | **Generated in full and validated**: 205 runs (120 attack + 85 benign-degradation), 20,796,921 prepared rows, merged (`merge_report.md`), annotated (`metadata_audit.md`), delta-recomputed within trace (`preparation_audit.json`), split 5-fold StratifiedGroupKFold and leakage-audited (`check_no_leakage.py`: pass, 205/205 groups tested once). | Primary dataset for the revised grouped evaluation. A first full training run exists (`validation_protocol.md`, "Full-scale results"; `benign_confusion.md`) but used an unbalanced decision tree and must not be read as a final detectability result — see §12. |
+| Regenerated run matrix (`gray-GOOSE-runs-prepared.parquet`) | **Generated in full and validated**: 265 runs (180 attack + 85 benign-degradation), 23,226,530 prepared rows, merged (`merge_report.md`), annotated (`metadata_audit.md`), delta-recomputed within trace (`preparation_audit.json`), split 5-fold StratifiedGroupKFold and leakage-audited (`check_no_leakage.py`: pass, 265/265 groups tested once). Extended from 205 runs on 2026-09-13 (+10 seeds each for `DETERMINISTIC_BURST` and `FULLY_RANDOMIZED`) — see §4. | Primary dataset for the revised grouped evaluation. Ten model runs exist across four families and three balancing scenarios (`validation_protocol.md`, "Model family comparison"); none is yet a reportable detectability claim — see §12. |
 
 The legacy artifact must not be used to claim leakage-free grouped validation.
 The regenerated artifact has now passed `merge_runs.py`, annotation and
@@ -26,7 +26,7 @@ evaluation should train and report on going forward.
 |---|---:|---:|---|
 | `data/CSV files/gray-GOOSE.csv` | 1,006,989 | 588,751,063 bytes | `B77E6EF58DE054336DBFA19B3C9469AEE56C859B695B139029C9801FC79B32AE` |
 | `data/CSV files/gray-GOOSE-metadata.parquet` | 1,006,989 | 66,461,377 bytes | `FE7F7F12B674267A9F404A6CC6E3BCC3BB4B9A159C0A0BC84001E131BC3C7BCD` |
-| `data/runs/gray-GOOSE-runs-prepared.parquet` | 20,796,921 | see `preparation_audit.json` | `a9f3f5f40cdbcec1c7387d49457fb588539cb2805f26ecf5ac228f8278f71dfb` |
+| `data/runs/gray-GOOSE-runs-prepared.parquet` | 23,226,530 | see `preparation_audit.json` | `e0c172eac5276c33cba057bd9817a13275b4c4c7696023fad6251d12015ed58f` |
 
 Hashes identify the local artifacts audited for this revision. Regenerating or
 rewriting either file requires updating this section and `metadata_audit.md`.
@@ -109,31 +109,38 @@ Because `split_group` is the unit, **the effective sample size of an attack
 class is its number of runs, not its number of rows.** The row counts look
 comfortable; the unit counts do not:
 
-| Class | rows | % of pool | independent runs | rows per run (min–median–max) |
+| Class | rows | % of pool | independent runs | test runs per fold (min–max) |
 |---|---:|---:|---:|---:|
-| `SAG.DB` (`DETERMINISTIC_BURST`) | 17,094 | 0.082% | **15** | 1,046 – 1,081 – 1,307 |
-| `FRG` (`FULLY_RANDOMIZED`) | 21,436 | 0.103% | **15** | 1,126 – 1,284 – 1,871 |
-| `SAG.PB` (`RANDOMIC_BURST`) | 46,959 | 0.226% | 45 | 1,001 – 1,035 – 1,145 |
-| `SAG.PBM` (`RANDOMIC_MESSAGE`) | 54,828 | 0.264% | 45 | 1,004 – 1,153 – 1,544 |
-| `benign_degradation` | 270,680 | 1.302% | 85 | — |
-| `normal` | 20,385,924 | 98.024% | 205 | — |
-| **all attack** | **140,317** | **0.675%** | 120 | — |
+| `SAG.DB` (`DETERMINISTIC_BURST`) | 50,782 | 0.219% | 45 | 3 – 16 |
+| `FRG` (`FULLY_RANDOMIZED`) | 63,976 | 0.275% | 45 | 6 – 12 |
+| `SAG.PB` (`RANDOMIC_BURST`) | 46,959 | 0.202% | 45 | 7 – 12 |
+| `SAG.PBM` (`RANDOMIC_MESSAGE`) | 54,828 | 0.236% | 45 | 7 – 12 |
+| `benign_degradation` | 270,680 | 1.165% | 85 | — |
+| `normal` | 22,739,305 | 97.902% | 265 | — |
+| **all attack** | **216,545** | **0.932%** | 180 | — |
 
-`SAG.DB` and `FRG` have 15 runs each because the matrix does not duplicate
-their inactive dimension (`DETERMINISTIC_BURST` is always 100% effective loss;
-`FULLY_RANDOMIZED` always burst size 1 — see `README.md`, "Regeneration
-matrix"). Under 5-fold grouped CV that leaves as little as **one** independent
-run of a class in a fold's test partition, so a per-fold metric for it is a
-measurement of one run. Consequences are worked through in
-`validation_protocol.md`, "How many attack rows are actually being counted".
+**This table is the result of a deliberate correction, and the reason it was
+made is worth keeping.** Until 2026-09-13 `SAG.DB` and `FRG` had only **15**
+runs each, because the matrix does not duplicate their inactive dimension
+(`DETERMINISTIC_BURST` is always 100% effective loss; `FULLY_RANDOMIZED`
+always burst size 1 — see `README.md`, "Regeneration matrix"). Under 5-fold
+grouped CV that left as little as **one** independent run of a class in a
+fold's test partition, making that fold's metric a measurement of a single
+run's ~1,000 correlated messages. Ten extra seeds per variant (3 cells each,
++60 runs, `run_matrix_plan.db_frg_seeds.json`) took both to 45 runs and cut
+their bootstrap recall intervals by 30–42%, with the untouched `SAG.PB`/
+`SAG.PBM` as the control — see `validation_protocol.md`, "How many attack rows
+are actually being counted".
 
 **Attack prevalence in this pool is a configured quantity, not a measured
 one.** Each run targets ~1,000 malicious messages against a full traffic
-capture, which is what puts attack rows at 0.675% of the pool. That single
-design parameter dominates every card-D and card-E result. Any claim about
-detectability must either justify 0.675% as the operating prevalence of
-interest or report across prevalences; it is not an estimate of how often
-grayhole traffic occurs in a real substation.
+capture, which is what puts attack rows at 0.932% of the pool (0.675% before
+the extension — adding attack runs without matching normal-only runs moved
+it). That single design parameter dominates every card-D and card-E result.
+Any claim about detectability must either justify this prevalence as the
+operating point of interest or report across prevalences; it is not an
+estimate of how often grayhole traffic occurs in a real substation. **This
+remains an open decision for the paper.**
 
 ## 5. Labels and attack definitions
 
@@ -274,10 +281,12 @@ a new dataset version and requires new hashes and counts.
 
 - The current matrix still uses one publisher/substation configuration.
 - The legacy dataset license is undeclared.
-- Grouped split generation, the independent leakage audit and a first full
-  training run have all passed on the complete 205-run pool (5-fold
-  StratifiedGroupKFold, 20,796,921 rows, `check_no_leakage.py`: pass). See
-  `validation_protocol.md`, "Full-scale results", and `benign_confusion.md`.
+- Grouped split generation, the independent leakage audit and ten full
+  training runs have all passed on the complete 265-run pool (5-fold
+  StratifiedGroupKFold, 23,226,530 rows, `check_no_leakage.py`: pass;
+  `check_prediction_integrity.py`: 350 checks, 0 failures). See
+  `validation_protocol.md`, "Full-scale results" and "Model family
+  comparison", and `benign_confusion.md`.
 - That first full run used a plain, unbalanced `DecisionTreeClassifier` and
   is a wiring/baseline result, not a reportable detectability claim: it
   **never predicts any of the four attack classes** (0.000 precision/recall
@@ -296,7 +305,8 @@ a new dataset version and requires new hashes and counts.
   family, class-weighted alternatives) is the required next step before any
   claim about SAG detectability under grouped validation.
 - All three runs have been reconciled by `check_prediction_integrity.py`
-  (`prediction_integrity.md`): 90 checks, 0 failures — row coverage, per-fold
+  (`prediction_integrity.md`, and `prediction_integrity_d3.md` for the ten
+  card-D runs): 350 checks, 0 failures — row coverage, per-fold
   counts, per-class sums against both the run reports and this dataset's own
   class counts, and metrics recomputed independently of the runner. The three
   runs are pairable (identical rows and ground truth), which is what any

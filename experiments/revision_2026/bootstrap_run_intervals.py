@@ -116,11 +116,25 @@ def per_run_confusion(path, classes, chunk_rows=2_000_000):
 def metrics_from_matrix(matrix):
     """Per-class precision/recall/F1 plus macro F1, from one confusion matrix.
 
-    Rows are truth, columns are prediction.  A class with no support (or no
-    predictions) yields NaN rather than 0: a bootstrap replicate that happens
-    to contain no run of a rare class has *no information* about it, which is
-    not the same statement as "recall was zero", and averaging a 0 in would
-    silently bias the interval downwards.
+    Rows are truth, columns are prediction.  Two different kinds of
+    "undefined" have to be kept apart here, and conflating them silently
+    inflates macro F1:
+
+    * **The class is absent from this matrix** (``support == 0``) - a
+      bootstrap replicate that drew no run carrying it. There is genuinely no
+      information, so every metric is NaN and the class is left out of the
+      macro average. Scoring it 0 would punish the model for a class the
+      replicate never tested.
+    * **The class is present but the model never predicted it**
+      (``support > 0``, ``predicted == 0``). That is not missing information,
+      it is a total failure on that class: recall is 0 by measurement, and
+      precision and F1 are 0 by the ``zero_division=0`` convention the rest of
+      this pipeline uses (`sklearn`'s ``classification_report``). The class
+      *must* stay in the macro average - dropping it is how a model that
+      detects nothing ends up with a flattering macro F1.
+
+    Keeping the second case in is what makes this script's macro F1 agree with
+    the figure `run_grouped_validation.py` recorded.
     """
     import numpy as np
 
@@ -128,14 +142,21 @@ def metrics_from_matrix(matrix):
         tp = np.diagonal(matrix, axis1=-2, axis2=-1).astype(float)
         support = matrix.sum(axis=-1).astype(float)
         predicted = matrix.sum(axis=-2).astype(float)
-        recall = np.where(support > 0, tp / np.where(support > 0, support, 1), np.nan)
-        precision = np.where(predicted > 0, tp / np.where(predicted > 0, predicted, 1), np.nan)
+        present = support > 0
+        recall = np.where(present, tp / np.where(present, support, 1), np.nan)
+        # zero_division=0 for a present-but-never-predicted class; NaN only
+        # when the class is absent altogether.
+        precision = np.where(
+            predicted > 0, tp / np.where(predicted > 0, predicted, 1),
+            np.where(present, 0.0, np.nan))
         denominator = precision + recall
-        f1 = np.where(denominator > 0, 2 * precision * recall / np.where(denominator > 0, denominator, 1), 0.0)
-        f1 = np.where(np.isnan(precision) | np.isnan(recall), np.nan, f1)
+        f1 = np.where(denominator > 0,
+                      2 * precision * recall / np.where(denominator > 0, denominator, 1), 0.0)
+        f1 = np.where(present, f1, np.nan)
         total = matrix.sum(axis=(-2, -1)).astype(float)
         accuracy = np.where(total > 0, tp.sum(axis=-1) / np.where(total > 0, total, 1), np.nan)
-    macro_f1 = np.nanmean(f1, axis=-1)
+    with np.errstate(invalid="ignore"):
+        macro_f1 = np.nanmean(f1, axis=-1)
     return {"precision": precision, "recall": recall, "f1": f1,
             "macro_f1": macro_f1, "accuracy": accuracy}
 
@@ -166,6 +187,54 @@ def bootstrap(counts, iterations, seed, confidence):
     return out
 
 
+def paired_difference(first, second, metric, iterations, seed, confidence):
+    """Bootstrap the *difference* between two runs over the same resampled runs.
+
+    Comparing two marginal intervals and asking whether they overlap is the
+    classic way to miss a real difference: both models are evaluated on the
+    *same* runs, so the run-to-run variation they share cancels when the
+    difference is taken draw by draw. This resamples the run indices once per
+    replicate and scores both models on that same draw - the paired analogue
+    of the agreement tables `check_prediction_integrity.py` builds.
+
+    Returns the observed difference (second minus first), its percentile
+    interval, and whether that interval excludes zero, which is the only
+    honest basis for saying one model beat the other.
+    """
+    import numpy as np
+
+    order = {label: index for index, label in enumerate(first["groups"])}
+    if set(order) != set(second["groups"]):
+        raise BootstrapError(
+            "runs %r and %r do not cover the same runs, so they are not pairable"
+            % (first["label"], second["label"]))
+    # Align the second run's per-run matrices onto the first run's ordering.
+    realigned = np.empty_like(second["counts"])
+    for index, label in enumerate(second["groups"]):
+        realigned[order[label]] = second["counts"][index]
+
+    rng = np.random.RandomState(seed)
+    n_runs = first["counts"].shape[0]
+    draws = rng.randint(0, n_runs, size=(iterations, n_runs))
+    differences = np.empty(iterations, dtype=float)
+    for index in range(iterations):
+        picked = draws[index]
+        a = metrics_from_matrix(first["counts"][picked].sum(axis=0))[metric]
+        b = metrics_from_matrix(realigned[picked].sum(axis=0))[metric]
+        differences[index] = float(b) - float(a)
+    lower_q = (1.0 - confidence) / 2.0 * 100.0
+    upper_q = (1.0 + confidence) / 2.0 * 100.0
+    lower = float(np.nanpercentile(differences, lower_q))
+    upper = float(np.nanpercentile(differences, upper_q))
+    observed = (float(metrics_from_matrix(realigned.sum(axis=0))[metric])
+                - float(metrics_from_matrix(first["counts"].sum(axis=0))[metric]))
+    return {
+        "first": first["label"], "second": second["label"], "metric": metric,
+        "observed_difference": observed, "lower": lower, "upper": upper,
+        "separates": bool(lower > 0.0 or upper < 0.0),
+    }
+
+
 def audit_run(directory, iterations, seed, confidence):
     import numpy as np
 
@@ -183,6 +252,8 @@ def audit_run(directory, iterations, seed, confidence):
         "estimable": estimable,
         "label": os.path.basename(os.path.normpath(directory)),
         "directory": directory,
+        "groups": groups,
+        "counts": counts,
         "model": report.get("model"),
         "balance": report.get("balance", "none"),
         "max_train_rows_per_fold": report.get("max_train_rows_per_fold"),
@@ -206,7 +277,31 @@ def format_interval(value, lower, upper, estimable=True):
     return "%.4f [%.4f, %.4f]" % (value, lower, upper)
 
 
-def build_report(runs, iterations, confidence, seed, generated=None):
+def build_pairing_section(pairings, confidence):
+    """The comparison the marginal intervals above cannot make."""
+    if not pairings:
+        return []
+    lines = [
+        "## Paired comparison (macro F1)",
+        "",
+        "Each replicate draws one set of runs and scores **both** models on it, so",
+        "the run-to-run variation the two share cancels instead of being counted",
+        "twice. Two marginal intervals overlapping does not mean two models are",
+        "indistinguishable, and this table is what actually settles it.",
+        "",
+        "| A | B | B - A | %.0f%% CI | separates? |" % (100 * confidence),
+        "|---|---|---:|---|---|",
+    ]
+    for pairing in pairings:
+        lines.append("| `%s` | `%s` | %+.4f | [%+.4f, %+.4f] | %s |" % (
+            pairing["first"], pairing["second"], pairing["observed_difference"],
+            pairing["lower"], pairing["upper"],
+            "**yes**" if pairing["separates"] else "no - indistinguishable"))
+    lines.append("")
+    return lines
+
+
+def build_report(runs, iterations, confidence, seed, generated=None, pairings=None):
     generated = generated or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     lines = [
         "# Run-level bootstrap intervals",
@@ -286,6 +381,7 @@ def build_report(runs, iterations, confidence, seed, generated=None):
                 "> per run.",
                 "",
             ]
+    lines += build_pairing_section(pairings or [], confidence)
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -313,9 +409,17 @@ def main(argv=None):
     try:
         runs = [audit_run(directory, args.iterations, args.seed, args.confidence)
                 for directory in args.run]
+        # Paired against the first run, matching check_prediction_integrity.py's
+        # convention so the two reports line up run for run.
+        pairings = [
+            paired_difference(runs[0], other, "macro_f1",
+                              args.iterations, args.seed, args.confidence)
+            for other in runs[1:]
+        ]
         out_path = args.out or os.path.join(HERE, "run_bootstrap.md")
         with open(out_path, "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(build_report(runs, args.iterations, args.confidence, args.seed))
+            fh.write(build_report(runs, args.iterations, args.confidence, args.seed,
+                                  pairings=pairings))
         print("Run-level bootstrap written: %s" % out_path)
         for run in runs:
             thin = sum(1 for i in range(len(run["classes"]))
@@ -353,6 +457,7 @@ def main(argv=None):
                         } for key, bounds in run["intervals"].items()
                     },
                 } for run in runs],
+                "pairings": pairings,
             }
             with open(args.json_out, "w", encoding="utf-8", newline="\n") as fh:
                 json.dump(payload, fh, indent=2, default=float)

@@ -6,9 +6,10 @@ this fits the rest of the revision, `validation_protocol.md` for the grouped
 workflow every run here must reuse, and its "Balancing scenarios" section for
 the card-E results this card is the direct follow-up to.
 
-**Status: D.3 closed (2026-09-12).** §7 (the per-fold train subsampling
-policy), §8 (the run matrix) and §9 (the result) are done; D.1, D.2, D.4 and
-D.5 are still plan only. §6 is the authoritative tracker.
+**Status: D.3 closed (2026-09-13, re-run on the extended 265-run pool).**
+§7 (the per-fold train subsampling policy), §8 (the run matrix) and §9 (the
+result) are done; D.1, D.2, D.4 and D.5 are still plan only. §6 is the
+authoritative tracker.
 
 ## 1. Why this exists
 
@@ -66,8 +67,11 @@ the ablation is what keeps the ablation at ~6 runs instead of ~18.
 
 ## 4. Cost estimate per item
 
-Calibration: the three existing full runs (decision tree, 5 folds, 20,796,921
-rows) each took **~20–50 min wall clock** on this machine. Runs do not
+Calibration (as of the 2026-09-12 estimate, on the then-current 205-run /
+20,796,921-row pool): the three existing full runs (decision tree, 5 folds)
+each took **~20–50 min wall clock** on this machine. Actual costs on the
+265-run pool are in §9/§10; the decision tree came in at 19 min, XGBoost at
+37 min and the capped Random Forest at 56 min. Runs do not
 parallelise here — each needs the whole prepared dataset resident — so compute
 is serial.
 
@@ -207,74 +211,92 @@ question card E left open — whether never predicting an attack class is a
 `DecisionTreeClassifier(max_depth=8)` limit or a limit of every family at
 this class balance.
 
-## 9. D.3 result (2026-09-12)
+## 9. D.3 result (2026-09-13, on the 265-run pool)
 
-Nine runs, ~2.5 h wall clock, all `full_grouped_run` on the 20,796,921-row
-pool. Full tables are in `validation_protocol.md`, "Model family comparison
-(checklist D.3)"; this section records what the card needs to carry forward.
+Ten runs, ~3 h wall clock on the extended pool (23,226,530 rows). Full tables
+are in `validation_protocol.md`, "Model family comparison (checklist D.3)";
+this section records what the card carries forward.
 
-### Champion: XGBoost
+> The card was first completed on the 205-run pool on 2026-09-12 and re-run in
+> full after that pool was extended (see §10). The conclusions held; the
+> numbers moved.
 
-Decided on the pre-registered criterion in §8, and it went to the third
-tie-breaker because the first two were ties:
+### Champion: XGBoost — with a narrower claim than the ranking suggests
 
 | Model (`downsample`) | macro F1 | mean attack recall | ideal-`normal` attack_fpr |
 |---|---:|---:|---:|
-| **xgboost** | **0.1972** | **0.6862** | **38.69%** |
-| decision-tree | 0.1970 | 0.6858 | 43.46% |
-| random-forest | 0.1766 | 0.5600 | 36.67% |
-| logistic-regression | 0.1355 | 0.5205 | 42.21% |
+| **xgboost** | **0.2099** | **0.7038** | **39.45%** |
+| decision-tree | 0.2076 | 0.6861 | 44.14% |
+| random-forest | 0.1874 | 0.6423 | 37.21% |
+| logistic-regression | 0.1351 | 0.5473 | 44.44% |
 
-XGBoost and the decision tree are separated by 0.0002 macro F1 against a
-per-fold standard deviation of ~0.013, and by 0.0004 mean attack recall — so
-the decision rests entirely on attack_fpr, where XGBoost costs 4.8 percentage
-points less on ideal traffic. Random Forest has the lowest attack_fpr but
-never reaches that tie-breaker, losing the first criterion by ~0.02.
+The paired bootstrap (same runs resampled for both models) puts XGBoost above
+the decision tree by **+0.0023 macro F1, 95% CI [+0.00002, +0.0045]** — a real
+ordering whose interval clears zero by 2e-5. That is not a margin to lean on.
+**The defensible sentence is "the two are near-indistinguishable on macro F1
+and XGBoost was chosen for its 4.7-point lower false-positive rate on ideal
+traffic", not "XGBoost is the better model."**
 
 ### The question card E left open, answered
 
 Zero attack recall on the unbalanced pool is **not** a
-`DecisionTreeClassifier(max_depth=8)` limit: XGBoost at defaults, on the full
-~16M-row partition, also predicts an attack class for essentially no row, and
-logistic regression predicts `normal` for literally every row (macro F1
-0.1649). Random Forest is the only family that predicts any attack row at all
-(`SAG.PBM` recall 0.047–0.078 at precision 0.169–0.248) — at ≤8% recall it is
-no detector, but its 0.11% attack_fpr on ideal `normal` traffic is the first
-point in this revision where attack predictions are not simply noise. The
-decision-tree control at the same 4M cap is indistinguishable from the
-uncapped tree (macro F1 0.2759 vs 0.2758; 0.026% discordant rows), so that is
-the family, not §7's cap.
+`DecisionTreeClassifier(max_depth=8)` limit: XGBoost at defaults also predicts
+an attack class for essentially no row (1 row out of 216,545), and logistic
+regression predicts `normal` for literally every row (macro F1 0.1649).
+
+Random Forest is the only family that predicts attack rows at all, and it is
+the one genuinely distinct result in this card: **+0.0385 macro F1 over the
+tree, 95% CI [+0.0329, +0.0442]** — an order of magnitude larger than any
+difference among the other families. At under 6% recall it is no detector, but
+it raises 57,301 attack alerts of which **13.9% are real**, against 1.5% for
+the champion's downsampled operating point. The decision-tree control under
+the identical 4M cap differs from the uncapped tree by -0.0002 [-0.0005,
++0.0000] — **does not separate**, so §7's cap is not producing this.
 
 ### Consequences for the rest of card D
 
 - **D.1 gets much cheaper than §4 budgeted.** The champion's `downsample` run
-  takes 2.2 min, so six ablation runs are ~15 min of compute, not 4–6 h. The
-  §4 estimate assumed the champion might be an expensive family; it is not.
-  This does **not** license widening the ablation scope — the deferrals in §3
-  were argued on methodology (top-k SHAP needs card F's held-out importances)
-  and on what the checklist asks for, not on compute alone.
-- **D.4 has a specific target.** The Random Forest result says model *capacity*
-  is what separates "predicts nothing" from "predicts something precisely but
-  rarely", which makes tree depth / estimator count the hyperparameters D.4
-  should spend its subsampled grid on first.
-- **Two attack classes are under-powered at the unit level, and this bounds
-  D.1 and D.4.** `SAG.DB` and `FRG` have only 15 independent runs each, so a
-  fold's test partition can hold a single run of them and its per-fold recall
-  becomes a one-run measurement (`validation_protocol.md`, "How many attack
-  rows are actually being counted"). An ablation or tuning result that moves
-  only `SAG.DB`/`FRG` is not yet evidence; one that moves `SAG.PB`/`SAG.PBM`
-  (45 runs, 6–13 test runs per fold) is. Read the ablation tables that way.
-- **A caveat travels with the logistic-regression rows.** It did not converge
-  in `downsample` (`n_iter_` = `max_iter` = 100 in all 5 folds), though it did
-  in `none` (49–61 iterations). Raising `max_iter` is D.4's business, not
-  D.3's; the number is reported with the caveat rather than tuned.
+  takes 2.7 min, so six ablation runs are ~20 min of compute, not 4–6 h. This
+  does **not** license widening the ablation scope — the deferrals in §3 were
+  argued on methodology, not compute.
+- **D.4 has a specific target.** What separates "predicts nothing" from
+  "predicts something precisely but rarely" is model *capacity*, not family:
+  the only configuration that finds attack rows at usable precision is the one
+  with fully grown, unpruned trees. Tree depth and estimator count are where
+  D.4's subsampled grid should go first.
+- **Report per-class, and pair.** Marginal intervals for these models overlap
+  almost everywhere; only the paired comparison separates them. Every D.1/D.4
+  comparison should use `bootstrap_run_intervals.py`'s paired table rather
+  than eyeballing overlapping error bars.
 
-### Runner rework and its regression check
+## 10. Pool extension (2026-09-13)
 
-D.3 needed `run_grouped_validation.py` to load and predict differently (§7,
-"Memory prerequisite", plus bounded-block prediction after the
-`logistic-regression` run overran RAM while predicting a 5.58M-row test
-partition). Both card-E decision-tree runs were re-executed on the reworked
-runner: `grouped_predictions.csv` came back **byte-identical by SHA-256** in
-both scenarios over all 20,796,921 rows. The rework is a memory and wall-clock
-change only — nothing in cards A/B/E needs revisiting.
+Card D.3's first pass exposed a weakness that was not about models at all.
+`split_group` is the experimental unit, so a class's effective sample size is
+its **run** count: `SAG.DB` and `FRG` had 15 runs each, and a fold's test
+partition could hold a *single* run — making that fold's recall a measurement
+of one run's ~1,000 correlated messages. The per-fold spread confirmed it: the
+1.0000 `SAG.DB` recall came from the fold holding one run, the worst from the
+fold holding two.
+
+Ten extra seeds per variant (3 cells each, +60 runs) took both classes to 45
+runs, matching `SAG.PB`/`SAG.PBM`. Cost: ~36 min of ERENO generation, ~9 min
+to rebuild the chain, ~3 h to re-run every model. Effect, with the untouched
+classes as the control:
+
+| Class | runs | recall 95% CI width before → after |
+|---|---|---|
+| `SAG.DB` | 15 → 45 | 0.1184 → 0.0690 (**−42%**) |
+| `FRG` | 15 → 45 | 0.1820 → 0.1279 (**−30%**) |
+| `SAG.PB` | 45 → 45 | 0.0853 → 0.0841 (−1%) |
+| `SAG.PBM` | 45 → 45 | 0.0601 → 0.0608 (+1%) |
+
+Only the classes that gained runs narrowed. Two consequences to carry:
+
+- **Before/after numbers are not comparable row for row.** Folds are redrawn
+  over 265 groups and attack prevalence moved 0.675% → 0.932%. The 205-run run
+  reports are kept in `archive_205runs/` for provenance, not for mixing into
+  new tables.
+- **The 0.932% prevalence is still a configured quantity**, set by ERENO's
+  ~1,000-malicious-messages-per-run target. It dominates every result in cards
+  D and E and remains an open decision for the paper (`data_card.md` §4).

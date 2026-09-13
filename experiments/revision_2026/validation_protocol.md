@@ -109,7 +109,7 @@ python experiments/revision_2026/run_grouped_validation.py \
 ```
 
 Dropping `--max-rows-per-group-class` loads and trains on every row; the
-report status becomes `full_grouped_run`. On the 205-run/20.8M-row pool this
+report status becomes `full_grouped_run`. On the 265-run/23.2M-row pool this
 needs the whole prepared dataset in memory at once (model training inherently
 requires it), so `run_grouped_validation.py` only reads the columns that
 survive `feature_matrix`'s own discard sets (`load_frame(..., columns=...)`)
@@ -119,60 +119,63 @@ the fitted model) — without both, materialising the training fold as a dense
 array raised `numpy._core._exceptions._ArrayMemoryError` on a 16GB-RAM
 machine. See "Full-scale results" below.
 
-## Full-scale results (2026-09-12)
+## Full-scale results
 
-The 205-run pool (120 attack + 85 benign-degradation, `metadata_audit.md`)
-has now been carried through the full canonical workflow above:
+> **Pool extended 2026-09-13 (205 -> 265 runs).** The numbers below are from
+> the current pool. The 205-run figures they replace are preserved in
+> `archive_205runs/` and in this file's git history. The extension added 10
+> seeds to `DETERMINISTIC_BURST` and `FULLY_RANDOMIZED` (3 cells each, +60
+> runs) because those two classes had only 15 independent runs and a fold's
+> test partition could hold a single one - see "How many attack rows are
+> actually being counted" below. **Results before and after are not comparable
+> row for row**: the folds are redrawn over 265 groups, and attack prevalence
+> moved from 0.675% to 0.932%.
+
+The 265-run pool (180 attack + 85 benign-degradation) carried through the
+canonical workflow above:
 
 | Step | Result |
 |---|---|
-| Merge (`merge_runs.py`) | 205 runs, 20,797,126 rows, all passed validation |
-| Metadata (`add_experiment_metadata.py`) | 205 traces/runs, 845,212 events |
-| Delta preparation (`prepare_grouped_dataset.py`) | 20,796,921 rows; 205 trace-boundary rows removed |
-| Splits (`generate_grouped_splits.py`) | 5-fold stratified-group-kfold, 205 groups |
-| Leakage audit (`check_no_leakage.py`) | **pass** — 205/205 groups tested exactly once |
-| Training (`run_grouped_validation.py --model decision-tree`) | `full_grouped_run`, 5 folds, 20,796,921 rows |
+| Merge (`merge_runs.py`) | 265 runs, 23,226,795 rows, all passed validation |
+| Metadata (`add_experiment_metadata.py`) | 265 traces/runs, 950,315 events |
+| Delta preparation (`prepare_grouped_dataset.py`) | 23,226,530 rows; 265 trace-boundary rows removed |
+| Splits (`generate_grouped_splits.py`) | 5-fold stratified-group-kfold, 265 groups |
+| Leakage audit (`check_no_leakage.py`) | **pass** - 265/265 groups tested exactly once |
+| Training (`run_grouped_validation.py --model decision-tree`) | `full_grouped_run`, 5 folds, 23,226,530 rows |
 
-Fold results (mean over 5 folds): **accuracy 0.985 ± 0.007, macro-F1 0.276 ±
-0.021.** The gap between those two numbers is the headline finding, not a
-detail: per-class metrics are identical in shape across all 5 folds —
+Fold results (mean over 5 folds): **accuracy 0.9837 +- 0.0038, macro-F1
+0.2653 +- 0.0307.** The gap between those two numbers is the headline finding,
+not a detail - pooled over all folds, per class:
 
 | Class | precision | recall | f1 |
 |---|---:|---:|---:|
-| `normal` | ~0.99 | ~0.99 | ~0.99 |
-| `benign_degradation` | 0.44–0.94 | 0.44–0.82 | 0.57–0.88 |
-| `SAG.DB` / `FRG` / `SAG.PB` / `SAG.PBM` (all four) | **0.000** | **0.000** | **0.000** |
+| `normal` | 0.9857 | 0.9985 | 0.9921 |
+| `benign_degradation` | 0.8249 | 0.5823 | 0.6827 |
+| `SAG.DB` / `FRG` / `SAG.PB` / `SAG.PBM` | ~0 | **~0.0000** | **~0.0000** |
 
 The confusion matrix (`benign_confusion.md`) confirms this is not "mostly
-misses, sometimes hits": across all 20.8M rows the model predicts an attack
-class **for essentially no row at all** (all four attack columns are ~0 across
-every true class). With attack rows at well under 1% of the pool and a plain
-`DecisionTreeClassifier(max_depth=8)`, the tree finds it Gini-optimal to never
-carve out a leaf for the rare classes.
+misses, sometimes hits": across all 23.2M rows the model predicts an attack
+class for essentially no row at all.
 
-**This is a class-imbalance artifact of running the first grouped model
-completely unbalanced, not evidence about SAG detectability**, and not a
-leakage problem — `check_no_leakage.py` passed. It does mean no claim about
-SAG being detectable (or not) under grouped validation can be made from this
-run. Checklist D (ablations/baselines) and E (balancing: no-SMOTE/SMOTE/
-downsampling per fold) are the required next step; this run is the reference
-point ("no balancing") the balanced runs must be compared against.
+**This is a class-imbalance artifact of running the model completely
+unbalanced, not evidence about SAG detectability**, and not a leakage problem -
+`check_no_leakage.py` passed. Card D.3 has since confirmed it is not specific
+to this model either (see "Model family comparison" below).
 
-## Balancing scenarios (checklist E, 2026-09-12)
+## Balancing scenarios (checklist E)
 
-The "Full-scale results" run above is the **unbalanced** reference scenario
-(checklist E's "sem balanceamento"). Checklist E calls for two more, both
-implemented as `--balance {downsample,smote}` on `run_grouped_validation.py`:
-each rebalances **only the current fold's TRAIN partition**; the test
-partition is always the untouched original distribution, so precision/recall
-numbers below are never inflated by evaluating on rebalanced data.
+The run above is the **unbalanced** reference scenario. Checklist E calls for
+two more, both implemented as `--balance {downsample,smote}` on
+`run_grouped_validation.py`: each rebalances **only the current fold's TRAIN
+partition**; the test partition is always the untouched original
+distribution, so the numbers below are never inflated by evaluating on
+rebalanced data.
 
 Neither scenario aims for exact parity with the majority (`normal`) class.
-`normal` is ~16M rows in a typical fold's train partition against ~13-45k for
-the rarest attack class — plain SMOTE-to-parity would synthesise on the
-order of tens of millions of rows, the same class of failure as the OOM this
-script already hit once (see "Run the full, uncapped grouped validation"
-above). Both scenarios are therefore explicitly bounded:
+`normal` is ~18M rows in a typical fold's train partition against ~13-60k for
+the rarest attack class - plain SMOTE-to-parity would synthesise tens of
+millions of rows, the same class of failure as the OOM this script already
+hit once. Both scenarios are therefore explicitly bounded:
 
 ```bash
 # downsample: every class cut to the size of the smallest class in that fold's train partition
@@ -180,11 +183,10 @@ python experiments/revision_2026/run_grouped_validation.py \
   --dataset data/runs/gray-GOOSE-runs-prepared.parquet \
   --preparation-report experiments/revision_2026/preparation_audit.json \
   --splits experiments/revision_2026/splits_grouped.json \
-  --out-dir results/grouped-validation-full-downsample \
+  --out-dir results/d3-decision-tree-downsample \
   --model decision-tree --balance downsample
 
-# smote: attack classes oversampled up to 20x their own count, capped at 200k;
-# normal/benign_degradation (already above the cap) are left untouched
+# smote: attack classes oversampled up to 20x their own count, capped at 200k
 python experiments/revision_2026/run_grouped_validation.py \
   --dataset data/runs/gray-GOOSE-runs-prepared.parquet \
   --preparation-report experiments/revision_2026/preparation_audit.json \
@@ -195,225 +197,175 @@ python experiments/revision_2026/run_grouped_validation.py \
 
 `--smote-oversample-factor` (default 20.0) and `--smote-max-target` (default
 200,000) control the SMOTE cap; both are recorded in `grouped_validation_report.json`.
-Requires `pip install imbalanced-learn` (added to `requirements.txt`).
+Requires `pip install imbalanced-learn`.
 
 ### Downsample results
 
-Mean over 5 folds: **accuracy 0.513 ± 0.041, macro-F1 0.197 ± 0.011.** Both
-numbers *drop* relative to the unbalanced baseline (0.985 / 0.276) — expected,
-since `normal` recall itself falls to ~44-55% once its training rows are cut
-from ~16M to the size of the rarest attack class (~13-45k) per fold. The
-headline change is recall on the four attack classes, previously exactly
-0.000 for all of them:
+Mean over 5 folds: **accuracy 0.5176 +- 0.0297, macro-F1 0.2006 +- 0.0259.**
+Both numbers *drop* relative to the unbalanced baseline (0.9837 / 0.2653) -
+expected, since `normal` recall itself falls to ~48-56% once its training rows
+are cut to the size of the rarest attack class. The headline change is recall
+on the four attack classes, previously ~0 for all of them (pooled over folds):
 
-| Class | recall (range across folds) | precision (range) |
+| Class | pooled recall | pooled precision |
 |---|---:|---:|
-| `SAG.DB` (`DETERMINISTIC_BURST`) | 0.74–1.00 | 0.005–0.022 |
-| `FRG` (`FULLY_RANDOMIZED`) | 0.51–0.66 | 0.001–0.007 |
-| `SAG.PB` (`RANDOMIC_BURST`) | 0.60–0.67 | 0.007–0.015 |
-| `SAG.PBM` (`RANDOMIC_MESSAGE`) | 0.58–0.64 | 0.010–0.015 |
-| `benign_degradation` | 0.51–0.87 | 0.23–0.40 |
-| `normal` | 0.44–0.55 | 0.997–0.999 |
+| `SAG.DB` (`DETERMINISTIC_BURST`) | 0.9156 | 0.0348 |
+| `FRG` (`FULLY_RANDOMIZED`) | 0.5718 | 0.0119 |
+| `SAG.PB` (`RANDOMIC_BURST`) | 0.6365 | 0.0090 |
+| `SAG.PBM` (`RANDOMIC_MESSAGE`) | 0.6026 | 0.0107 |
+| `benign_degradation` | 0.6319 | 0.3283 |
+| `normal` | 0.5211 | 0.9978 |
 
-So the class-imbalance artifact reported above is confirmed, not contradicted:
-the same decision tree **can** separate every attack class from `normal`
-reasonably well once training sees them at comparable scale — it just never
-tried to under the unbalanced default. The cost is precision: with `normal`'s
-recall collapsing to ~50%, roughly half of all normal traffic in the original
-test distribution is flagged as something else, so the *alert burden*
-("Reportar false positive rate e alert burden em tráfego realista", checklist
-E) at this operating point is far too high for direct deployment as-is. This
-is the expected downsample trade-off (recall up, precision down from flooding
-minority-class decision regions with too few majority examples to bound them
-tightly) and is exactly why checklist E asks for three scenarios side by side
-rather than picking one.
+So the class-imbalance artifact is confirmed, not contradicted: the same tree
+**can** separate every attack class from `normal` once training sees them at
+comparable scale - it just never tried to under the unbalanced default. The
+cost is precision: with `normal` recall at ~52%, roughly half of all normal
+traffic is flagged as something else, so the *alert burden* at this operating
+point is far too high for deployment as-is.
 
 ### SMOTE results
 
-Mean over 5 folds: **accuracy 0.984 ± 0.007, macro-F1 0.274 ± 0.017** —
-statistically indistinguishable from the unbalanced baseline (0.985 / 0.276).
-Oversampling each attack class to 200,000 synthetic-plus-real rows (from
-12k-45k) did **not** move the needle:
+Mean over 5 folds: **accuracy 0.9826 +- 0.0033, macro-F1 0.2587 +- 0.0283** -
+close to the unbalanced baseline, and the paired test below says it is
+*significantly worse* rather than merely equal. Oversampling each attack class
+to 200,000 synthetic-plus-real rows did **not** move the needle: pooled recall
+stays at 0.0001 (`SAG.DB`), 0.0000 (`FRG`), 0.0012 (`SAG.PB`) and 0.0000
+(`SAG.PBM`).
 
-| Class | recall (range across folds) |
-|---|---:|
-| `SAG.DB` | 0.000–0.003 |
-| `FRG` | 0.000–0.0002 |
-| `SAG.PB` | 0.000–0.0012 |
-| `SAG.PBM` | 0.000 (every fold) |
-| `benign_degradation` | 0.43–0.82 |
-| `normal` | 0.996–0.999 |
-
-SMOTE's synthetic points are convex-combination neighbours of the real
-minority rows already present, so they add density around existing minority
-regions rather than new ones. At `DecisionTreeClassifier(max_depth=8)`, that
-extra density still doesn't outweigh the accuracy gain from ignoring
-attack classes altogether, when they remain ~1.2% of the training rows
-(200k of ~16.7M) even after oversampling — the same Gini-optimality logic
-documented in "Full-scale results" above, just less starved than before.
-`benign_confusion_smote.md` confirms the model barely changed its behaviour
-at all: normal-traffic `attack_fpr` stays at 0.04% (baseline: 0.00%).
+SMOTE's synthetic points are convex-combination neighbours of real minority
+rows already present, so they add density around existing minority regions
+rather than new ones. At `DecisionTreeClassifier(max_depth=8)` that extra
+density still does not outweigh the accuracy gain from ignoring attack classes
+altogether when they remain ~1% of the training rows even after oversampling.
 
 ### Cross-scenario comparison
 
-| Scenario | mean accuracy | mean macro-F1 | attack-class recall | normal `attack_fpr` (ideal traffic) |
+| Scenario | pooled accuracy | pooled macro-F1 | attack-class recall | normal `attack_fpr` (ideal traffic) |
 |---|---:|---:|---:|---:|
-| none (baseline) | 0.985 | 0.276 | 0.000 (all 4 classes, every fold) | 0.00% |
-| smote (capped, train-only) | 0.984 | 0.274 | ~0.000–0.003 (unchanged) | 0.04% |
-| downsample (train-only) | 0.513 | 0.197 | 0.51–1.00 (all 4 classes detected) | **43.46%** |
+| none (baseline) | 0.9844 | 0.2791 | ~0.0000 (all 4 classes) | 0.00% |
+| smote (capped, train-only) | 0.9831 | 0.2706 | ~0.0000-0.0012 | - |
+| downsample (train-only) | 0.5238 | 0.2076 | 0.57-0.92 (all 4 detected) | **44.14%** |
+
+**Paired over the same 265 runs** (`run_bootstrap.none.md`), macro-F1
+difference against the unbalanced baseline:
+
+| vs. baseline | difference | 95% CI | separates? |
+|---|---:|---|---|
+| smote | -0.0085 | [-0.0126, -0.0047] | **yes - SMOTE is worse than doing nothing** |
 
 None of the three scenarios is a usable operating point on its own: the
 unbalanced and capped-SMOTE runs never detect an attack; the downsampled run
 detects every attack class but at a false-positive rate on *ideal, unimpaired*
-normal traffic that would flood any real deployment with alerts (44.60%
-overall alert rate on that slice — see `benign_confusion_downsample.md`).
-This is exactly the trade-off checklist E asks to be reported explicitly
-rather than picked around: **detectability under grouped, leakage-free
-validation depends entirely on how training balance is handled, and the two
-balancing techniques tried so far sit at opposite, both-impractical ends of
-the precision/recall trade-off.** Next steps this opens up (not yet done):
-tuning the SMOTE cap/factor and tree depth together (a shallow tree may
-simply lack the capacity to use denser minority regions), a class-weighted
-loss as a third, cheaper alternative to explicit resampling, and comparing
-against `xgboost`/Random Forest (checklist D) before drawing any conclusion
-about SAG detectability being an inherent model-family limit versus a
-decision-tree-at-depth-8 limit specifically. That is card D: its plan, agreed
-scope and deferrals are in `ablations_baselines.md`. **The model-family half
-of that question is now answered — see "Model family comparison (checklist
-D.3)" below: it is not a decision-tree limit.**
+normal traffic that would flood any deployment. **Detectability under grouped,
+leakage-free validation depends entirely on how training balance is handled,
+and the two balancing techniques tried sit at opposite, both-impractical
+ends.** Card D.3 below adds the model-family axis to this picture.
 
 ### Metric labelling and prediction integrity (E.4/E.5)
 
 `check_prediction_integrity.py` audits finished runs before any statistical
 test is written, recomputing every number from a `numpy.bincount` confusion
-matrix over the persisted `grouped_predictions.csv` — never from the
-`sklearn` helpers the runner itself used, so a metric bug in the runner
-cannot pass its own audit (the same decoupling rationale as
-`check_no_leakage.py`):
+matrix over the persisted `grouped_predictions.csv` - never from the `sklearn`
+helpers the runner itself used, so a metric bug in the runner cannot pass its
+own audit (the same decoupling rationale as `check_no_leakage.py`).
 
-```bash
-python experiments/revision_2026/check_prediction_integrity.py \
-  --run results/grouped-validation-full \
-  --run results/grouped-validation-full-downsample \
-  --run results/grouped-validation-full-smote \
-  --out experiments/revision_2026/prediction_integrity.md \
-  --json-out experiments/revision_2026/prediction_integrity.json
-```
+**Counts (E.5).** All ten runs on the current pool reconcile completely -
+**350 checks, 0 failures**: every `row_index` predicted exactly once, full
+coverage of rows 0..23,226,529 with no gaps, per-fold predictions equal to both
+`test_rows` and the sum of per-class support, and per-class `y_true` totals
+matching both the run report *and* the dataset's own class counts (50,782
+`SAG.DB` / 63,976 `FRG` / 46,959 `SAG.PB` / 54,828 `SAG.PBM` / 270,680
+`benign_degradation` / 22,739,305 `normal`).
 
-**Counts (E.5).** All three runs reconcile completely — 30 checks each, 0
-failures: every `row_index` predicted exactly once, full coverage of rows
-0..20,796,920 with no gaps, per-fold predictions equal to both `test_rows`
-and the sum of per-class support, and per-class `y_true` totals matching
-both the run report *and* the dataset's own class counts (17,094 `SAG.DB` /
-21,436 `FRG` / 46,959 `SAG.PB` / 54,828 `SAG.PBM` / 270,680
-`benign_degradation` / 20,385,924 `normal`). Recorded per-fold accuracy and
-macro-F1 match the recomputation to 12 decimal places.
-
-**Labelling (E.4).** Pooled over all folds on the original distribution, with
-each averaging scheme named for what it is:
+**Labelling (E.4).** Pooled over all folds on the original distribution, each
+averaging scheme named for what it is:
 
 | Run | accuracy (micro) | macro F1 | weighted F1 |
 |---|---:|---:|---:|
-| none (baseline) | 0.9862 | 0.2794 | 0.9823 |
-| smote | 0.9855 | 0.2783 | 0.9819 |
-| downsample | 0.5234 | 0.1993 | 0.6766 |
+| none (baseline) | 0.9844 | 0.2791 | 0.9792 |
+| smote | 0.9831 | 0.2706 | 0.9780 |
+| downsample | 0.5238 | 0.2076 | 0.6756 |
 
-This table is the reason checklist E.4 exists. The unbalanced baseline
-detects **zero** attack rows, yet its *weighted* F1 is 0.9823 — a number that
-would read as a near-perfect detector in a paper that did not say which
-average it used. Its *macro* F1 over the same predictions is 0.2794. Every
-metric reported from this pipeline must therefore carry its scheme; per-class
-values (`prediction_integrity.md` §3) stay the primary evidence, macro is the
-headline average, and weighted/accuracy are reported only as context for how
-dominated by `normal` the pool is.
+This table is the reason checklist E.4 exists. The unbalanced baseline detects
+**essentially zero** attack rows, yet its *weighted* F1 is 0.9792 - a number
+that would read as a near-perfect detector in a paper that did not say which
+average it used. Its *macro* F1 over the same predictions is 0.2791. Every
+metric reported from this pipeline must carry its scheme; per-class values
+stay the primary evidence, macro is the headline average, and
+weighted/accuracy are context for how dominated by `normal` the pool is.
 
-**Pairing (E.5).** All three runs predict exactly the same 20,796,921 rows
-with the same ground truth, so they are pairable — a precondition for any
-paired test in checklist F. The agreement tables also quantify the balancing
-trade-off at row level:
+**Pairing (E.5).** All ten runs predict exactly the same 23,226,530 rows with
+the same ground truth, so they are pairable - a precondition for the paired
+tests in checklist F and for the paired bootstrap used throughout card D.3.
 
-| A vs. B | paired rows | only A correct | only B correct | discordant |
-|---|---:|---:|---:|---:|
-| none vs. downsample | 20,796,921 | 9,741,717 | 117,232 | 9,858,949 |
-| none vs. smote | 20,796,921 | 20,301 | 6,186 | 26,487 |
 
-Downsampling buys 117,232 rows the baseline got wrong at the cost of
-9,741,717 it got right — an ~83:1 losing exchange, almost all of it `normal`
-traffic turned into false alerts. SMOTE is not merely unhelpful but slightly
-*net-negative* against doing nothing (20,301 lost vs. 6,186 gained).
+## Model family comparison (checklist D.3)
 
-## Model family comparison (checklist D.3, 2026-09-12)
-
-Card E ended on an open question: is never predicting an attack class a
-property of `DecisionTreeClassifier(max_depth=8)`, or of every model at this
-class balance? D.3 answers it by running four families — decision tree,
-XGBoost, Random Forest, logistic regression — **at library defaults, with no
-tuning** (tuning is D.4), on the same persisted folds, in both the `none` and
-`downsample` scenarios. Nine runs in ~2.5 h wall clock. The per-fold train
-cap the Random Forest needs, and the measurements behind it, are in
-`ablations_baselines.md` §7; the run matrix and the champion criterion fixed
-before execution are in its §8.
+Card E left an open question: is never predicting an attack class a property
+of `DecisionTreeClassifier(max_depth=8)`, or of every model at this class
+balance? D.3 answers it by running four families - decision tree, XGBoost,
+Random Forest, logistic regression - **at library defaults, with no tuning**
+(tuning is D.4), on the same persisted folds, in both the `none` and
+`downsample` scenarios. Ten runs, ~3 h wall clock on the 265-run pool. The
+per-fold train cap the Random Forest needs is in `ablations_baselines.md` §7;
+the run matrix and the pre-registered champion criterion are in its §8.
 
 **Runner reproducibility.** D.3 required reworking how
 `run_grouped_validation.py` loads data and predicts (float32/dictionary cast
 at read time, the DataFrame released before the first `fit()`, and prediction
-in bounded blocks). Both card-E decision-tree runs were therefore re-executed
-on the reworked runner as regression checks: `grouped_predictions.csv` came
-back **byte-identical by SHA-256** in both cases — `4313b224…facc4` for
-`none`, `d6afdeb8…badd6` for `downsample` — over all 20,796,921 rows. The
-rework changed memory and wall clock only (the `none` run went from ~20-50
-min to 16.5 min), and the balancing path is confirmed deterministic.
+in bounded blocks). Both card-E decision-tree runs were re-executed on the
+reworked runner as regression checks and `grouped_predictions.csv` came back
+**byte-identical by SHA-256** in both scenarios over all 20,796,921 rows of
+the then-current pool. The rework changed memory and wall clock only.
 
 ### Unbalanced (`none`): is it a decision-tree limit?
 
-Means over 5 folds, original-distribution test partitions:
+Pooled over all folds, original-distribution test partitions:
 
 | Model | cap | accuracy (micro) | **macro F1** | weighted F1 | attack-class recall | ideal-`normal` attack_fpr |
 |---|---:|---:|---:|---:|---|---:|
-| decision-tree | — | 0.9848 | 0.2758 | 0.9805 | **0.000** (all four, every fold) | 0.00% |
-| decision-tree | 4M | 0.9848 | 0.2759 | 0.9805 | **0.000** (all four, every fold) | — |
-| xgboost | — | 0.9850 | 0.2747 | 0.9805 | **0.000** (all four, every fold) | 0.00% |
-| logistic-regression | — | 0.9789 | 0.1649 | 0.9685 | **0.000** (all four) | — |
-| random-forest | 4M | 0.9839 | **0.3034** | 0.9806 | 0.0002–0.0777 | 0.11% |
+| decision-tree | - | 0.9844 | 0.2791 | 0.9792 | ~0.0000 (all four) | 0.00% |
+| decision-tree | 4M | 0.9843 | 0.2789 | 0.9792 | ~0.0000 (all four) | - |
+| xgboost | - | 0.9847 | 0.2823 | 0.9796 | ~0.0000 (all four) | 0.00% |
+| logistic-regression | - | 0.9790 | 0.1649 | 0.9686 | **0.0000** (all four) | - |
+| random-forest | 4M | 0.9827 | **0.3176** | 0.9790 | 0.0116-0.0565 | 0.20% |
 
 **It is not a decision-tree artifact.** XGBoost at defaults, trained on the
-full ~16M-row partition, predicts an attack class for essentially no row —
+full ~18M-row partition, predicts an attack class for essentially no row -
 exactly like the tree. Logistic regression is worse still: it predicts
-`normal` for *literally every row*, `benign_degradation` included (recall
-0.000 there too), which is what its macro F1 of 0.1649 measures. That is not
-an optimisation failure — lbfgs converged in 49–61 of its 100 iterations in
-every fold — but a capacity limit, and it is the honest floor this comparison
-needed.
+`normal` for *literally every row*, `benign_degradation` included (pooled
+recall 0.0000037 there), which is what its macro F1 of 0.1649 measures. That
+is not an optimisation failure - lbfgs converged in well under its 100
+iterations in every fold - but a capacity limit, and it is the honest floor
+this comparison needed.
 
-**Random Forest is the one family that predicts any attack row at all**, and
-the detail matters more than the macro average:
+**Random Forest is the one family that predicts attack rows**, and the
+per-class detail matters more than the macro average:
 
-| Class | recall (range) | precision (range) |
+| Class | pooled recall | pooled precision |
 |---|---:|---:|
-| `SAG.DB` | 0.0002–0.0028 | 0.0013–0.0054 |
-| `FRG` | 0.0007–0.0044 | 0.0066–0.0200 |
-| `SAG.PB` | 0.0120–0.0618 | 0.0574–0.2814 |
-| `SAG.PBM` | 0.0470–0.0777 | 0.1693–0.2477 |
+| `SAG.DB` | 0.0116 | 0.0362 |
+| `FRG` | 0.0406 | 0.1543 |
+| `SAG.PB` | 0.0357 | 0.1652 |
+| `SAG.PBM` | 0.0565 | 0.2202 |
 
-At ≤8% recall this is **not a detector**, and in absolute counts the result
-splits sharply by class: on `SAG.DB` it found 15 true positives against 4,634
-false alarms, and on `FRG` 30 against 2,430 — that is noise, not detection.
-Only `SAG.PB` (1,780 true / 8,760 false) and `SAG.PBM` (3,125 true / 11,020
-false) carry signal, at 17–22% precision. Those two are still the first
-attack predictions in this revision that beat chance while the false-positive
-rate on ideal `normal` traffic stays at **0.11%** — against 43.46% for the
-downsampled tree, the only other configuration that detects anything. Fully
-grown, unpruned trees do carve out small genuine attack regions that a depth-8
-tree and a default-depth XGBoost never look for; they are just far too small
-to cover the class.
+At under 6% recall this is **not a detector**. But it is the only operating
+point in this revision where attack predictions carry non-trivial precision
+(0.15-0.22 on three of the four classes) while the false-positive rate on
+ideal `normal` traffic stays at **0.20%** - against 44.14% for the downsampled
+tree, the only other configuration that detects anything. Fully grown,
+unpruned trees carve out small genuine attack regions that a depth-8 tree and
+a default-depth XGBoost never look for; they are just far too small to cover
+the class.
 
-**The cap is not doing this.** The decision tree run under the identical 4M
-cap is indistinguishable from the tree on the full partition — macro F1 0.2759
-vs 0.2758, and 5,430 discordant rows out of 20,796,921 (0.026%). So the
-Random Forest's behaviour is a property of the family, not of §7's
-subsampling. (This controls the cap's effect on a tree; it does not
-independently prove the uncapped Random Forest would behave the same, which
-is why every Random Forest row above carries its cap.)
+**The cap is not doing this.** Paired over the same 265 runs, the decision
+tree under the identical 4M cap differs from the uncapped tree by **-0.0002
+macro F1, 95% CI [-0.0005, +0.0000] - an interval that does not exclude
+zero.** The cap has no statistically detectable effect, so the Random Forest's
+behaviour is a property of the family, not of §7's subsampling. (This controls
+the cap's effect on a tree; it does not independently prove an uncapped
+Random Forest would behave the same, which is why every Random Forest row
+carries its cap.)
 
 ### Balanced (`downsample`): champion selection
 
@@ -421,91 +373,105 @@ The champion is chosen here, not above, because this is the scenario card
 D.1's ablation runs in. Criterion fixed before execution: mean macro F1, then
 mean attack-class recall, then ideal-`normal` attack_fpr.
 
-| Model | **macro F1** | mean attack recall | ideal-`normal` attack_fpr | `normal` recall |
+| Model | **macro F1** (pooled) | mean attack recall | ideal-`normal` attack_fpr | `normal` recall |
 |---|---:|---:|---:|---:|
-| **xgboost** | **0.1972** | **0.6862** | **38.69%** | 0.541 |
-| decision-tree | 0.1970 | 0.6858 | 43.46% | 0.510 |
-| random-forest | 0.1766 | 0.5600 | 36.67% | 0.545 |
-| logistic-regression | 0.1355 | 0.5205 | 42.21% | 0.452 |
+| **xgboost** | **0.2099** | **0.7038** | **39.45%** | 0.5613 |
+| decision-tree | 0.2076 | 0.6861 | 44.14% | 0.5211 |
+| random-forest | 0.1874 | 0.6423 | 37.21% | 0.5630 |
+| logistic-regression | 0.1351 | 0.5473 | 44.44% | 0.4420 |
 
-**Champion: XGBoost**, decided on the third criterion. The first two are ties
-in every meaningful sense — 0.1972 vs 0.1970 macro F1 against a per-fold
-standard deviation of ~0.013, and 0.6862 vs 0.6858 mean attack recall — so
-the separation comes entirely from the false-positive rate on ideal traffic,
-where XGBoost costs 4.8 percentage points less than the tree. Random Forest
-has the lowest attack_fpr of the four but never reaches that tie-breaker: its
-macro F1 is a clear 0.02 below the leaders.
+**Champion: XGBoost** - but the honest statement is narrower than the ranking
+suggests, and the paired bootstrap is what makes it sayable at all.
 
-Caveat, recorded rather than tuned away: **logistic regression did not
-converge in the `downsample` scenario** — `n_iter_` hit its default
-`max_iter=100` in all 5 folds (it converged comfortably in `none`). Raising
-`max_iter` would be tuning, which is card D.4; the D.3 number stands with the
-caveat attached.
+### The comparison the marginal intervals cannot make
+
+Two models' confidence intervals overlapping does **not** mean they are
+indistinguishable: both are evaluated on the same runs, so the run-to-run
+variation they share cancels when the difference is taken draw by draw.
+`bootstrap_run_intervals.py` resamples runs and scores every model on the same
+draw (`run_bootstrap.downsample.md`, `run_bootstrap.none.md`):
+
+| Scenario | A | B | B - A macro F1 | 95% CI | separates? |
+|---|---|---|---:|---|---|
+| `downsample` | decision-tree | **xgboost** | **+0.0023** | [+0.00002, +0.0045] | yes, barely |
+| `downsample` | decision-tree | random-forest | -0.0202 | [-0.0233, -0.0165] | yes |
+| `downsample` | decision-tree | logistic-regression | -0.0725 | [-0.0789, -0.0630] | yes |
+| `none` | decision-tree | xgboost | +0.0032 | [+0.0011, +0.0060] | yes |
+| `none` | decision-tree | **random-forest (4M)** | **+0.0385** | [+0.0329, +0.0442] | yes |
+| `none` | decision-tree | logistic-regression | -0.1142 | [-0.1272, -0.0991] | yes |
+| `none` | decision-tree | decision-tree (4M cap) | -0.0002 | [-0.0005, +0.0000] | **no** |
+| `none` | decision-tree | smote | -0.0085 | [-0.0126, -0.0047] | yes |
+
+Read that carefully. XGBoost beats the decision tree in `downsample`
+**consistently but negligibly**: the difference is +0.0023 macro F1 and its
+interval clears zero by 2e-5. It is a real ordering, not a coin flip, but it
+is not a margin any claim should lean on - what actually separates XGBoost
+from the tree at this operating point is the 4.7-percentage-point lower
+false-positive rate on ideal traffic, not the macro F1. **The defensible
+sentence is "the families are near-indistinguishable on macro F1 and XGBoost
+was chosen for its lower alert burden", not "XGBoost is the better model".**
+
+The same table also says the Random Forest's advantage in the `none` scenario
+(+0.0385) is an order of magnitude larger than any difference among the other
+families - it is the one genuinely distinct result in this card.
 
 ### How many attack rows are actually being counted
 
 Rates hide the scale this evaluation operates at, so the same results in
-counts. The pool holds **140,317 attack rows, 0.675% of 20,796,921**:
+counts. The pool holds **216,545 attack rows, 0.932% of 23,226,530**:
 
-| Class | rows | % of pool | independent runs | test rows per fold (min–max) | test runs per fold (min–max) |
-|---|---:|---:|---:|---:|---:|
-| `SAG.DB` | 17,094 | 0.082% | **15** | 1,081 – 4,593 | **1** – 4 |
-| `FRG` | 21,436 | 0.103% | **15** | 1,127 – 5,604 | **1** – 4 |
-| `SAG.PB` | 46,959 | 0.226% | 45 | 6,306 – 13,535 | 6 – 13 |
-| `SAG.PBM` | 54,828 | 0.264% | 45 | 8,580 – 14,760 | 7 – 12 |
-| `benign_degradation` | 270,680 | 1.302% | 85 | 39,576 – 64,325 | — |
-| `normal` | 20,385,924 | 98.024% | 205 | 2,418,310 – 5,486,576 | — |
-
-Three things follow, and they are not the same thing.
+| Class | rows | % of pool | independent runs | test runs per fold (min-max) |
+|---|---:|---:|---:|---:|
+| `SAG.DB` | 50,782 | 0.219% | 45 | 3 - 16 |
+| `FRG` | 63,976 | 0.275% | 45 | 6 - 12 |
+| `SAG.PB` | 46,959 | 0.202% | 45 | 7 - 12 |
+| `SAG.PBM` | 54,828 | 0.236% | 45 | 7 - 12 |
+| `benign_degradation` | 270,680 | 1.165% | 85 | - |
+| `normal` | 22,739,305 | 97.902% | 265 | - |
 
 **1. The rows are learnable; the unbalanced models simply never look for
-them.** The low attack counts in the `none` scenario are a property of the
-training prior, not of how much attack data exists. The same 17,094 `SAG.DB`
-rows, the same folds and the same features give:
+them.** The same 50,782 `SAG.DB` rows, the same folds and the same features:
 
 | Run | `SAG.DB` found | of | recall |
 |---|---:|---:|---:|
-| xgboost, `none` | **0** | 17,094 | 0.000 |
-| xgboost, `downsample` | **15,342** | 17,094 | 0.898 |
+| xgboost, `none` | **1** | 50,782 | 0.0000 |
+| xgboost, `downsample` | **45,826** | 50,782 | 0.9024 |
 
-Nothing changed but the balance of the training partition. "Too few attack
-samples to learn from" is therefore not the explanation for the `none` results.
+Nothing changed but the balance of the training partition, so "too few attack
+samples to learn from" is not the explanation for the `none` results.
 
-**2. The alert burden, in counts.** The flip side of that recall:
+**2. The alert burden, in counts.**
 
 | Run | attack alerts raised | of which real | precision |
 |---|---:|---:|---:|
-| random-forest, `none` (4M cap) | 31,794 | 4,950 | 15.6% |
-| xgboost, `downsample` | 8,774,397 | 90,293 | 1.0% |
+| random-forest, `none` (4M cap) | 57,301 | 7,957 | **13.9%** |
+| xgboost, `downsample` | 9,769,498 | 149,187 | **1.5%** |
 
-The champion configuration raises **8.8 million** attack alerts across the
-pool to find 90,293 real attack rows. That is card E's "43% false-positive
-rate" expressed the way an operator would meet it.
+The champion configuration raises **9.8 million** attack alerts across the
+pool to find 149,187 real attack rows. That is the "39% false-positive rate"
+above expressed the way an operator would meet it, and it is why the Random
+Forest's low-recall/13.9%-precision corner is worth more attention than its
+macro F1 suggests.
 
-**3. The real statistical limit is units, not rows — and it binds on `SAG.DB`
-and `FRG`.** Grouped CV makes the run the experimental unit, and those two
-classes have only **15 runs each** (the matrix does not duplicate their
-inactive dimension — `README.md`, "Regeneration matrix"). A fold's test
-partition can therefore hold a *single* independent run of a class, and its
-per-fold recall is then a measurement of that one run's ~1,000 correlated
-messages. The per-fold spread is exactly what that predicts:
+**3. The unit-level weakness this pool was extended to fix.** `split_group`
+(one ERENO run) is the experimental unit, so a class's effective sample size
+is its **run** count, not its row count. `SAG.DB` and `FRG` originally had 15
+runs each and a fold's test partition could hold a *single* one, making that
+fold's recall a measurement of ~1,000 correlated messages from one run. The
+2026-09-13 extension took both to 45 runs, and the run-level bootstrap shows
+exactly the intended effect - with `SAG.PB`/`SAG.PBM` (unchanged at 45 runs)
+as the control:
 
-| Fold | `SAG.DB` test runs | `SAG.DB` test rows | recall (tree, `downsample`) | recall (xgboost, `downsample`) |
-|---|---:|---:|---:|---:|
-| fold-02 | 2 | 2,583 | 0.7379 | 0.7228 |
-| fold-00 | 4 | 4,470 | 0.9470 | 0.9438 |
-| fold-01 | 4 | 4,593 | 0.9046 | 0.8883 |
-| fold-03 | 4 | 4,367 | 0.9998 | 0.9391 |
-| fold-04 | **1** | 1,081 | **1.0000** | **0.9944** |
+| Class | runs before -> after | recall 95% CI width before -> after | change |
+|---|---|---|---:|
+| `SAG.DB` | 15 -> 45 | 0.1184 -> 0.0690 | **-42%** |
+| `FRG` | 15 -> 45 | 0.1820 -> 0.1279 | **-30%** |
+| `SAG.PB` | 45 -> 45 | 0.0853 -> 0.0841 | -1% |
+| `SAG.PBM` | 45 -> 45 | 0.0601 -> 0.0608 | +1% |
 
-The perfect and near-perfect `SAG.DB` recalls come from the fold holding one
-run; the worst comes from the fold holding two. **`SAG.DB` and `FRG` per-fold
-metrics must not be read as five independent estimates** — they are 15 runs
-split five ways, two folds of which rest on a single run. `SAG.PB` and
-`SAG.PBM`, at 45 runs and 6–13 test runs per fold, do not have this problem,
-which is why they are the classes any detectability claim in this revision
-should be built on. Narrowing the gap needs more DB/FRG *runs* — more seeds
-for those two cells of the matrix — not more rows per run.
+Only the classes that gained runs narrowed; the two that did not are flat.
+That is the control which says the narrowing came from the added runs rather
+than from anything else the regeneration changed.
 
 ### What D.3 settles, and what it does not
 
@@ -514,27 +480,21 @@ for those two cells of the matrix — not more rows per run.
   zero-detection result is not an artifact of the specific tree that produced
   it.
 - The `downsample` trade-off is likewise **family-independent**: all four
-  models land at macro F1 0.14–0.20 with `normal` recall ~0.45–0.55 and
-  attack_fpr 37–43%. Changing the model does not buy a usable operating point;
+  models land at macro F1 0.14-0.21 with `normal` recall ~0.44-0.56 and
+  attack_fpr 37-44%. Changing the model does not buy a usable operating point;
   the balancing method dominates.
+- **Model capacity, not model family, is the axis that moves attack
+  detection.** The only configuration that predicts attack rows with
+  non-trivial precision at a tolerable false-positive rate is the one with
+  fully grown, unpruned trees. That makes depth and estimator count the first
+  thing D.4's grid should spend on.
 - Detectability itself is still **not** established. The best attack-class
-  numbers in this card are either ≤8% recall (Random Forest, `none`) or bought
-  at a ~39% false-positive rate (XGBoost, `downsample`). D.1's feature-group
-  ablation and D.4's tuning are what remain before any detectability claim.
-- Two of the four attack classes are **under-powered at the unit level**
-  (`SAG.DB` and `FRG`, 15 runs each, as little as one test run per fold — see
-  above). Their per-fold numbers are reported, but conclusions should rest on
-  `SAG.PB`/`SAG.PBM` until the matrix gains more seeds for those cells.
-- Cost note for D.1: the champion's `downsample` run takes **2.2 min**, so the
-  six-run ablation is ~15 min of compute rather than the 4–6 h `ablations_baselines.md`
-  §4 budgeted against a possibly-expensive champion.
+  numbers here are either under 6% recall (Random Forest, `none`) or bought at
+  a ~39% false-positive rate (XGBoost, `downsample`).
+- Cost note for D.1: the champion's `downsample` run takes **2.7 min**, so the
+  six-run ablation is ~20 min of compute rather than the 4-6 h
+  `ablations_baselines.md` §4 budgeted against a possibly-expensive champion.
 
-**Integrity.** All nine runs went through `check_prediction_integrity.py`
-before any number above was written: **315 checks, 0 failures**, every
-`row_index` predicted exactly once with full 0..20,796,920 coverage, and all
-nine pairable against each other for card F's paired tests
-(`prediction_integrity_d3.md`). Its run table now carries a `train cap`
-column so a capped run can never be silently compared against an uncapped one.
 
 ## Smoke evidence (2026-08-25)
 
@@ -602,8 +562,8 @@ the attack-only scope described in this document.**
 > way holding out an attack variant does. Confirmed on the 17-run benign-only
 > smoke pool (`benign_controls.md` §7, C3): **7/7 LOETO folds closed-set**,
 > `open_set_diagnostic: false` throughout. This resolves LOETO for the benign
-> axis, but not for the attack axis: in the combined 205-run pool (120 attack
-> + 85 benign, now merged — see "Full-scale results"), the 4 attack families are still each
+> axis, but not for the attack axis: in the combined 265-run pool (180 attack
+> + 85 benign — see "Full-scale results"), the 4 attack families are still each
 > attack-class-exclusive, so a LOETO run over *all* 11 event types has 4
 > open-set folds mixed with 7 closed-set ones, and `open_set_diagnostic: true`
 > on the whole split file makes the closed-set folds hard to consume

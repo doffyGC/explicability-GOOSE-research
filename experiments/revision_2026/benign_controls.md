@@ -298,13 +298,14 @@ the milestone named:
       `run_grouped_validation.py`'s own report.
 - [x] **C5 — Full generation and documentation.** Attack matrix (120 runs) +
       the full benign matrix (85 runs — both tiers, not just tier-1's 50)
-      regenerated under the new schema, merged (205 runs, 20,797,126 rows,
+      regenerated under the new schema, merged (265 runs, 23,226,795 rows,
       `merge_report.md`), annotated (`metadata_audit.md`), delta-prepared
       (`preparation_audit.json`) and carried through the canonical workflow:
-      5-fold StratifiedGroupKFold, `check_no_leakage.py` pass (205/205 groups
-      tested once), and a first full training run
-      (`results/grouped-validation-full/`, `run_grouped_validation.py
-      --model decision-tree`, no cap).
+      5-fold StratifiedGroupKFold, `check_no_leakage.py` pass (265/265 groups
+      tested once), and ten full training runs across four model families
+      (`results/d3-*`, `run_grouped_validation.py`). The attack side of the
+      pool grew from 120 to 180 runs on 2026-09-13 (`data_card.md` §4); the
+      85 benign runs are unchanged.
 
       `benign_confusion.md` is now populated with real numbers instead of
       the technical-smoke placeholder: on the full pool, `attack_fpr` is

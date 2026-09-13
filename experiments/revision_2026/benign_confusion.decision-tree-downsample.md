@@ -1,6 +1,6 @@
 # Benign-degradation confusion report - Gray-GOOSE (card C)
 
-- Generated: 2026-09-13 07:13:59 UTC
+- Generated: 2026-09-13 06:58:34 UTC
 - Source run: `C:\Users\ResTIC16\Desktop\Pessoal\Pesquisa\Cybersegurança\explicability-GOOSE-research\data\runs\gray-GOOSE-runs-prepared.parquet`
 - Run status: `full_grouped_run`
 - Protocol: `stratified-group-kfold`
