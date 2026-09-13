@@ -607,6 +607,130 @@ def prepare_arrays(frame, group_column, target_column, extra_discard):
     }
 
 
+def feature_column_names(names, target_column, extra_discard):
+    """The feature columns, decided from names alone.
+
+    Split out so `load_grouped_arrays` can reach the same decision
+    `feature_matrix` reaches, without needing a DataFrame to reach it. The
+    discard sets are the single source of truth for both; the regression test
+    requires the two paths to agree column for column.
+    """
+    discard = IDENTIFIER_COLUMNS | BASE_DISCARD_COLUMNS | {target_column} | set(extra_discard)
+    return [name for name in names if name not in discard]
+
+
+def load_grouped_arrays(path, group_column, target_column, extra_discard):
+    """Read a Parquet dataset straight into the arrays the fold loop needs.
+
+    The path this replaces went dataset -> per-row-group DataFrames ->
+    `pd.concat` -> `feature_matrix`'s `drop` -> numpy, and **three** of those
+    four steps hold a full copy of the data at once:
+
+      - `pd.concat` holds the chunk list and the concatenated frame together,
+      - `frame.drop(columns=...)` copies every surviving float32 column into a
+        new frame while the original is still referenced by the caller,
+      - only then is the numpy view taken.
+
+    Measured on the 265-run/23,226,530-row pool: **10.02 GB peak**, against
+    3.46 GB of actual feature matrix. That was fine at 205 runs (the 7.3 GB
+    in `ablations_baselines.md` SS7) and stopped being fine when the pool grew
+    11.7%; every full run on a 15.6 GB machine now dies during the load,
+    whatever model or flags follow it.
+
+    Filling a preallocated `float32` array row group by row group removes all
+    three copies: the peak becomes the array itself plus one row group,
+    ~3.5 GB, and it no longer scales with anything except the feature matrix
+    it has to produce anyway.
+
+    Values are identical to the old path, not merely equivalent - same
+    columns in the same order, the same float32 cast `load_frame` already
+    applied on the way in, and the same sorted label ordering
+    `np.unique`/`LabelEncoder` produced. `test_validation_protocol.py` asserts
+    that against the DataFrame path rather than trusting this docstring.
+    """
+    import numpy as np
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    handle = pq.ParquetFile(path)
+    schema = handle.schema_arrow
+    if group_column not in schema.names or target_column not in schema.names:
+        raise GroupedRunError("dataset is missing group or target column")
+
+    names = feature_column_names(schema.names, target_column, extra_discard)
+    non_numeric = [name for name in names
+                   if not (pa.types.is_floating(schema.field(name).type)
+                           or pa.types.is_integer(schema.field(name).type))]
+    if non_numeric:
+        raise GroupedRunError(
+            "non-numeric feature columns remain; discard or encode them explicitly: %s"
+            % non_numeric)
+    if not names:
+        raise GroupedRunError("no model features remain")
+
+    rows = handle.metadata.num_rows
+    if rows == 0:
+        raise GroupedRunError("dataset holds no rows")
+    features = np.empty((rows, len(names)), dtype="float32")
+    # Local codes first, global ones after: a row group's dictionary covers
+    # only the labels that row group happens to hold, so the global ordering
+    # is not knowable until every row group has been seen. Remapping at the
+    # end costs one int32 lookup per row and avoids either a second pass over
+    # the file or 23M Python strings.
+    group_codes = np.empty(rows, dtype="int32")
+    target_codes = np.empty(rows, dtype="int32")
+    group_dictionaries, target_dictionaries, spans = [], [], []
+    encoded_type = pa.dictionary(pa.int32(), pa.string())
+
+    offset = 0
+    for number in range(handle.num_row_groups):
+        table = handle.read_row_group(number, columns=names + [group_column, target_column])
+        count = table.num_rows
+        for position, name in enumerate(names):
+            features[offset:offset + count, position] = (
+                table.column(name).to_numpy(zero_copy_only=False))
+        for column, dictionaries, destination in (
+            (group_column, group_dictionaries, group_codes),
+            (target_column, target_dictionaries, target_codes),
+        ):
+            series = table.column(column).cast(encoded_type).to_pandas()
+            local = series.cat.codes.to_numpy()
+            if (local < 0).any():
+                raise GroupedRunError(
+                    "column %s holds nulls, which have no class or group" % column)
+            dictionaries.append([str(value) for value in series.cat.categories])
+            destination[offset:offset + count] = local
+        spans.append((offset, count))
+        offset += count
+        del table
+
+    def globalise(dictionaries, codes):
+        # sorted(), not np.unique(): the DataFrame path compares Python str
+        # objects (pandas `astype(str)` yields an object column), and this has
+        # to reproduce that ordering exactly, not merely a defensible one.
+        labels = sorted({label for dictionary in dictionaries for label in dictionary})
+        index = {label: position for position, label in enumerate(labels)}
+        for (start, count), dictionary in zip(spans, dictionaries):
+            lookup = np.asarray([index[label] for label in dictionary], dtype="int32")
+            codes[start:start + count] = lookup[codes[start:start + count]]
+        return labels
+
+    group_labels = globalise(group_dictionaries, group_codes)
+    classes = globalise(target_dictionaries, target_codes)
+    return {
+        "X": features,
+        "y": target_codes.astype("int16"),
+        "group_codes": group_codes,
+        "group_labels": group_labels,
+        # The DataFrame path's index came from `pd.concat(ignore_index=True)`,
+        # so it was always 0..N-1; `grouped_predictions.csv` keeps meaning the
+        # same dataset row it always did.
+        "row_index": np.arange(rows, dtype="int64"),
+        "classes": classes,
+        "features": list(names),
+    }
+
+
 def run_folds(arrays, splits, model_name, seed, predictions_writer,
               balance_strategy="none", smote_factor=20.0, smote_max_target=200_000,
               max_train_rows=0, n_jobs=-1, scores_writer=None):
@@ -805,20 +929,25 @@ def main(argv=None):
             columns = pq.ParquetFile(args.dataset).schema_arrow.names
             if args.group_column not in columns or args.target_column not in columns:
                 raise GroupedRunError("dataset is missing group or target column")
+            arrays = None
             frame = load_technical_sample(
                 args.dataset, args.group_column, args.target_column,
                 args.max_rows_per_group_class, args.seed,
             )
+        elif args.dataset.lower().endswith((".parquet", ".pq")):
+            # The full-training path never builds a DataFrame at all: it fills
+            # the feature array straight from the row groups. See
+            # `load_grouped_arrays` for the measurement that forced this - the
+            # DataFrame route peaked at 10.02 GB on the 265-run pool, which no
+            # longer fits on a 15.6 GB machine whatever model follows it.
+            frame = None
+            arrays = load_grouped_arrays(
+                args.dataset, args.group_column, args.target_column,
+                args.discard_column,
+            )
         else:
-            columns = None
-            if args.dataset.lower().endswith((".parquet", ".pq")):
-                import pyarrow.parquet as pq
-                schema_columns = pq.ParquetFile(args.dataset).schema_arrow.names
-                drop_cols = (
-                    IDENTIFIER_COLUMNS | BASE_DISCARD_COLUMNS | set(args.discard_column)
-                ) - {args.group_column, args.target_column}
-                columns = [c for c in schema_columns if c not in drop_cols]
-            frame = load_frame(args.dataset, columns=columns,
+            arrays = None
+            frame = load_frame(args.dataset, columns=None,
                                group_column=args.group_column,
                                target_column=args.target_column)
             if args.group_column not in frame or args.target_column not in frame:
@@ -828,14 +957,17 @@ def main(argv=None):
                 args.max_rows_per_group_class, args.seed,
             )
         os.makedirs(args.out_dir, exist_ok=True)
-        rows_used = len(frame)
-        # The frame is released here, before the first fit: `prepare_arrays`
-        # has already copied everything the fold loop reads into compact
-        # arrays, and on a full run keeping both costs ~3.5 GB that a Random
-        # Forest needs for its trees.
-        arrays = prepare_arrays(frame, args.group_column, args.target_column,
-                                args.discard_column)
-        del frame
+        if arrays is None:
+            rows_used = len(frame)
+            # The frame is released here, before the first fit: `prepare_arrays`
+            # has already copied everything the fold loop reads into compact
+            # arrays, and on a full run keeping both costs ~3.5 GB that a Random
+            # Forest needs for its trees.
+            arrays = prepare_arrays(frame, args.group_column, args.target_column,
+                                    args.discard_column)
+            del frame
+        else:
+            rows_used = len(arrays["row_index"])
         predictions_path = os.path.join(args.out_dir, "grouped_predictions.csv")
         # Predictions are written straight to disk as each fold finishes
         # instead of being collected into one Python list first (on a full

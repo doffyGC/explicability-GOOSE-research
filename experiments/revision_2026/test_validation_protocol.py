@@ -20,6 +20,10 @@ from run_grouped_validation import (
     GroupedRunError,
     class_counts,
     classifier,
+    feature_column_names,
+    load_frame,
+    load_grouped_arrays,
+    prepare_arrays,
     resample_train,
     subsample_train,
     verify_artifacts,
@@ -276,3 +280,139 @@ class ModelFamilyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class StreamingLoaderTests(unittest.TestCase):
+    """`load_grouped_arrays` must equal the DataFrame path, not approximate it.
+
+    The streaming loader exists because the DataFrame route peaked at 10.02 GB
+    on the 265-run pool and stopped fitting on a 15.6 GB machine. A cheaper
+    route that silently reordered columns, relabelled classes or rounded
+    differently would invalidate every split, metric and SHA-256 binding
+    downstream, so equality is asserted element by element rather than argued
+    for in a docstring.
+    """
+
+    def _fixture(self, directory, row_groups=3, rows_per_group=40):
+        """A Parquet file shaped like the real one: many row groups, string
+        group/target columns, identifier columns that must be discarded, and
+        both integer and floating features."""
+        import numpy as np
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        rng = np.random.RandomState(7)
+        path = os.path.join(directory, "dataset.parquet")
+        writer = None
+        try:
+            for number in range(row_groups):
+                rows = rows_per_group
+                frame = pd.DataFrame({
+                    # Deliberately not in "nice" order, and the group labels
+                    # per row group overlap only partially - which is what
+                    # makes the local-to-global remap worth testing.
+                    "stNum": rng.randint(0, 5000, rows).astype("int64"),
+                    "delta_t": rng.normal(size=rows),
+                    "ethDst": ["aa:bb"] * rows,          # BASE_DISCARD_COLUMNS
+                    "run_id": ["R%d" % number] * rows,   # IDENTIFIER_COLUMNS
+                    "sqNum": rng.randint(0, 100, rows).astype("int64"),
+                    "split_group": ["run-%d" % ((number + index) % 4)
+                                    for index in range(rows)],
+                    "class": [("normal", "benign_degradation", "SAG.DB")[index % 3]
+                              for index in range(rows)],
+                    "frameLen": rng.uniform(60, 200, rows),
+                })
+                table = pa.Table.from_pandas(frame, preserve_index=False)
+                if writer is None:
+                    writer = pq.ParquetWriter(path, table.schema)
+                writer.write_table(table)
+        finally:
+            if writer is not None:
+                writer.close()
+        return path
+
+    def _dataframe_path(self, path, discard=()):
+        """The route `load_grouped_arrays` replaces, reproduced exactly."""
+        import pyarrow.parquet as pq
+        from run_grouped_validation import BASE_DISCARD_COLUMNS, IDENTIFIER_COLUMNS
+
+        schema_columns = pq.ParquetFile(path).schema_arrow.names
+        drop = (IDENTIFIER_COLUMNS | BASE_DISCARD_COLUMNS | set(discard)) - {
+            "split_group", "class"}
+        columns = [c for c in schema_columns if c not in drop]
+        frame = load_frame(path, columns=columns, group_column="split_group",
+                           target_column="class")
+        return prepare_arrays(frame, "split_group", "class", list(discard))
+
+    def test_matches_the_dataframe_path_element_for_element(self):
+        import numpy as np
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._fixture(tmp)
+            expected = self._dataframe_path(path)
+            actual = load_grouped_arrays(path, "split_group", "class", [])
+
+        self.assertEqual(actual["features"], expected["features"])
+        self.assertEqual(list(actual["classes"]), list(expected["classes"]))
+        self.assertEqual(list(actual["group_labels"]), list(expected["group_labels"]))
+        np.testing.assert_array_equal(actual["X"], expected["X"])
+        self.assertEqual(actual["X"].dtype, expected["X"].dtype)
+        np.testing.assert_array_equal(actual["y"], expected["y"])
+        self.assertEqual(actual["y"].dtype, expected["y"].dtype)
+        np.testing.assert_array_equal(actual["group_codes"], expected["group_codes"])
+        np.testing.assert_array_equal(actual["row_index"], expected["row_index"])
+
+    def test_extra_discards_are_honoured_by_both_paths(self):
+        import numpy as np
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._fixture(tmp)
+            expected = self._dataframe_path(path, discard=["sqNum"])
+            actual = load_grouped_arrays(path, "split_group", "class", ["sqNum"])
+        self.assertNotIn("sqNum", actual["features"])
+        self.assertEqual(actual["features"], expected["features"])
+        np.testing.assert_array_equal(actual["X"], expected["X"])
+
+    def test_feature_column_names_agrees_with_feature_matrix(self):
+        """The two paths must reach the same columns from the same sets."""
+        from run_grouped_validation import feature_matrix
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._fixture(tmp)
+            frame = pd.read_parquet(path)
+            from_frame = list(feature_matrix(frame, "class", []).columns)
+        from_names = feature_column_names(list(frame.columns), "class", [])
+        self.assertEqual(from_names, from_frame)
+
+    def test_missing_group_column_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._fixture(tmp)
+            with self.assertRaises(GroupedRunError):
+                load_grouped_arrays(path, "not_a_column", "class", [])
+
+    def test_a_non_numeric_feature_is_refused_before_any_row_is_read(self):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "bad.parquet")
+            pq.write_table(pa.Table.from_pandas(pd.DataFrame({
+                "split_group": ["run-0", "run-1"],
+                "class": ["normal", "SAG.DB"],
+                "a_string_feature": ["x", "y"],
+            }), preserve_index=False), path)
+            with self.assertRaises(GroupedRunError) as ctx:
+                load_grouped_arrays(path, "split_group", "class", [])
+        self.assertIn("non-numeric feature columns", str(ctx.exception))
+
+    def test_no_features_left_is_refused(self):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "empty.parquet")
+            pq.write_table(pa.Table.from_pandas(pd.DataFrame({
+                "split_group": ["run-0"], "class": ["normal"], "run_id": ["R0"],
+            }), preserve_index=False), path)
+            with self.assertRaises(GroupedRunError) as ctx:
+                load_grouped_arrays(path, "split_group", "class", [])
+        self.assertIn("no model features remain", str(ctx.exception))
