@@ -6,6 +6,13 @@ this fits the rest of the revision, `validation_protocol.md` for the grouped
 workflow every run here must reuse, and its "Balancing scenarios" section for
 the card-E results this card is the direct follow-up to.
 
+**Status: BLOCKED (2026-09-13).** Card D.2's design work surfaced a dataset
+defect that invalidates every attack-detection number in this card: 100% of
+attack rows have a content-identical `normal` row in the same run. See
+`label_duplication_audit.md`. D.1, D.2 and D.4 must not run until the pool is
+regenerated - the results would measure the defect. The status below describes
+what was completed before the defect was found.
+
 **Status: D.3 closed (2026-09-13, re-run on the extended 265-run pool).**
 §7 (the per-fold train subsampling policy), §8 (the run matrix) and §9 (the
 result) are done; D.1, D.2, D.4 and D.5 are still plan only. §6 is the
@@ -103,12 +110,12 @@ these is not a result:
 
 | Item | Status | Evidence |
 |---|---|---|
-| D.1 feature-group ablation (6/7) | not started — **next**, on XGBoost | — |
+| D.1 feature-group ablation (6/7) | **blocked** on the regeneration (`label_duplication_audit.md`) | — |
 | D.1 top-k SHAP group | deferred to card F | — |
-| D.2 rule-based baseline | not started | — |
+| D.2 rule-based baseline | **blocked**; its design work is what found the defect | `label_duplication_audit.md`; `check_label_duplication.py` |
 | D.3 model comparison (XGB/RF/LR) | **done** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/d3-*` (9 runs); `prediction_integrity_d3.md` (315 checks, 0 failures) |
 | D.3 temporal model | deferred | — |
-| D.4 nested tuning | not started | — |
+| D.4 nested tuning | **blocked** | `label_duplication_audit.md` |
 | D.5 per-class cross-run report | not started | — |
 | D.5 threshold axis (AP + alert budgets) | **done for the champion, both scenarios** — see §11 | `grouped_pr_curves.py`; `validation_protocol.md`, "The threshold axis"; `pr_curves.md`; `results/d5-xgboost-{none,downsample}`; `prediction_integrity_d5.md` |
 

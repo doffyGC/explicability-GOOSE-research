@@ -1,5 +1,17 @@
 # Gray-GOOSE dataset card
 
+> # ⚠ Known defect in the regenerated pool (2026-09-13)
+>
+> The regenerated `data/runs/` pool must not be used to train or evaluate an
+> attack detector. **100% of its attack rows have a content-identical row
+> labelled `normal` in the same run** (216,547 of 216,547), because ERENO
+> writes both the legitimate IED's stream and the grayhole IED's forwarded
+> copies of the same messages. `label_duplication_audit.md` has the evidence,
+> the root cause and what has to be decided before regenerating.
+>
+> The legacy `gray-GOOSE.csv` does not have this (15 of 406,989 attack rows).
+
+
 ## 1. Summary and status
 
 Gray-GOOSE is a synthetic smart-grid network dataset generated with ERENO. It

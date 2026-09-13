@@ -1,5 +1,21 @@
 # Section B — grouped validation protocol
 
+> # ⚠ Results below are measured on a defective dataset (2026-09-13)
+>
+> **Every attack row in the regenerated pool has a `normal` row, in the same
+> run, whose content features are bit-identical** - 216,547 of 216,547, in the
+> raw ERENO output. The label is not a function of the features, so every
+> attack precision, recall, F1 and average precision in this file is capped by
+> an artifact rather than by the phenomenon. See
+> `label_duplication_audit.md`; the root cause is that ERENO models a
+> *dropping* attack as an *emitting* one, which is a design mismatch rather
+> than a coding slip.
+>
+> The **protocol** in this file - grouped splitting, the leakage audit, the
+> run-level bootstrap, the threshold axis - is unaffected: it describes how an
+> evaluation is run, not what the labels say. Re-running cards D and E on a
+> regenerated pool is compute, not rework.
+
 ## Decision
 
 The revised paper uses **StratifiedGroupKFold by `run_id`** as its primary
