@@ -110,6 +110,7 @@ these is not a result:
 | D.3 temporal model | deferred | — |
 | D.4 nested tuning | not started | — |
 | D.5 per-class cross-run report | not started | — |
+| D.5 threshold axis (AP + alert budgets) | **done for the champion, both scenarios** — see §11 | `grouped_pr_curves.py`; `validation_protocol.md`, "The threshold axis"; `pr_curves.md`; `results/d5-xgboost-{none,downsample}`; `prediction_integrity_d5.md` |
 
 ## 7. Per-fold train subsampling policy (D.3)
 
@@ -165,6 +166,17 @@ need no cap at all.
    uncapped run in the same column without labelling it.**
 
 ### Memory prerequisite
+
+> **Superseded in part (2026-09-13).** The figures below describe the
+> DataFrame-based loader on the 205-run pool. On the 265-run pool that path
+> peaked at **10.02 GB** and no longer fit on this machine at all - every full
+> run died during the load, whatever model followed. `load_grouped_arrays`
+> now fills the feature array straight from the Parquet row groups, taking the
+> peak to **4.03 GB** against 3.46 GB of unavoidable feature matrix. The cap
+> in this section is therefore no longer forced by the *load*; whether a
+> Random Forest still needs it for its fitted trees has not been re-measured,
+> so every Random Forest run keeps carrying its cap until it is.
+
 
 Making the cap enough required cutting the resident footprint as well:
 `run_grouped_validation.py` now reads the Parquet row group by row group,
@@ -300,3 +312,56 @@ Only the classes that gained runs narrowed. Two consequences to carry:
 - **The 0.932% prevalence is still a configured quantity**, set by ERENO's
   ~1,000-malicious-messages-per-run target. It dominates every result in cards
   D and E and remains an open decision for the paper (`data_card.md` §4).
+
+## 11. The threshold axis, and what it changes for D.1/D.4 (2026-09-13)
+
+Card D.3 compared model families at `argmax(p)`. That comparison is sound but
+narrow: the argmax is one point on a curve, fixed by the training partition's
+class prior rather than chosen, which is why `none` and `downsample` read as
+opposite verdicts on the same model (`validation_protocol.md`, "The threshold
+axis", has the 212.6x arithmetic). `run_grouped_validation.py --save-scores`
+now persists the per-row posteriors and `grouped_pr_curves.py` reports
+average precision plus operating points at a fixed alert budget, with
+thresholds calibrated on the folds that are not being scored.
+
+### What the champion's curves say
+
+Both scenarios were re-run with `--save-scores` and compared
+(`pr_curves.md`):
+
+- The signal is real: AP clears its prevalence floor by **8-28x** on all four
+  attack classes, intervals included.
+- **Downsampling makes the ranking worse.** Paired over the same runs,
+  `downsample` - `none` is -0.0100 AP on `ANY_ATTACK`, 95% CI [-0.0135,
+  -0.0069], and separates on three of the four classes. Card E's rebalancing
+  moved a threshold and paid for it with the ~18.6M training rows the
+  downsampled fits threw away.
+- The argmax was already close to its own frontier. At a **matched** alert
+  rate, recalibration buys +0.02 (`SAG.DB`, `SAG.PB`, `ANY_ATTACK`) to +0.18
+  (`SAG.PBM`) recall - real, worth reporting, and nowhere near enough to
+  rescue the operating point.
+- Running quietly is what fails. Dropping `SAG.DB` to a 0.1% alert rate takes
+  recall to 0.051.
+- Per-class scores rank better than the pooled attack score (0.995/0.674/
+  0.663/0.698 against `ANY_ATTACK`'s 0.563 at the same budget), so the four
+  detectors should stay separate.
+
+### Three consequences for the rest of card D
+
+1. **D.1 and D.4 must be judged on AP and on budgeted recall, not on argmax
+   macro F1.** A feature ablation or a depth sweep that moves the score
+   distribution without moving the ranking will look like a large macro-F1
+   change and be worth nothing, and the reverse is equally possible. Every
+   D.1/D.4 run therefore gets `--save-scores`, and its comparison table gets
+   an AP column. This costs ~0.4 GB and ~1 min of curve computation per run.
+2. **D.4's target sharpens.** D.3 pointed at capacity (unpruned trees) because
+   the Random Forest was the only family predicting attack rows at the
+   argmax - but "predicts attack rows at the argmax" is a statement about
+   where its posteriors sit, not about how well they rank. Whether the
+   Random Forest's advantage survives on AP is now a question that can be
+   asked directly, and it should be asked **before** the grid is designed.
+3. **The card-C confound has to be re-examined at a calibrated threshold**,
+   not concluded from the argmax. `grouped_pr_curves.py` splits false alarms
+   by true class only; the per-`impairment_mode` rejoin
+   `benign_confusion_report.py` owns has not been run against thresholded
+   predictions, so nothing about the benign confound may be updated yet.

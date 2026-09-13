@@ -496,6 +496,165 @@ than from anything else the regeneration changed.
   `ablations_baselines.md` §4 budgeted against a possibly-expensive champion.
 
 
+## The threshold axis (checklist D.5, 2026-09-13)
+
+Everything above this section reports `argmax(p)`. That is **one point** on a
+curve, and which point it is was never a modelling decision - it is whatever
+the training partition's class prior implies. This is not a detail: it is why
+`none` and `downsample` read as opposite verdicts on the same question.
+
+### The arithmetic that makes the two scenarios one result
+
+`downsample` trains at 1/6 per class. Against the pool's own 0.932% attack
+prevalence that multiplies the attack-vs-rest odds by
+
+    (4/6) / (2/6)  /  (0.00932 / 0.99068)  =  2.0 / 0.009407  =  **212.6x**
+
+so at a fixed argmax every row whose honest attack posterior exceeds
+**1/212.6 = 0.47%** is alerted. That is where the reported 39-44%
+false-positive rate on *ideal* `normal` traffic comes from: a threshold two
+orders of magnitude looser than 0.5, set by the balancing rather than by
+anyone. `none` sits at the other end of the same curve. Neither is an
+operating point anybody chose - which is a separate question from whether a
+better one exists, and the tables below answer that one too (mostly: no).
+
+### How the curve is recovered
+
+`run_grouped_validation.py --save-scores` persists the per-row posteriors to
+`grouped_scores.parquet`; `grouped_pr_curves.py` reads them and reports
+average precision (threshold-free) plus operating points at a fixed **alert
+budget**. Three properties make the numbers reportable:
+
+- **Thresholds are calibrated on the other folds**, never on the fold being
+  scored. Folds are group-disjoint, so those rows are a legitimate calibration
+  set. `--threshold-selection pooled` measures the optimism this avoids; it is
+  not what the tables below use.
+- **Intervals resample runs**, at the unit and with the `not estimable` floor
+  `bootstrap_run_intervals.py` argues for.
+- **Nothing else about the runs changed.** `grouped_predictions.csv` is
+  **byte-identical by SHA-256** to the card-D.3 runs over all 23,226,530 rows,
+  in both scenarios (`d5-xgboost-downsample` = `d3-xgboost-downsample`,
+  `73613339c8ca58a5...`; `d5-xgboost-none` = `d3-xgboost-none`,
+  `542dd05d09a86534...`) - across both `--save-scores` *and* the streaming
+  loader those runs were the first to use. `check_prediction_integrity.py`
+  independently re-derives `argmax(posterior)` over every scored row rather
+  than trusting the runner's own first-block check: 39 checks per run, 0
+  failures (`prediction_integrity_d5.md`).
+
+### Result: both scenarios, each on its own curve
+
+`pr_curves.md`. AP is read against the **prevalence** column - a
+zero-information detector scores exactly its own prevalence, so that is the
+floor, not 0. `--prior auto` leaves the unbalanced run's posteriors alone and
+corrects the balanced one back to the deployment prior, which is what makes
+the two comparable at all.
+
+| Target | rows | prevalence | AP, `none` [95% CI] | AP, `downsample` [95% CI] | best lift |
+|---|---:|---:|---|---|---:|
+| `SAG.DB` | 50,782 | 0.219% | **0.0620 [0.0446, 0.0823]** | 0.0593 [0.0430, 0.0759] | 28.4x |
+| `SAG.PBM` | 54,828 | 0.236% | **0.0298 [0.0213, 0.0393]** | 0.0247 [0.0178, 0.0325] | 12.6x |
+| `SAG.PB` | 46,959 | 0.202% | **0.0231 [0.0154, 0.0333]** | 0.0187 [0.0138, 0.0248] | 11.4x |
+| `FRG` | 63,976 | 0.275% | **0.0255 [0.0172, 0.0352]** | 0.0209 [0.0140, 0.0294] | 9.3x |
+| `ANY_ATTACK` | 216,545 | 0.932% | **0.0724 [0.0617, 0.0844]** | 0.0625 [0.0535, 0.0730] | 7.8x |
+
+**Every interval clears its prevalence floor by 8-28x**, so the features do
+carry real signal about these attacks. The model that "never predicts an
+attack class" carries the most of it.
+
+### The comparison that settles card E
+
+Card E asked whether the zero attack recall on the unbalanced pool meant the
+attacks were undetectable, and answered it by rebalancing until the model
+predicted them. The paired bootstrap - both configurations scored on the same
+redrawn runs, each keeping its own cross-fold thresholds - says the
+rebalancing bought nothing:
+
+| Target | `downsample` - `none` AP | 95% CI | separates? |
+|---|---:|---|---|
+| `SAG.DB` | -0.0027 | [-0.0119, +0.0060] | no |
+| `FRG` | **-0.0046** | [-0.0070, -0.0021] | **yes** |
+| `SAG.PB` | **-0.0044** | [-0.0090, -0.0013] | **yes** |
+| `SAG.PBM` | **-0.0051** | [-0.0076, -0.0030] | **yes** |
+| `ANY_ATTACK` | **-0.0100** | [-0.0135, -0.0069] | **yes** |
+
+**Downsampling does not add information; it moves a threshold, and it makes
+the ranking measurably worse** on three of the four attack classes and on the
+binary view. That is not surprising once it is stated: the balanced model fits
+~96k rows per fold against the unbalanced model's ~18.6M, so it pays for its
+convenient operating point with the training data it threw away.
+
+The consequence for the paper is direct. "The unbalanced model detects no
+attacks" and "the balanced model detects attacks at a 39% false-positive rate"
+are **the same model's score read at two thresholds**, and the version that
+detects nothing is the better detector of the two. Neither sentence should
+appear without the curve.
+
+### Where the published argmax sits on its own curve
+
+The comparison has to be made at a **matched alert rate**, and per target: the
+argmax alerts on 5.33% of rows as a `SAG.DB` detector but on 42.06% as a
+binary attack detector, so quoting one class's recall against the other's
+burden compares nothing. Same model (`downsample`), same folds, same rows;
+only the threshold moves:
+
+| Target | argmax alert rate | argmax recall | curve recall at the same rate [95% CI] | delta |
+|---|---:|---:|---|---:|
+| `SAG.DB` | 5.33% | 0.9024 | 0.9297 [0.9039, 0.9553] | +0.027 |
+| `FRG` | 13.70% | 0.6292 | **0.7541 [0.6649, 0.8310]** | **+0.125** |
+| `SAG.PB` | 11.04% | 0.6765 | 0.6986 [0.6585, 0.7393] | +0.022 |
+| `SAG.PBM` | 11.99% | 0.5716 | **0.7543 [0.6973, 0.8057]** | **+0.183** |
+| `ANY_ATTACK` | 42.06% | 0.9529 | 0.9550 [0.9388, 0.9688] | +0.002 |
+
+The prior shift explains *where* the argmax lands - at a very loose threshold -
+but the argmax is close to its own curve's frontier once the burden is
+matched. The 39-44% false-positive rate is therefore **not mainly a
+miscalibration**: at that alert rate the model really is near the best it can
+do, and the curve is simply bad. Recalibration buys a real but modest +0.02 to
++0.18 recall, concentrated in `FRG` and `SAG.PBM`.
+
+### The trade-off, finally stateable
+
+`none`, the better ranker, across the alert budgets an operator might set:
+
+| Budget | `SAG.DB` recall / precision | `ANY_ATTACK` recall / precision |
+|---|---|---|
+| 1,000 alerts per 10,000 msgs (10%) | 0.9947 / 0.022 | 0.5625 / 0.054 |
+| 100 per 10,000 (1%) | 0.2960 / 0.066 | 0.1337 / 0.129 |
+| 10 per 10,000 (0.1%) | 0.0514 / 0.113 | 0.0179 / 0.168 |
+| 1 per 10,000 (0.01%) | 0.0024 / 0.049 | 0.0010 / 0.089 |
+
+### What still does not become a detector
+
+- The answer to "can this run quietly?" is **no**. Dropping `SAG.DB` to an
+  operator-plausible 0.1% alert rate takes recall to 0.051; the other three
+  classes sit at 0.022-0.037 there. Two orders of magnitude of alert burden
+  buy roughly one order of magnitude of recall, all the way down.
+- Precision never leaves 1-17% anywhere on any curve, for any class, at any
+  budget, in either scenario.
+- **Per-class scores rank better than the pooled attack score.** At the 10%
+  budget the four one-vs-rest detectors reach 0.995/0.674/0.663/0.698 while
+  `ANY_ATTACK` - the sum of the four posteriors - reaches only 0.563. An
+  operator should run four detectors, not one binary one; pooling the classes
+  into a single score destroys signal. This is a design recommendation the
+  argmax evaluation could not have produced.
+- The revision's finding is therefore not "undetectable" but **"detectable,
+  and not at any alert burden a substation can absorb"** - a sharper and more
+  defensible claim than either argmax point supported, and one that now rests
+  on a threshold-free statistic with run-level intervals.
+
+### An open question this section deliberately does not answer
+
+`grouped_pr_curves.py` splits false alarms by the *class* that produced them,
+not by `impairment_mode`. In aggregate `benign_degradation` is alerted at
+0.03x-1.19x the rate of `normal` across the four budgets, which looks like the
+card-C confound disappearing - **but that aggregate is not readable**, because
+the seven impairment mechanisms behave nothing alike at the argmax
+(`CONGESTION_LOSS` 92.45% attack_fpr against `DELAY` 0.61%) and three quiet
+modes carry 43% of the `benign_degradation` rows. Whether the confound
+survives calibration needs the per-mode rejoin `benign_confusion_report.py`
+owns, applied to thresholded rather than argmax predictions. Until that runs,
+**no claim about the benign confound may be updated from this section.**
+
 ## Smoke evidence (2026-08-25)
 
 Six independent native runs were used: two seeds each for DB, FRG and PB.
