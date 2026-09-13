@@ -60,6 +60,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPORT_NAME = "grouped_validation_report.json"
 PREDICTIONS_NAME = "grouped_predictions.csv"
 REQUIRED_COLUMNS = ["split_id", "row_index", "y_true", "y_pred"]
+SCORES_NAME = "grouped_scores.parquet"
+
+# Posteriors are persisted as float32 and normalised by the model, so their
+# row sums drift by a few ULPs of a 6-term sum. Anything past this is a
+# corrupted or mis-assembled block, not rounding.
+POSTERIOR_SUM_TOLERANCE = 1e-4
 
 # Recomputed-vs-recorded metrics must agree to floating-point noise. They are
 # the same definitions over the same rows, so anything above this is a real
@@ -303,6 +309,109 @@ def check_row_coverage(arrays, report_meta):
             "passed": contiguous,
         })
     return checks
+
+
+def check_scores_consistency(directory, arrays, report_meta, classes,
+                             sum_tolerance=POSTERIOR_SUM_TOLERANCE):
+    """Reconcile `grouped_scores.parquet` against the predictions, independently.
+
+    `run_grouped_validation.py` derives its hard labels from the posteriors
+    and verifies that choice against ``model.predict`` - but only on the
+    first block of each fold, because checking all of them would mean
+    predicting a full run twice.  A self-check on a fifth of the rows, run by
+    the same script that produced them, is exactly the shape of audit this
+    pipeline does not accept anywhere else (see `check_no_leakage.py`'s
+    deliberate decoupling from `generate_grouped_splits.py`).
+
+    So this recomputes the argmax over **every** scored row from the file on
+    disk and requires it to reproduce `y_pred` exactly.  If the two ever
+    disagree, every threshold number in `grouped_pr_curves.py` would be
+    describing a different classifier than the confusion matrices are - a
+    failure that would otherwise surface as an unexplained discrepancy
+    between two reports rather than as an error.
+
+    Returns an empty list when the run has no scores file: `--save-scores` is
+    optional, and an unscored run is not a broken one.
+    """
+    import numpy as np
+
+    path = os.path.join(directory, report_meta.get("scores_file") or SCORES_NAME)
+    if not os.path.exists(path):
+        return []
+
+    import pyarrow.parquet as pq
+
+    handle = pq.ParquetFile(path)
+    columns = ["row_index", "y_true"] + ["p_%s" % name for name in classes]
+    available = set(handle.schema_arrow.names)
+    missing = [column for column in columns if column not in available]
+    if missing:
+        return [{
+            "check": "scores file carries a column per class",
+            "expected": "all of %s" % columns,
+            "observed": "missing %s" % missing,
+            "passed": False,
+        }]
+
+    class_to_code = {name: index for index, name in enumerate(classes)}
+    order = np.argsort(arrays["row_index"], kind="stable")
+    sorted_rows = arrays["row_index"][order]
+    scored = 0
+    argmax_mismatches = 0
+    truth_mismatches = 0
+    unmatched_rows = 0
+    worst_sum_drift = 0.0
+    out_of_range = 0
+
+    for number in range(handle.num_row_groups):
+        frame = handle.read_row_group(number, columns=columns).to_pandas()
+        posteriors = frame[["p_%s" % name for name in classes]].to_numpy(dtype="float64")
+        scored += len(frame)
+        drift = np.abs(posteriors.sum(axis=1) - 1.0)
+        worst_sum_drift = max(worst_sum_drift, float(drift.max()) if len(drift) else 0.0)
+        out_of_range += int(np.count_nonzero((posteriors < 0.0) | (posteriors > 1.0)))
+
+        rows = frame["row_index"].to_numpy(dtype="int64")
+        position = np.searchsorted(sorted_rows, rows)
+        position = np.clip(position, 0, len(sorted_rows) - 1)
+        found = sorted_rows[position] == rows
+        unmatched_rows += int(np.count_nonzero(~found))
+        if not found.any():
+            continue
+        mapped = order[position[found]]
+
+        truth = np.asarray([class_to_code.get(str(v), -1)
+                            for v in frame["y_true"].astype(str).to_numpy()])
+        truth_mismatches += int(np.count_nonzero(truth[found] != arrays["y_true"][mapped]))
+        predicted = posteriors[found].argmax(axis=1)
+        argmax_mismatches += int(np.count_nonzero(predicted != arrays["y_pred"][mapped]))
+
+    return [
+        {
+            "check": "scored rows == predicted rows",
+            "expected": "%d" % len(arrays["row_index"]),
+            "observed": "%d scored, %d not found in predictions" % (scored, unmatched_rows),
+            "passed": scored == len(arrays["row_index"]) and unmatched_rows == 0,
+        },
+        {
+            "check": "argmax(posterior) reproduces y_pred on every scored row",
+            "expected": "0 mismatches",
+            "observed": "%d mismatches" % argmax_mismatches,
+            "passed": argmax_mismatches == 0,
+        },
+        {
+            "check": "scores y_true agrees with predictions y_true",
+            "expected": "0 mismatches",
+            "observed": "%d mismatches" % truth_mismatches,
+            "passed": truth_mismatches == 0,
+        },
+        {
+            "check": "posteriors are a distribution (in [0,1], summing to 1)",
+            "expected": "max |sum - 1| <= %g, 0 values outside [0,1]" % sum_tolerance,
+            "observed": "max drift %.3g, %d out of range" % (worst_sum_drift, out_of_range),
+            "passed": worst_sum_drift <= sum_tolerance and out_of_range == 0,
+        },
+    ]
 
 
 def check_fold_counts(arrays, report_meta, fold_ids):
@@ -632,6 +741,7 @@ def audit_run(directory, dataset_override, skip_dataset_check):
     checks = []
     checks += check_row_coverage(arrays, report_meta)
     checks += check_fold_counts(arrays, report_meta, fold_ids)
+    checks += check_scores_consistency(directory, arrays, report_meta, classes)
     checks += check_class_sums(arrays, report_meta, classes, dataset_counts)
     metric_checks, per_fold = check_recorded_metrics(arrays, report_meta, classes, fold_ids)
     checks += metric_checks

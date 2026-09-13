@@ -12,11 +12,14 @@ from check_prediction_integrity import (
     build_report,
     check_class_sums,
     check_row_coverage,
+    check_scores_consistency,
     confusion_counts,
+    load_prediction_arrays,
     main,
     metrics_from_confusion,
     pair_runs,
 )
+from run_grouped_validation import ScoreWriter
 
 CLASSES = ["attack", "normal"]
 
@@ -332,3 +335,115 @@ class ReportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def write_scores(directory, rows, posteriors, classes=CLASSES):
+    """Persist posteriors for a run built by `write_run`, via the real writer."""
+    groups = sorted({row["split_group"] for row in rows})
+    group_index = {label: index for index, label in enumerate(groups)}
+    class_index = {name: index for index, name in enumerate(classes)}
+    path = os.path.join(directory, "grouped_scores.parquet")
+    writer = ScoreWriter(path, classes, groups)
+    try:
+        folds = []
+        for row in rows:
+            if row["split_id"] not in folds:
+                folds.append(row["split_id"])
+        for fold in folds:
+            picked = [index for index, row in enumerate(rows)
+                      if rows[index]["split_id"] == fold]
+            writer.write_fold(
+                fold,
+                np.asarray([rows[i]["row_index"] for i in picked], dtype="int64"),
+                np.asarray([group_index[rows[i]["split_group"]] for i in picked],
+                           dtype="int32"),
+                np.asarray([class_index[rows[i]["y_true"]] for i in picked],
+                           dtype="int32"),
+                np.asarray([posteriors[i] for i in picked], dtype="float32"),
+            )
+    finally:
+        writer.close()
+    return path
+
+
+def posteriors_agreeing_with(rows, classes=CLASSES):
+    """A posterior per row whose argmax is that row's recorded `y_pred`."""
+    out = []
+    for row in rows:
+        vector = [0.1] * len(classes)
+        vector[classes.index(row["y_pred"])] = 0.9
+        total = sum(vector)
+        out.append([value / total for value in vector])
+    return out
+
+
+class ScoresConsistencyTests(unittest.TestCase):
+    """The audit `run_grouped_validation.py` is not allowed to do for itself.
+
+    The runner checks its own argmax against `model.predict` on the first
+    block of each fold only. These tests cover the independent, full-coverage
+    re-derivation from the file on disk.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.rows, self.fold_metrics = consistent_rows()
+        self.directory = write_run(os.path.join(self.tmp.name, "run"),
+                                   self.rows, self.fold_metrics)
+        self.report = json.load(open(
+            os.path.join(self.directory, "grouped_validation_report.json"),
+            encoding="utf-8"))
+        self.arrays = load_prediction_arrays(
+            os.path.join(self.directory, "grouped_predictions.csv"),
+            CLASSES, [f["split_id"] for f in self.fold_metrics])
+
+    def _checks(self):
+        return check_scores_consistency(self.directory, self.arrays,
+                                        self.report, CLASSES)
+
+    def test_absent_scores_file_produces_no_checks(self):
+        # --save-scores is optional; an unscored run is not a broken run.
+        self.assertEqual(self._checks(), [])
+
+    def test_agreeing_posteriors_pass_every_check(self):
+        write_scores(self.directory, self.rows, posteriors_agreeing_with(self.rows))
+        checks = self._checks()
+        self.assertEqual(len(checks), 4)
+        self.assertTrue(all(check["passed"] for check in checks), checks)
+
+    def test_a_single_disagreeing_row_is_caught(self):
+        posteriors = posteriors_agreeing_with(self.rows)
+        # Row 3 was predicted `attack`; flip its posterior to favour `normal`.
+        posteriors[3] = [0.1, 0.9]
+        write_scores(self.directory, self.rows, posteriors)
+        failed = [c for c in self._checks() if not c["passed"]]
+        self.assertEqual(len(failed), 1)
+        self.assertIn("argmax(posterior) reproduces y_pred", failed[0]["check"])
+        self.assertIn("1 mismatches", failed[0]["observed"])
+
+    def test_posteriors_that_are_not_a_distribution_are_caught(self):
+        posteriors = posteriors_agreeing_with(self.rows)
+        # Sums to 1.1, but its argmax still matches row 0's `normal`, so only
+        # the distribution check may fire - a broken block must not be able to
+        # hide behind a correct argmax.
+        posteriors[0] = [0.2, 0.9]
+        write_scores(self.directory, self.rows, posteriors)
+        failed = [c for c in self._checks() if not c["passed"]]
+        self.assertEqual([c["check"] for c in failed],
+                         ["posteriors are a distribution (in [0,1], summing to 1)"])
+
+    def test_missing_rows_are_caught(self):
+        write_scores(self.directory, self.rows[:6],
+                     posteriors_agreeing_with(self.rows)[:6])
+        failed = [c for c in self._checks() if not c["passed"]]
+        self.assertEqual([c["check"] for c in failed], ["scored rows == predicted rows"])
+        self.assertIn("6 scored", failed[0]["observed"])
+
+    def test_disagreeing_ground_truth_is_caught(self):
+        rows = [dict(row) for row in self.rows]
+        rows[0]["y_true"] = "attack"
+        write_scores(self.directory, rows, posteriors_agreeing_with(self.rows))
+        failed = [c for c in self._checks() if not c["passed"]]
+        self.assertEqual([c["check"] for c in failed],
+                         ["scores y_true agrees with predictions y_true"])
