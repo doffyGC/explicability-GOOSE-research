@@ -123,6 +123,44 @@ def set_property(text, key, value):
     return text.rstrip("\n") + "\n%s=%s\n" % (key, value)
 
 
+def attacks_properties_text(original, family, include_legitimate=False):
+    """The `attacks.properties` a cell needs, as text.
+
+    Two flags, and the second one is the whole reason this function exists.
+
+    `attacks.orientedGrayhole` is mutually exclusive with the benign mode, so
+    it tracks the family. `attacks.legitimate` decides whether the legitimate
+    publisher's *complete* stream is written into the dataset **alongside**
+    the attacker's forwarded copies - and with it on, which was the setting
+    behind the 265-run pool, the dataset holds both streams interleaved. That
+    is not a redundancy:
+
+      - `OrientedGrayHoleCreator` already removes the discarded messages from
+        the attacker's stream, so that stream carries the gaps a grayhole
+        actually produces;
+      - writing the legitimate stream on top fills every one of those gaps,
+        so no message is ever missing from the capture and the delta features
+        have no absence left to measure;
+      - and because the attacker forwards *unmodified* copies, every
+        attack-labelled row ends up with a byte-identical `normal` row beside
+        it (`label_duplication_audit.md`: 216,547 of 216,547).
+
+    So the default is to exclude it. What a monitor downstream of a grayhole
+    sees is one stream with holes in it, and that is what the dataset should
+    contain. Measured on one cell per variant: duplicate message keys go from
+    22,132 to 0, conflicting labels from 1,276 to 0, and interior `SqNum`
+    gaps appear for the first time (917 of sizes 2-6 on FULLY_RANDOMIZED).
+
+    `include_legitimate=True` reproduces the old behaviour, for comparing
+    against the existing pool. It should not be used to generate a pool
+    anything is trained on; `check_label_duplication.py` will reject one.
+    """
+    text = set_property(original, "attacks.orientedGrayhole",
+                        "true" if family == "attack" else "false")
+    return set_property(text, "attacks.legitimate",
+                        "true" if include_legitimate else "false")
+
+
 def java_property_value(value):
     """Escape non-ASCII text for Java's ISO-8859-1 Properties reader.
 
@@ -318,6 +356,17 @@ def main(argv=None):
     p.add_argument("--plan-out", help="Write the complete planned matrix to JSON.")
     p.add_argument("--smoke", action="store_true", help="Tiny matrix and tiny runs, to check the wiring.")
     p.add_argument("--dry-run", action="store_true", help="Print the matrix and exit.")
+    p.add_argument("--legitimate-stream", choices=["exclude", "include"],
+                   default="exclude",
+                   help="Whether the legitimate publisher's complete stream is written "
+                        "alongside the attacker's forwarded copies. 'exclude' (default) "
+                        "leaves the capture a monitor downstream of the grayhole would "
+                        "actually see - one stream, with the discarded messages missing. "
+                        "'include' reproduces the setting behind the 265-run pool, whose "
+                        "interleaving fills every gap and gives every attack row a "
+                        "byte-identical `normal` twin; it is for comparing against that "
+                        "pool, not for generating one to train on. See "
+                        "label_duplication_audit.md.")
     p.add_argument("--skip-existing", action="store_true", help="Leave runs whose CSV already exists.")
     args = p.parse_args(argv)
 
@@ -370,6 +419,11 @@ def main(argv=None):
     if original_attacks is None and any(c["family"] == "benign" for c in cells):
         raise SystemExit("attacks.properties not found under %s - needed to disable "
                           "attacks.orientedGrayhole for benign runs." % ereno)
+    include_legitimate = args.legitimate_stream == "include"
+    if include_legitimate:
+        print("WARNING: --legitimate-stream include reproduces the defect in "
+              "label_duplication_audit.md; the pool will not pass "
+              "check_label_duplication.py.")
     results = []
     try:
         for i, cell in enumerate(cells, 1):
@@ -394,7 +448,8 @@ def main(argv=None):
                 text = set_property(text, "attack.orientedGrayhole.burstSize", cell["burst_size_config"])
                 text = set_property(text, "attack.benignImpairment.mode", "NONE")
                 if original_attacks is not None:
-                    write(attacks_path, set_property(original_attacks, "attacks.orientedGrayhole", "true"))
+                    write(attacks_path, attacks_properties_text(
+                        original_attacks, "attack", include_legitimate))
             else:  # benign
                 text = set_property(text, "run.scenarioId", "SC-BENIGN_%s-%s" % (cell["variant"], cell["token"]))
                 text = set_property(text, "attack.benignImpairment.mode", cell["variant"])
@@ -406,7 +461,8 @@ def main(argv=None):
                 # Mutually exclusive with the grayhole attack in the same run
                 # (RunContext.csvRow() would otherwise report attack_variant
                 # from an attack that isn't the thing under test).
-                write(attacks_path, set_property(original_attacks, "attacks.orientedGrayhole", "false"))
+                write(attacks_path, attacks_properties_text(
+                    original_attacks, "benign", include_legitimate))
 
             text = set_property(
                 text, "scenario.path",
@@ -459,6 +515,11 @@ def main(argv=None):
         "design": {
             "family": args.family,
             "tier": args.tier,
+            # Recorded because two pools generated under different settings are
+            # otherwise indistinguishable from their CSVs alone, and they are
+            # not comparable: one has every attack row twinned with a `normal`
+            # row, the other does not.
+            "legitimate_stream": args.legitimate_stream,
             "target_malicious_per_run": args.target_malicious,
             "batch_size": args.batch_size,
             "max_iterations": args.max_iterations,

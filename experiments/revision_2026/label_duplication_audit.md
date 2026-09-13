@@ -121,10 +121,39 @@ A grayhole emits nothing. It withholds. The information about it is in the
 absence. What it labels instead is a forwarded copy that is byte-identical to
 benign traffic - which is exactly what section 1 measures.
 
-Setting `attacks.legitimate=false` would remove the twins but not fix this: it
-would leave a dataset whose `normal` class is gone from that publisher and
-whose attack class is a stream of ordinary messages. The label would still not
-be a function of the features.
+### Correction: the flag *does* fix the capture
+
+This section first claimed that `attacks.legitimate=false` would remove the
+twins but leave a dataset with no `normal` class and an attack class of
+ordinary messages. That was reasoning, not measurement, and it was wrong.
+
+`OrientedGrayHoleCreator` labels only the messages that follow a discard; the
+rest of the attacker's forwarded stream is written as `normal`. So dropping
+the legitimate stream leaves **both** classes, and - because the attacker's
+stream is the one with the holes in it - the discarded messages finally show
+up as absences. One cell per variant, generated and measured:
+
+| Variant | rows | attack rows | duplicate keys | conflicting labels | interior `SqNum` gaps |
+|---|---:|---:|---:|---:|---|
+| `DETERMINISTIC_BURST` (before) | 48,664 | 1,276 | 22,132 | 1,276 | 0 |
+| `DETERMINISTIC_BURST` | 21,664 | 1,067 | **0** | **0** | 0 (discards at state changes) |
+| `RANDOMIC_MESSAGE` | 43,654 | 1,192 | **0** | **0** | **397**, all size 2 |
+| `FULLY_RANDOMIZED` | 7,666 | 1,126 | **0** | **0** | **917**, sizes 2-6 |
+| 10 benign runs, all tier-1 mechanisms | 106,842 | - | **0** | **0** | - |
+
+The benign controls improve too: `benign_degradation` now tracks the
+configured loss rate (5.26% / 14.69% / 29.32% at 5% / 15% / 30%) instead of
+being fixed by the ~1,000-message target, so the dose-response the card-C
+design assumed is finally present.
+
+Attack prevalence rises from 0.93% to 2.7-14.7% depending on variant, which
+also removes the extreme imbalance cards D and E spent most of their effort
+working around.
+
+`generate_run_matrix.py --legitimate-stream {exclude,include}` now controls
+this, defaulting to `exclude`, and records the choice in `run_matrix.json` -
+two pools generated under different settings are otherwise indistinguishable
+from their CSVs alone, and they are not comparable.
 
 ## 4. It was introduced by the regeneration
 
@@ -213,11 +242,11 @@ found nothing above 1.8x and concluded, wrongly, that there is no signal.
 
 ## 6. What has to happen before any more model runs
 
-1. **Decide what a grayhole row *is*** (see §3b and §7). Neither available
-   switch fixes it: keeping both streams gives identical rows under two
-   labels, and dropping the legitimate stream gives an attack class made of
-   ordinary messages. The generator has to be changed to express a withheld
-   message, or the label has to move off the message.
+1. ~~Decide what a grayhole row *is* before anything else.~~ **Done in part:
+   the capture is fixed** (§3b correction). `--legitimate-stream exclude` is
+   the default and the twins are gone. What remains open is narrower and is in
+   §7: the gap and the attack label still do not line up, so the *labelling*
+   question survives even though the *capture* question is settled.
 2. **Regenerate the 265-run matrix** once the generator is fixed. The run
    matrix, the seeds and the grouped protocol are all reusable; only the CSVs
    change.
@@ -241,6 +270,18 @@ detector has. If a grayhole withholds messages, then:
   "attack" attaches a label their content cannot support;
 - the only observable is a property of the **sequence** - a gap, a stretched
   interval - which is a property of a window, not of a row.
+
+And the fixed capture makes this measurable rather than theoretical. On
+`RANDOMIC_MESSAGE` with the legitimate stream excluded there are 397 interior
+gaps but 1,192 attack-labelled rows, and `sqDiff == 2` - the post-gap
+signature - appears on **more `normal` rows than attack rows**. So even with
+the capture repaired, the per-message attack label is not marking "the message
+after a discard".
+
+That is worth reading twice before treating it as a problem: if `sqDiff == 2`
+*were* a clean detector, the paper's ML contribution would be nil. The task
+staying non-trivial is the good outcome; what has to be settled is what the
+label means.
 
 So the experimental unit is probably wrong. A defensible redesign labels a
 **window** or a **trace segment** as attacked/not, and the model classifies
