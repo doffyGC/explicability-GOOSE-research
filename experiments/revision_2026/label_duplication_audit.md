@@ -283,6 +283,33 @@ That is worth reading twice before treating it as a problem: if `sqDiff == 2`
 staying non-trivial is the good outcome; what has to be settled is what the
 label means.
 
+Measured on the fixed capture, the label turns out to mark a discard in two
+different situations, and only one of them is identifiable per message:
+
+| Signature | precision | recall (FRG / SAG.PBM) |
+|---|---:|---|
+| row follows an **interior** `SqNum` gap | **1.000** | 0.721 / 0.034 |
+| + state starts above its usual first `SqNum` | 0.586 / 0.186 | 0.918 / 0.809 |
+
+The first row of that table is the good news and the trap: *every* row after
+an interior gap is labelled attack, with no false positives - but interior
+gaps are only 3-72% of attack rows, because most discards happen at a state
+boundary where `SqNum` resets anyway.
+
+The second row is the finding. At a state boundary the attacked and the
+unattacked states are **not separable by the first `SqNum` alone**: attacked
+states start at 1/2/3 (92/101/78 occurrences) and unattacked states start at
+1/2/3 as well (505/279/278). One message at a state boundary carries no
+information about whether a discard preceded it. What separates them is how
+*often* states start late, and in what pattern - a property of a window, not
+of a row.
+
+So the per-message task is neither trivial nor fully well-posed: a hand-written
+rule reaches precision 0.19-0.59, so there is real work for a model, but a
+meaningful part of the positives are per-message unidentifiable in principle.
+That is the strongest argument for the window redesign below, and it is now
+measured rather than asserted.
+
 So the experimental unit is probably wrong. A defensible redesign labels a
 **window** or a **trace segment** as attacked/not, and the model classifies
 windows. That also changes what SHAP explains (card F) and what the
