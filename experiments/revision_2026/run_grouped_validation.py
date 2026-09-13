@@ -285,6 +285,131 @@ def predict_in_chunks(model, X, positions, chunk_rows=PREDICT_CHUNK_ROWS):
     return np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
 
 
+def predict_proba_in_chunks(model, X, positions, chunk_rows=PREDICT_CHUNK_ROWS):
+    """The posterior counterpart of ``predict_in_chunks``, at float32.
+
+    Same bounded-block reasoning, one extra constraint: the result is kept
+    for the whole fold rather than consumed chunk by chunk, so it is cast
+    down to float32 as it arrives.  A 5.58M-row fold is 134 MB at float32
+    against 268 MB at the float64 scikit-learn returns, and that array has
+    to coexist with the fitted model until the fold's scores are written.
+    """
+    import numpy as np
+
+    chunks = [
+        np.asarray(model.predict_proba(X[positions[start:start + chunk_rows]]),
+                   dtype="float32")
+        for start in range(0, len(positions), chunk_rows)
+    ]
+    return np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
+
+
+def labels_from_proba(model, X, positions, proba, chunk_rows=PREDICT_CHUNK_ROWS):
+    """Derive the fold's hard labels from the posteriors, and prove it is the same thing.
+
+    Predicting twice - once for the labels, once for the posteriors - would
+    double the predict phase of every scored run, so the labels are taken as
+    ``argmax(proba)`` instead.  For every family here that *is* what
+    ``predict`` computes, but "essentially always identical" is not a claim
+    this pipeline gets to make without checking: ties and a booster that
+    resolves the argmax inside its own C++ rather than in numpy could both
+    break it, and a silent disagreement would mean the persisted scores
+    describe a different classifier than `grouped_predictions.csv` does.
+
+    So the first block is verified against ``model.predict``.  On any
+    mismatch the run falls back to ``predict`` for the whole fold - the
+    labels stay exactly what an unscored run would have written - and the
+    disagreement is recorded in the report rather than hidden.
+    """
+    import numpy as np
+
+    predicted = np.argmax(proba, axis=1).astype("int64")
+    checked = int(min(len(positions), chunk_rows))
+    if checked == 0:
+        return predicted, {"rows_checked": 0, "argmax_mismatches": 0,
+                           "fell_back_to_predict": False}
+    reference = np.asarray(model.predict(X[positions[:checked]]), dtype="int64")
+    mismatches = int(np.count_nonzero(reference != predicted[:checked]))
+    if mismatches:
+        predicted = np.asarray(predict_in_chunks(model, X, positions), dtype="int64")
+    return predicted, {
+        "rows_checked": checked,
+        "argmax_mismatches": mismatches,
+        "fell_back_to_predict": bool(mismatches),
+    }
+
+
+SCORES_FILENAME = "grouped_scores.parquet"
+
+
+class ScoreWriter:
+    """Persists the per-row class posteriors that any threshold question needs.
+
+    `grouped_predictions.csv` records only the argmax.  That fixes the
+    operating point at "whatever prior the training partition happened to
+    have", which is exactly why this revision's two published configurations
+    - `none` (attack recall ~0) and `downsample` (attack recall ~0.70 at a
+    ~39% false-positive rate on ideal traffic) - cannot be compared as
+    operating points: they are the same score read at two thresholds
+    separated by the balancing, with the rest of the curve never measured.
+    Recovering it from hard labels is impossible; recovering it from
+    posteriors is arithmetic (`grouped_pr_curves.py`).
+
+    Written as a separate Parquet file rather than as extra CSV columns for
+    two reasons: `grouped_predictions.csv` stays byte-identical to what
+    earlier runs produced, which `validation_protocol.md` relies on as a
+    regression check, and 23.2M x 6 float32 costs ~0.4 GB compressed instead
+    of ~1.5 GB of text.  One row group per fold, so a reader's peak is one
+    fold rather than the whole run.
+    """
+
+    def __init__(self, path, classes, group_labels):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        self._pa = pa
+        self.classes = [str(name) for name in classes]
+        self._groups = pa.array([str(label) for label in group_labels], type=pa.string())
+        self._labels = pa.array(self.classes, type=pa.string())
+        fields = [
+            pa.field("split_id", pa.dictionary(pa.int32(), pa.string())),
+            pa.field("row_index", pa.int64()),
+            pa.field("split_group", pa.dictionary(pa.int32(), pa.string())),
+            pa.field("y_true", pa.dictionary(pa.int32(), pa.string())),
+        ]
+        fields += [pa.field("p_%s" % name, pa.float32()) for name in self.classes]
+        self.schema = pa.schema(fields)
+        self._writer = pq.ParquetWriter(path, self.schema, compression="snappy")
+
+    def write_fold(self, split_id, row_index, group_codes, y_codes, proba):
+        import numpy as np
+
+        pa = self._pa
+        rows = len(row_index)
+        if proba.shape != (rows, len(self.classes)):
+            raise GroupedRunError(
+                "%s produced a %r posterior block for %d rows and %d classes"
+                % (split_id, proba.shape, rows, len(self.classes)))
+        columns = [
+            pa.DictionaryArray.from_arrays(
+                pa.array(np.zeros(rows, dtype="int32")),
+                pa.array([str(split_id)], type=pa.string())),
+            pa.array(np.asarray(row_index, dtype="int64")),
+            pa.DictionaryArray.from_arrays(
+                pa.array(np.asarray(group_codes, dtype="int32")), self._groups),
+            pa.DictionaryArray.from_arrays(
+                pa.array(np.asarray(y_codes, dtype="int32")), self._labels),
+        ]
+        columns += [
+            pa.array(np.ascontiguousarray(proba[:, index]), type=pa.float32())
+            for index in range(proba.shape[1])
+        ]
+        self._writer.write_table(pa.Table.from_arrays(columns, schema=self.schema))
+
+    def close(self):
+        self._writer.close()
+
+
 def fit_diagnostics(model):
     """Whatever the fitted model can say about whether its fit actually finished.
 
@@ -484,7 +609,7 @@ def prepare_arrays(frame, group_column, target_column, extra_discard):
 
 def run_folds(arrays, splits, model_name, seed, predictions_writer,
               balance_strategy="none", smote_factor=20.0, smote_max_target=200_000,
-              max_train_rows=0, n_jobs=-1):
+              max_train_rows=0, n_jobs=-1, scores_writer=None):
     import gc
 
     import numpy as np
@@ -552,7 +677,13 @@ def run_folds(arrays, splits, model_name, seed, predictions_writer,
 
         test_positions = np.flatnonzero(test_mask)
         del test_mask
-        predicted = predict_in_chunks(model, X, test_positions)
+        if scores_writer is None:
+            predicted = predict_in_chunks(model, X, test_positions)
+            proba, score_diagnostics = None, None
+        else:
+            proba = predict_proba_in_chunks(model, X, test_positions)
+            predicted, score_diagnostics = labels_from_proba(
+                model, X, test_positions, proba)
         del model
         gc.collect()
         y_test = y[test_positions]
@@ -582,6 +713,7 @@ def run_folds(arrays, splits, model_name, seed, predictions_writer,
                 "applied": rows_sampled < rows_available,
             },
             "fit": diagnostics,
+            "scores": score_diagnostics,
             "balance": {
                 "strategy": balance_strategy,
                 "train_rows_resampled": rows_trained,
@@ -600,7 +732,12 @@ def run_folds(arrays, splits, model_name, seed, predictions_writer,
                 "split_group": group_labels[group_codes[position]],
                 "y_true": truth, "y_pred": prediction,
             })
-        del test_positions, y_test, predicted, true_labels, predicted_labels
+        if scores_writer is not None:
+            scores_writer.write_fold(
+                split["split_id"], row_index[test_positions],
+                group_codes[test_positions], y_test, proba,
+            )
+        del test_positions, y_test, predicted, true_labels, predicted_labels, proba
         gc.collect()
     return metrics, list(classes), list(arrays["features"])
 
@@ -636,6 +773,13 @@ def parse_args(argv=None):
                              "flag: the test partition and the evaluated distribution are "
                              "untouched, so the run stays a full_grouped_run. Applied before "
                              "--balance. See ablations_baselines.md SS7.")
+    parser.add_argument("--save-scores", action="store_true",
+                        help="Also write grouped_scores.parquet: the per-row class "
+                             "posteriors behind y_pred. Required by grouped_pr_curves.py "
+                             "- PR/DET curves, a fixed alert budget and undoing a "
+                             "training-prior shift are all unanswerable from hard labels "
+                             "alone. Costs ~0.4 GB per full run and does not change "
+                             "grouped_predictions.csv.")
     parser.add_argument("--n-jobs", type=int, default=-1,
                         help="Threads for the model that supports it (-1 = all cores). "
                              "A throughput knob, not a hyperparameter; recorded in the report.")
@@ -644,6 +788,9 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
+    # Both staging paths are named before anything that can fail, so the
+    # cleanup handler never has to ask whether they exist as names.
+    predictions_tmp = scores_tmp = None
     try:
         preparation = load_json(args.preparation_report)
         split_payload = load_json(args.splits)
@@ -698,19 +845,29 @@ def main(argv=None):
         # fold still leaves no partial `grouped_predictions.csv` behind,
         # matching the previous all-or-nothing behaviour.
         predictions_tmp = predictions_path + ".tmp"
-        with open(predictions_tmp, "w", encoding="utf-8", newline="") as fh:
-            writer = csv.DictWriter(
-                fh, fieldnames=["split_id", "row_index", "split_group", "y_true", "y_pred"]
-            )
-            writer.writeheader()
-            metrics, classes, features = run_folds(
-                arrays, split_payload["splits"], args.model, args.seed, writer,
-                balance_strategy=args.balance,
-                smote_factor=args.smote_oversample_factor,
-                smote_max_target=args.smote_max_target,
-                max_train_rows=args.max_train_rows_per_fold,
-                n_jobs=args.n_jobs,
-            )
+        scores_path = os.path.join(args.out_dir, SCORES_FILENAME)
+        scores_tmp = scores_path + ".tmp" if args.save_scores else None
+        scores_writer = None
+        try:
+            if args.save_scores:
+                scores_writer = ScoreWriter(
+                    scores_tmp, arrays["classes"], arrays["group_labels"])
+            with open(predictions_tmp, "w", encoding="utf-8", newline="") as fh:
+                writer = csv.DictWriter(
+                    fh, fieldnames=["split_id", "row_index", "split_group", "y_true", "y_pred"]
+                )
+                writer.writeheader()
+                metrics, classes, features = run_folds(
+                    arrays, split_payload["splits"], args.model, args.seed, writer,
+                    balance_strategy=args.balance,
+                    smote_factor=args.smote_oversample_factor,
+                    smote_max_target=args.smote_max_target,
+                    max_train_rows=args.max_train_rows_per_fold,
+                    n_jobs=args.n_jobs, scores_writer=scores_writer,
+                )
+        finally:
+            if scores_writer is not None:
+                scores_writer.close()
         report = {
             "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
             "status": "technical_smoke" if args.max_rows_per_group_class else "full_grouped_run",
@@ -728,6 +885,7 @@ def main(argv=None):
             "sample_cap_per_group_class": args.max_rows_per_group_class or None,
             "max_train_rows_per_fold": args.max_train_rows_per_fold or None,
             "n_jobs": args.n_jobs,
+            "scores_file": SCORES_FILENAME if args.save_scores else None,
             "rows_used": rows_used,
             "classes": classes,
             "features": features,
@@ -738,12 +896,15 @@ def main(argv=None):
             json.dump(report, fh, indent=2)
             fh.write("\n")
         os.replace(predictions_tmp, predictions_path)
+        if scores_tmp is not None:
+            os.replace(scores_tmp, scores_path)
     except (OSError, json.JSONDecodeError, GroupedRunError, ValueError) as exc:
-        try:
-            if os.path.exists(predictions_tmp):
-                os.remove(predictions_tmp)
-        except (OSError, NameError):
-            pass
+        for stale in (predictions_tmp, scores_tmp):
+            try:
+                if stale and os.path.exists(stale):
+                    os.remove(stale)
+            except OSError:
+                pass
         print("GROUPED VALIDATION FAILED\n%s" % exc, file=sys.stderr)
         return 1
     print("Completed %d grouped folds on %d rows (%s)." %
