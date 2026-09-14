@@ -1,6 +1,6 @@
 {
-  "rows_before": 23226795,
-  "rows_after": 23226530,
+  "rows_before": 11057743,
+  "rows_after": 11057478,
   "traces": 265,
   "boundary_rows": 265,
   "first_row_policy": "drop",
@@ -22,8 +22,8 @@
     "timeFromLastChange"
   ],
   "status": "pass",
-  "generated": "2026-09-13 03:47:48 UTC",
+  "generated": "2026-09-14 00:27:13 UTC",
   "source": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\data\\runs\\gray-GOOSE-runs-metadata.parquet",
   "output": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\data\\runs\\gray-GOOSE-runs-prepared.parquet",
-  "output_sha256": "e0c172eac5276c33cba057bd9817a13275b4c4c7696023fad6251d12015ed58f"
+  "output_sha256": "3109e4d480524d8ac94f80abe54719aff1125b286fa0312428ec332abc64f026"
 }

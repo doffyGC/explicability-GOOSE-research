@@ -5,7 +5,7 @@
   "every_group_tested_once": true,
   "status": "pass",
   "dataset": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\data\\runs\\gray-GOOSE-runs-prepared.parquet",
-  "dataset_rows": 23226530,
+  "dataset_rows": 11057478,
   "group_column": "split_group",
   "splits_file": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\experiments\\revision_2026\\splits_grouped.json"
 }

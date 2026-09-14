@@ -23,3 +23,6 @@ __pycache__/
 /prioridades_revisao_gray_goose.pdf
 
 CLAUDE.md
+
+# Archived pools kept for provenance (see label_duplication_audit.md)
+/data/archive-*/
