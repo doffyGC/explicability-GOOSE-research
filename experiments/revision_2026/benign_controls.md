@@ -328,3 +328,75 @@ the milestone named:
 
 To resume work on a later day: read this file's status table and
 `README.md`'s script table, then continue at the first unchecked milestone.
+
+## 8. `CONGESTION_LOSS` ≡ `FRG`: the control that falsified its pairing (2026-09-16)
+
+§3 pairs `CONGESTION_LOSS` against `FULLY_RANDOMIZED` to falsify the inference
+"isolated random loss ⇒ FRG". It falsifies it completely, and the reason is
+that the two are not merely similar but **identical by construction**: a
+grayhole dropping uniformly at random and a link losing packets to congestion
+are the same stochastic process over the same stream.
+
+### The evidence
+
+- **15 of the 45 `FULLY_RANDOMIZED` runs are byte-identical in payload** to the
+  `BENIGN_CONGESTION_LOSS` runs of the same loss rate and seed. Across the 265
+  runs there are 250 distinct payloads; the 15 collisions are exactly those
+  pairs.
+- Nothing in the chain catches it. `merge_runs.py` includes `class` in its
+  payload fingerprint, so the two fingerprints differ and the pair passes;
+  `check_label_duplication.py` is intra-run. **Extending that gate to cross-run
+  payload collisions - fingerprinting on features only, ignoring `class` and
+  the provenance columns - is an open task.**
+- The champion (`v2-xgboost-none`) classifies **73.33% of `CONGESTION_LOSS`
+  rows as an attack** while its false-positive rate on ideal `normal` traffic
+  is **0.01%** (`benign_confusion.v2-xgboost-none.md`). It is not confusing
+  attack with normal traffic; it is confusing attack with the one benign
+  mechanism that is physically the same thing.
+- `FRG` has the second-lowest AP of the four attack classes (0.6395 [0.5484,
+  0.7284]) despite carrying the most positive rows, and at a
+  10-alerts-per-10,000 budget **99.4% of its false alarms are
+  `benign_degradation`** (`pr_curves_d3_v2.md`).
+
+### The decision
+
+**Keep `FRG` as a class and report the null.** The alternative - dropping the
+class - is cleaner but discards a demonstrable negative result and hides the
+fact that one of the four attack variants is unidentifiable in principle.
+
+The sentence the paper carries: *a uniformly-random grayhole is
+indistinguishable from congestion loss by construction; the three structured
+variants are not.* Stated that way it bounds the contribution instead of
+inflating it, and it explains `FRG`'s position in every table rather than
+leaving it as an unexplained weak class.
+
+Two constraints follow:
+
+1. **No `FRG`-vs-`CONGESTION_LOSS` separation may be reported as a result.**
+   Any measured difference between those two populations is noise on 15 of the
+   45 runs and unexplained variance on the rest.
+2. **`ANY_ATTACK` numbers must be read with `FRG` in mind.** It is 29.5% of the
+   attack rows, and a share of them cannot be separated from a benign control.
+   Per-class reporting is what keeps this visible, which is one more reason the
+   four detectors stay separate (`validation_protocol.md`, D.3).
+
+Reproducing the collision:
+
+    python - <<'EOF'
+    import pyarrow.parquet as pq, pandas as pd, hashlib, collections
+    PROV = {"class","run_id","trace_id","batch_index","scenario_id","seed",
+            "attack_variant","loss_rate","burst_size","traffic_rate",
+            "substation_config","impairment_mode","impairment_rate",
+            "impairment_intensity_ms","split_group","event_id","message_index"}
+    pf = pq.ParquetFile("data/runs/gray-GOOSE-runs-prepared.parquet")
+    cols = [c for c in pf.schema_arrow.names if c not in PROV]
+    g = collections.defaultdict(list)
+    for rg in range(pf.num_row_groups):
+        t = pf.read_row_group(rg, columns=cols + ["split_group"]).to_pandas()
+        key = hashlib.sha256(pd.util.hash_pandas_object(t[cols], index=False)
+                             .values.tobytes()).hexdigest()[:16]
+        g[key].append(str(t["split_group"].iloc[0]))
+    for h, v in sorted((i for i in g.items() if len(i[1]) > 1), key=lambda x: x[1][0]):
+        print(h, " == ".join(sorted(v)))
+    EOF
+

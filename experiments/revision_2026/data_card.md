@@ -1,16 +1,21 @@
 # Gray-GOOSE dataset card
 
-> # ⚠ Known defect in the regenerated pool (2026-09-13)
+> # Defect fixed by regeneration (2026-09-16)
 >
-> The regenerated `data/runs/` pool must not be used to train or evaluate an
-> attack detector. **100% of its attack rows have a content-identical row
-> labelled `normal` in the same run** (216,547 of 216,547), because ERENO
-> writes both the legitimate IED's stream and the grayhole IED's forwarded
-> copies of the same messages. `label_duplication_audit.md` has the evidence,
-> the root cause and what has to be decided before regenerating.
+> The pool documented here was regenerated on 2026-09-13 (`d2de01c`) to fix a
+> defect that made it unusable for training: 100% of its attack rows had a
+> content-identical row labelled `normal` in the same run, because ERENO wrote
+> both the legitimate IED's stream and the grayhole IED's forwarded copies of
+> the same messages. `label_duplication_audit.md` has the evidence and the root
+> cause; `check_label_duplication.py` now gates it and reports **zero findings**
+> on the current pool.
 >
-> The legacy `gray-GOOSE.csv` does not have this (15 of 406,989 attack rows).
-
+> **One collision remains, and it is not a bug.** 15 of the 45
+> `FULLY_RANDOMIZED` runs are byte-identical in payload to the
+> `BENIGN_CONGESTION_LOSS` control runs of the same loss rate and seed: a
+> uniformly-random grayhole and congestion loss are the same stochastic
+> process. The decision (2026-09-16) is to keep the class and report the null -
+> `benign_controls.md` §8.
 
 ## 1. Summary and status
 
@@ -25,12 +30,14 @@ This card distinguishes two artifacts that must not be presented as equivalent:
 |---|---|---|
 | `gray-GOOSE.csv` | Dataset used by the submitted paper; available locally | Audit and baseline reproduction only. Its run identity and random state were not recorded. |
 | `gray-GOOSE-metadata.parquet` | Legacy dataset annotated after generation | Data-quality analysis only. Some metadata is recovered or derived, not generator-emitted. |
-| Regenerated run matrix (`gray-GOOSE-runs-prepared.parquet`) | **Generated in full and validated**: 265 runs (180 attack + 85 benign-degradation), 23,226,530 prepared rows, merged (`merge_report.md`), annotated (`metadata_audit.md`), delta-recomputed within trace (`preparation_audit.json`), split 5-fold StratifiedGroupKFold and leakage-audited (`check_no_leakage.py`: pass, 265/265 groups tested once). Extended from 205 runs on 2026-09-13 (+10 seeds each for `DETERMINISTIC_BURST` and `FULLY_RANDOMIZED`) — see §4. | Primary dataset for the revised grouped evaluation. Ten model runs exist across four families and three balancing scenarios (`validation_protocol.md`, "Model family comparison"); none is yet a reportable detectability claim — see §12. |
+| Regenerated run matrix (`gray-GOOSE-runs-prepared.parquet`) | **Generated in full and validated**: 265 runs (180 attack + 85 benign-degradation), 11,057,478 prepared rows, merged (`merge_report.md`), annotated (`metadata_audit.md`), delta-recomputed within trace (`preparation_audit.json`), split 5-fold StratifiedGroupKFold and leakage-audited (`check_no_leakage.py`: pass, 265/265 groups tested once) and label-duplication-audited (`check_label_duplication.py`: zero findings). Extended from 205 runs on 2026-09-13 (+10 seeds each for `DETERMINISTIC_BURST` and `FULLY_RANDOMIZED`, see §4), then regenerated without the duplicate legitimate stream. | Primary dataset for the revised grouped evaluation. Nine model runs exist across four families and two balancing scenarios (`validation_protocol.md`, "Model family comparison"); the champion is XGBoost, unbalanced — the first configuration in this revision that detects attacks. Its limits are in that section, not here. |
 
 The legacy artifact must not be used to claim leakage-free grouped validation.
-The regenerated artifact has now passed `merge_runs.py`, annotation and
-`check_no_leakage.py` for all 205 planned runs; it is the dataset the revised
-evaluation should train and report on going forward.
+The regenerated artifact has passed `merge_runs.py`, annotation,
+`check_no_leakage.py` and `check_label_duplication.py` for all 265 runs; it is
+the dataset the revised evaluation trains and reports on. Any artifact not
+bound to SHA-256 `3109e4d4…` predates the 2026-09-13 regeneration and its
+numbers do not transfer.
 
 ## 2. Artifact identity
 
@@ -38,7 +45,8 @@ evaluation should train and report on going forward.
 |---|---:|---:|---|
 | `data/CSV files/gray-GOOSE.csv` | 1,006,989 | 588,751,063 bytes | `B77E6EF58DE054336DBFA19B3C9469AEE56C859B695B139029C9801FC79B32AE` |
 | `data/CSV files/gray-GOOSE-metadata.parquet` | 1,006,989 | 66,461,377 bytes | `FE7F7F12B674267A9F404A6CC6E3BCC3BB4B9A159C0A0BC84001E131BC3C7BCD` |
-| `data/runs/gray-GOOSE-runs-prepared.parquet` | 23,226,530 | see `preparation_audit.json` | `e0c172eac5276c33cba057bd9817a13275b4c4c7696023fad6251d12015ed58f` |
+| `data/runs/gray-GOOSE-runs-prepared.parquet` | 11,057,478 | 832,408,937 bytes | `3109e4d480524d8ac94f80abe54719aff1125b286fa0312428ec332abc64f026` |
+| `data/archive-2026-09-13-dupstream/gray-GOOSE-runs-prepared.parquet` (superseded, kept for provenance) | 23,226,530 | see `preparation_audit.json` in that archive | `e0c172eac5276c33cba057bd9817a13275b4c4c7696023fad6251d12015ed58f` |
 
 Hashes identify the local artifacts audited for this revision. Regenerating or
 rewriting either file requires updating this section and `metadata_audit.md`.
@@ -293,36 +301,28 @@ a new dataset version and requires new hashes and counts.
 
 - The current matrix still uses one publisher/substation configuration.
 - The legacy dataset license is undeclared.
-- Grouped split generation, the independent leakage audit and ten full
-  training runs have all passed on the complete 265-run pool (5-fold
-  StratifiedGroupKFold, 23,226,530 rows, `check_no_leakage.py`: pass;
-  `check_prediction_integrity.py`: 350 checks, 0 failures). See
+- Grouped split generation, the independent leakage audit and nine full
+  training runs have all passed on the corrected 265-run pool (5-fold
+  StratifiedGroupKFold, 11,057,478 rows, `check_no_leakage.py`: pass;
+  `check_label_duplication.py`: zero findings;
+  `check_prediction_integrity.py`: 351 checks, **2 failures**). See
   `validation_protocol.md`, "Full-scale results" and "Model family
-  comparison", and `benign_confusion.md`.
-- That first full run used a plain, unbalanced `DecisionTreeClassifier` and
-  is a wiring/baseline result, not a reportable detectability claim: it
-  **never predicts any of the four attack classes** (0.000 precision/recall
-  on `SAG.DB`/`FRG`/`SAG.PB`/`SAG.PBM` across all 5 folds), consistent with
-  the ~0.1-1% share attack rows hold against `normal`.
-- Checklist E (balancing) has since run two train-only rebalancing scenarios
-  on top of that same tree/splits (`run_grouped_validation.py --balance
-  {downsample,smote}` — see `validation_protocol.md`, "Balancing scenarios").
-  Neither is a usable operating point by itself: capped SMOTE
-  (20x/200k cap) left attack recall at ~0 (indistinguishable from the
-  unbalanced baseline), while full downsampling recovers attack recall
-  (0.51-1.00 across all four classes) at the cost of a 43-44% attack
-  false-positive rate on ideal, unimpaired `normal` traffic
-  (`benign_confusion_downsample.md`) — an alert burden no real deployment
-  could absorb. Checklist item D (ablations/baselines: tree depth, model
-  family, class-weighted alternatives) is the required next step before any
-  claim about SAG detectability under grouped validation.
-- All three runs have been reconciled by `check_prediction_integrity.py`
-  (`prediction_integrity.md`, and `prediction_integrity_d3.md` for the ten
-  card-D runs): 350 checks, 0 failures — row coverage, per-fold
-  counts, per-class sums against both the run reports and this dataset's own
-  class counts, and metrics recomputed independently of the runner. The three
-  runs are pairable (identical rows and ground truth), which is what any
-  paired statistical test in checklist F will require. Note for anyone
-  quoting numbers from these runs: the unbalanced baseline's **weighted** F1
-  is 0.9823 while its **macro** F1 is 0.2794 and it detects no attack rows at
-  all — never report an average from this dataset without naming its scheme.
+  comparison", and `benign_confusion.v2-*.md`.
+- The two failures are 7 and 17 rows of 11,057,478 where
+  `argmax(posterior)` disagrees with `y_pred`, both on Random Forest runs and
+  consistent with float tie-breaking in `predict`. No published number rests
+  on those 24 rows; the check stays red until the cause is confirmed.
+- **The pool this card describes replaced a defective one**, and the results
+  changed with it. The unbalanced decision tree went from predicting no attack
+  row at all to macro F1 0.7043 with 0.66-0.84 recall on three of the four
+  attack classes. Card E's conclusion that rebalancing was the only lever is
+  withdrawn; the `smote` scenario has not been re-run at all.
+- Two limits survive the correction and bound every claim from this dataset:
+  `SAG.PBM` is at 0.18-0.40 recall for every model family, and `FRG` is
+  identical by construction to the `CONGESTION_LOSS` benign control
+  (`benign_controls.md` §8). The attack label is per-message, while a
+  meaningful share of discards are only identifiable over a window
+  (`label_duplication_audit.md` §7) - that is the open design decision.
+- Note for anyone quoting numbers from these runs: the champion's **weighted**
+  F1 is 0.9793 while its **macro** F1 is 0.7310 over identical predictions -
+  never report an average from this dataset without naming its scheme.

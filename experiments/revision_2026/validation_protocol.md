@@ -1,25 +1,28 @@
 # Section B — grouped validation protocol
 
-> # ⚠ Results below are measured on a defective dataset (2026-09-13)
+> # ⚠ Two pools appear in this file (2026-09-16)
 >
-> **Every attack row in the regenerated pool has a `normal` row, in the same
-> run, whose content features are bit-identical** - 216,547 of 216,547, in the
-> raw ERENO output. The attack class is the grayhole IED's *forwarded,
-> unmodified copies* of the legitimate publisher's messages, so what any model
-> here separates is which copy a row is, not whether an attack occurred. A
-> real monitor sees one stream, and the copy it sees is the one labelled
-> `normal`. See `label_duplication_audit.md`; the root cause is that ERENO
-> models a *dropping* attack as an *emitting* one, which is a design mismatch
-> rather than a coding slip.
+> The pool these results were first measured on was **defective**: every attack
+> row had a `normal` row, in the same run, whose content features were
+> bit-identical, because ERENO wrote both the legitimate publisher's stream and
+> the grayhole IED's forwarded copies of the same messages
+> (`label_duplication_audit.md`). It was regenerated in `d2de01c` - 265 runs,
+> 11,057,478 rows, SHA-256 `3109e4d4…`.
 >
-> The models are not merely fitting noise - the champion scores 7.8x chance
-> and does not reduce to any single feature or to the duplicate marker
-> (`feature_signal.md`). It is the *target* that is wrong, not the fit.
+> **"Model family comparison (checklist D.3)" below has been re-run in full on
+> the corrected pool and is current.** Every other results section -
+> "Full-scale results", "Balancing scenarios", "The threshold axis" - is marked
+> where it stands: re-run, superseded by the D.3 section, or withdrawn pending
+> a re-run. Nothing unmarked is from the corrected pool.
 >
-> The **protocol** in this file - grouped splitting, the leakage audit, the
-> run-level bootstrap, the threshold axis - is unaffected: it describes how an
-> evaluation is run, not what the labels say. Re-running cards D and E on a
-> regenerated pool is compute, not rework.
+> The **protocol** itself - grouped splitting, the leakage audit, the run-level
+> bootstrap, the threshold axis - was never affected: it describes how an
+> evaluation is run, not what the labels say.
+>
+> What the corrected pool changed is large. The same unbalanced decision tree
+> went from predicting **no attack row at all** (macro F1 0.2791) to macro F1
+> 0.7043 with 0.66-0.84 recall on three of the four attack classes. Card E's
+> class-imbalance verdict is withdrawn; see the D.3 section.
 
 ## Decision
 
@@ -142,48 +145,67 @@ machine. See "Full-scale results" below.
 
 ## Full-scale results
 
-> **Pool extended 2026-09-13 (205 -> 265 runs).** The numbers below are from
-> the current pool. The 205-run figures they replace are preserved in
-> `archive_205runs/` and in this file's git history. The extension added 10
-> seeds to `DETERMINISTIC_BURST` and `FULLY_RANDOMIZED` (3 cells each, +60
-> runs) because those two classes had only 15 independent runs and a fold's
-> test partition could hold a single one - see "How many attack rows are
-> actually being counted" below. **Results before and after are not comparable
-> row for row**: the folds are redrawn over 265 groups, and attack prevalence
-> moved from 0.675% to 0.932%.
+> **Re-run on the corrected pool (2026-09-16).** The figures below are the
+> unbalanced decision tree on the 265-run / 11,057,478-row pool regenerated in
+> `d2de01c`. They replace the defective-pool numbers (macro F1 0.2653, zero
+> attack recall), which are in this file's git history; the 205-run figures
+> those in turn replaced are in `archive_205runs/`. **None of the three sets is
+> comparable row for row** - the folds are redrawn and attack prevalence moved
+> 0.675% → 0.932% → 1.958%.
 
-The 265-run pool (180 attack + 85 benign-degradation) carried through the
-canonical workflow above:
+The corrected 265-run pool (180 attack + 85 benign-degradation) carried
+through the canonical workflow above:
 
 | Step | Result |
 |---|---|
-| Merge (`merge_runs.py`) | 265 runs, 23,226,795 rows, all passed validation |
-| Metadata (`add_experiment_metadata.py`) | 265 traces/runs, 950,315 events |
-| Delta preparation (`prepare_grouped_dataset.py`) | 23,226,530 rows; 265 trace-boundary rows removed |
+| Merge (`merge_runs.py`) | 265 runs, 11,057,743 rows, all passed validation |
+| Metadata (`add_experiment_metadata.py`) | 265 traces/runs, 853,310 events |
+| Delta preparation (`prepare_grouped_dataset.py`) | 11,057,478 rows; 265 trace-boundary rows removed |
 | Splits (`generate_grouped_splits.py`) | 5-fold stratified-group-kfold, 265 groups |
 | Leakage audit (`check_no_leakage.py`) | **pass** - 265/265 groups tested exactly once |
-| Training (`run_grouped_validation.py --model decision-tree`) | `full_grouped_run`, 5 folds, 23,226,530 rows |
+| Label duplication (`check_label_duplication.py`) | **pass** - zero findings (this is the gate the old pool failed) |
+| Training (`run_grouped_validation.py --model decision-tree`) | `full_grouped_run`, 5 folds, 11,057,478 rows |
 
-Fold results (mean over 5 folds): **accuracy 0.9837 +- 0.0038, macro-F1
-0.2653 +- 0.0307.** The gap between those two numbers is the headline finding,
-not a detail - pooled over all folds, per class:
+Fold results (mean over 5 folds): **accuracy 0.9799, macro-F1 0.7043
+[0.6876, 0.7174]**, interval from the run-level bootstrap. Pooled over all
+folds, per class:
 
 | Class | precision | recall | f1 |
 |---|---:|---:|---:|
-| `normal` | 0.9857 | 0.9985 | 0.9921 |
-| `benign_degradation` | 0.8249 | 0.5823 | 0.6827 |
-| `SAG.DB` / `FRG` / `SAG.PB` / `SAG.PBM` | ~0 | **~0.0000** | **~0.0000** |
+| `normal` | 0.9843 | 0.9987 | 0.9914 |
+| `benign_degradation` | 0.9099 | 0.5617 | 0.6946 |
+| `SAG.DB` | 0.8146 | 0.8421 | 0.8281 |
+| `FRG` | 0.7058 | 0.6590 | 0.6816 |
+| `SAG.PB` | 0.8333 | 0.6741 | 0.7453 |
+| `SAG.PBM` | 0.6562 | 0.1819 | 0.2848 |
 
-The confusion matrix (`benign_confusion.md`) confirms this is not "mostly
-misses, sometimes hits": across all 23.2M rows the model predicts an attack
-class for essentially no row at all.
+**The gap between accuracy and macro F1 is still the thing to read** - 0.9799
+against 0.7043 - but it no longer hides a model that detects nothing. It is
+now carried by two classes: `SAG.PBM` at 0.18 recall and `benign_degradation`
+at 0.56.
 
-**This is a class-imbalance artifact of running the model completely
-unbalanced, not evidence about SAG detectability**, and not a leakage problem -
-`check_no_leakage.py` passed. Card D.3 has since confirmed it is not specific
-to this model either (see "Model family comparison" below).
+Reporting discipline is unchanged and matters as much as ever: **always name
+the averaging scheme.** This same run scores weighted F1 0.9771 against macro
+F1 0.7043 over identical predictions. Per-class values first, macro as the
+headline average, weighted and accuracy as context only.
+
+The comparison against the other model families, and what the correction
+changed, is in "Model family comparison (checklist D.3)" below.
 
 ## Balancing scenarios (checklist E)
+
+> **Numbers here are from the defective pool (2026-09-16).** The `downsample`
+> scenario has been re-run on the corrected pool for all four model families -
+> those results are in "Model family comparison (checklist D.3)" below and
+> **supersede every `downsample` figure in this section**. The `smote` scenario
+> has **not** been re-run: its result (capped SMOTE leaves attack recall at ~0)
+> was measured on a pool where nothing could raise attack recall, so it is
+> **withdrawn**, not merely superseded, and card E's conclusion that rebalancing
+> is the only thing that moves attack detection is withdrawn with it. What
+> stays valid is the *design* below: what each scenario does, why neither aims
+> for parity with `normal`, and that rebalancing touches only the train
+> partition.
+
 
 The run above is the **unbalanced** reference scenario. Checklist E calls for
 two more, both implemented as `--balance {downsample,smote}` on
@@ -322,202 +344,256 @@ tests in checklist F and for the paired bootstrap used throughout card D.3.
 
 ## Model family comparison (checklist D.3)
 
+> **Re-run in full on the corrected pool (2026-09-16).** Every number in this
+> section comes from the 265-run / 11,057,478-row pool regenerated in `d2de01c`
+> (SHA-256 `3109e4d4…`), which no longer emits the legitimate publisher's
+> stream alongside the grayhole's forwarded copies. The defective-pool figures
+> this replaces are in this file's git history. **The conclusions did not
+> survive the correction** - see "What D.3 settles" below.
+
 Card E left an open question: is never predicting an attack class a property
 of `DecisionTreeClassifier(max_depth=8)`, or of every model at this class
 balance? D.3 answers it by running four families - decision tree, XGBoost,
 Random Forest, logistic regression - **at library defaults, with no tuning**
 (tuning is D.4), on the same persisted folds, in both the `none` and
-`downsample` scenarios. Ten runs, ~3 h wall clock on the 265-run pool. The
-per-fold train cap the Random Forest needs is in `ablations_baselines.md` §7;
-the run matrix and the pre-registered champion criterion are in its §8.
+`downsample` scenarios. Nine runs, ~5 h wall clock. The per-fold train cap the
+Random Forest needs is in `ablations_baselines.md` §7; the run matrix and the
+pre-registered champion criterion are in its §8.
 
-**Runner reproducibility.** D.3 required reworking how
-`run_grouped_validation.py` loads data and predicts (float32/dictionary cast
-at read time, the DataFrame released before the first `fit()`, and prediction
-in bounded blocks). Both card-E decision-tree runs were re-executed on the
-reworked runner as regression checks and `grouped_predictions.csv` came back
-**byte-identical by SHA-256** in both scenarios over all 20,796,921 rows of
-the then-current pool. The rework changed memory and wall clock only.
+On the corrected pool the question has a different answer, because its premise
+is gone: **the unbalanced models detect attacks.** What card E measured as a
+class-imbalance wall was the duplicate legitimate stream making every attack
+row indistinguishable from a `normal` row in the same run.
 
-### Unbalanced (`none`): is it a decision-tree limit?
+### Unbalanced (`none`)
 
-Pooled over all folds, original-distribution test partitions:
+Pooled over all folds, original-distribution test partitions. Intervals are the
+run-level bootstrap (`run_bootstrap.none_v2.md`, 2,000 replicates over the 265
+runs); `attack_fpr` is the fraction of **ideal** `normal` rows
+(`impairment_mode=NONE`) predicted as one of the four attack classes
+(`benign_confusion.v2-*.md`).
 
-| Model | cap | accuracy (micro) | **macro F1** | weighted F1 | attack-class recall | ideal-`normal` attack_fpr |
-|---|---:|---:|---:|---:|---|---:|
-| decision-tree | - | 0.9844 | 0.2791 | 0.9792 | ~0.0000 (all four) | 0.00% |
-| decision-tree | 4M | 0.9843 | 0.2789 | 0.9792 | ~0.0000 (all four) | - |
-| xgboost | - | 0.9847 | 0.2823 | 0.9796 | ~0.0000 (all four) | 0.00% |
-| logistic-regression | - | 0.9790 | 0.1649 | 0.9686 | **0.0000** (all four) | - |
-| random-forest | 4M | 0.9827 | **0.3176** | 0.9790 | 0.0116-0.0565 | 0.20% |
+| Model | cap | accuracy (micro) | **macro F1 [95% CI]** | weighted F1 | mean attack recall | ideal-`normal` attack_fpr |
+|---|---:|---:|---|---:|---:|---:|
+| decision-tree | - | 0.9799 | 0.7043 [0.6876, 0.7174] | 0.9771 | 0.5893 | 0.02% |
+| decision-tree | 4M | 0.9798 | 0.7033 [0.6870, 0.7166] | 0.9770 | 0.5858 | 0.02% |
+| **xgboost** | - | 0.9815 | **0.7310 [0.7141, 0.7451]** | 0.9793 | 0.6338 | **0.01%** |
+| random-forest | 4M | 0.9815 | **0.7355 [0.7183, 0.7494]** | 0.9799 | 0.6408 | 0.12% |
+| logistic-regression | - | 0.9622 | 0.3677 [0.3486, 0.3879] | 0.9496 | 0.2248 | 0.08% |
 
-**It is not a decision-tree artifact.** XGBoost at defaults, trained on the
-full ~18M-row partition, predicts an attack class for essentially no row -
-exactly like the tree. Logistic regression is worse still: it predicts
-`normal` for *literally every row*, `benign_degradation` included (pooled
-recall 0.0000037 there), which is what its macro F1 of 0.1649 measures. That
-is not an optimisation failure - lbfgs converged in well under its 100
-iterations in every fold - but a capacity limit, and it is the honest floor
-this comparison needed.
+Per-class recall, the numbers the macro average hides:
 
-**Random Forest is the one family that predicts attack rows**, and the
-per-class detail matters more than the macro average:
-
-| Class | pooled recall | pooled precision |
-|---|---:|---:|
-| `SAG.DB` | 0.0116 | 0.0362 |
-| `FRG` | 0.0406 | 0.1543 |
-| `SAG.PB` | 0.0357 | 0.1652 |
-| `SAG.PBM` | 0.0565 | 0.2202 |
-
-At under 6% recall this is **not a detector**. But it is the only operating
-point in this revision where attack predictions carry non-trivial precision
-(0.15-0.22 on three of the four classes) while the false-positive rate on
-ideal `normal` traffic stays at **0.20%** - against 44.14% for the downsampled
-tree, the only other configuration that detects anything. Fully grown,
-unpruned trees carve out small genuine attack regions that a depth-8 tree and
-a default-depth XGBoost never look for; they are just far too small to cover
-the class.
-
-**The cap is not doing this.** Paired over the same 265 runs, the decision
-tree under the identical 4M cap differs from the uncapped tree by **-0.0002
-macro F1, 95% CI [-0.0005, +0.0000] - an interval that does not exclude
-zero.** The cap has no statistically detectable effect, so the Random Forest's
-behaviour is a property of the family, not of §7's subsampling. (This controls
-the cap's effect on a tree; it does not independently prove an uncapped
-Random Forest would behave the same, which is why every Random Forest row
-carries its cap.)
-
-### Balanced (`downsample`): champion selection
-
-The champion is chosen here, not above, because this is the scenario card
-D.1's ablation runs in. Criterion fixed before execution: mean macro F1, then
-mean attack-class recall, then ideal-`normal` attack_fpr.
-
-| Model | **macro F1** (pooled) | mean attack recall | ideal-`normal` attack_fpr | `normal` recall |
+| Model | `SAG.DB` | `FRG` | `SAG.PB` | `SAG.PBM` |
 |---|---:|---:|---:|---:|
-| **xgboost** | **0.2099** | **0.7038** | **39.45%** | 0.5613 |
-| decision-tree | 0.2076 | 0.6861 | 44.14% | 0.5211 |
-| random-forest | 0.1874 | 0.6423 | 37.21% | 0.5630 |
-| logistic-regression | 0.1351 | 0.5473 | 44.44% | 0.4420 |
+| decision-tree | 0.8421 | 0.6590 | 0.6741 | 0.1819 |
+| xgboost | 0.8828 | 0.6529 | 0.7272 | 0.2721 |
+| random-forest (4M) | 0.8415 | 0.5954 | 0.7296 | **0.3965** |
+| logistic-regression | 0.5953 | **0.0000** | 0.3032 | 0.0007 |
 
-**Champion: XGBoost** - but the honest statement is narrower than the ranking
-suggests, and the paired bootstrap is what makes it sayable at all.
+Three things to read off these tables:
 
-### The comparison the marginal intervals cannot make
+- **It was never a decision-tree limit, and it was never only imbalance.** The
+  same unbalanced decision tree that found no attack row at all on the
+  defective pool reaches 0.66-0.84 recall on three of the four classes here, at
+  a 0.02% false-positive rate on ideal traffic. The 2026-09-13 conclusion that
+  "no model family at library defaults escapes the imbalance" measured the
+  defect, not the imbalance.
+- **`SAG.PBM` is the hard class** for every family (0.18-0.40 recall), and
+  `FRG` is the one logistic regression cannot touch at all (0.0000 - it
+  predicts that class for no row).
+- **Capacity still matters, but far less than it appeared to.** The 4M cap
+  moves the decision tree by -0.0010 macro F1, 95% CI [-0.0029, +0.0011],
+  which does not separate - so the cap is not producing any difference between
+  families here.
 
-Two models' confidence intervals overlapping does **not** mean they are
-indistinguishable: both are evaluated on the same runs, so the run-to-run
-variation they share cancels when the difference is taken draw by draw.
-`bootstrap_run_intervals.py` resamples runs and scores every model on the same
-draw (`run_bootstrap.downsample.md`, `run_bootstrap.none.md`):
+### Balanced (`downsample`)
+
+| Model | accuracy (micro) | **macro F1 [95% CI]** | mean attack recall | ideal-`normal` attack_fpr | `normal` recall |
+|---|---:|---|---:|---:|---:|
+| **xgboost** | 0.7880 | **0.4594 [0.4382, 0.4764]** | 0.8475 | 8.67% | 0.7850 |
+| random-forest | 0.8048 | 0.4489 [0.4283, 0.4659] | 0.8321 | 8.16% | 0.8032 |
+| decision-tree | 0.7608 | 0.4376 [0.4175, 0.4543] | 0.8254 | 10.46% | 0.7579 |
+| logistic-regression | 0.6931 | 0.3131 [0.2983, 0.3265] | 0.6905 | 18.13% | 0.6992 |
+
+Downsampling still buys attack recall (0.69-0.85 against 0.22-0.64) and still
+pays for it, but the price has changed shape: the ideal-traffic false-positive
+rate is **8-18%**, not the 37-44% the defective pool reported. It is no longer
+an absurd operating point - it is merely a worse one than `none`, and that is a
+claim the threshold axis has to settle rather than the argmax.
+
+### Champion: XGBoost
+
+Criterion fixed before execution (`ablations_baselines.md` §8): mean macro F1
+in `downsample`, then per-class attack recall, then ideal-`normal`
+`attack_fpr`. On the corrected pool that criterion picks **XGBoost**, and the
+paired bootstrap - both models scored on the same redrawn runs, so the
+run-to-run variation they share cancels - is what makes it sayable:
 
 | Scenario | A | B | B - A macro F1 | 95% CI | separates? |
 |---|---|---|---:|---|---|
-| `downsample` | decision-tree | **xgboost** | **+0.0023** | [+0.00002, +0.0045] | yes, barely |
-| `downsample` | decision-tree | random-forest | -0.0202 | [-0.0233, -0.0165] | yes |
-| `downsample` | decision-tree | logistic-regression | -0.0725 | [-0.0789, -0.0630] | yes |
-| `none` | decision-tree | xgboost | +0.0032 | [+0.0011, +0.0060] | yes |
-| `none` | decision-tree | **random-forest (4M)** | **+0.0385** | [+0.0329, +0.0442] | yes |
-| `none` | decision-tree | logistic-regression | -0.1142 | [-0.1272, -0.0991] | yes |
-| `none` | decision-tree | decision-tree (4M cap) | -0.0002 | [-0.0005, +0.0000] | **no** |
-| `none` | decision-tree | smote | -0.0085 | [-0.0126, -0.0047] | yes |
+| `downsample` | decision-tree | **xgboost** | **+0.0218** | [+0.0184, +0.0252] | yes |
+| `downsample` | decision-tree | random-forest | +0.0113 | [+0.0064, +0.0165] | yes |
+| `downsample` | decision-tree | logistic-regression | -0.1245 | [-0.1328, -0.1136] | yes |
+| `none` | decision-tree | xgboost | +0.0267 | [+0.0208, +0.0322] | yes |
+| `none` | decision-tree | random-forest (4M) | +0.0312 | [+0.0219, +0.0395] | yes |
+| `none` | decision-tree | logistic-regression | -0.3366 | [-0.3572, -0.3127] | yes |
+| `none` | decision-tree | decision-tree (4M cap) | -0.0010 | [-0.0029, +0.0011] | **no** |
+| `none` | **xgboost** | random-forest (4M) | +0.0045 | [-0.0036, +0.0117] | **no** |
 
-Read that carefully. XGBoost beats the decision tree in `downsample`
-**consistently but negligibly**: the difference is +0.0023 macro F1 and its
-interval clears zero by 2e-5. It is a real ordering, not a coin flip, but it
-is not a margin any claim should lean on - what actually separates XGBoost
-from the tree at this operating point is the 4.7-percentage-point lower
-false-positive rate on ideal traffic, not the macro F1. **The defensible
-sentence is "the families are near-indistinguishable on macro F1 and XGBoost
-was chosen for its lower alert burden", not "XGBoost is the better model".**
+The last row is the one that decides. In `none`, XGBoost and the Random Forest
+are **indistinguishable on macro F1** - the interval straddles zero - so argmax
+accuracy does not pick between them. Three things do:
 
-The same table also says the Random Forest's advantage in the `none` scenario
-(+0.0385) is an order of magnitude larger than any difference among the other
-families - it is the one genuinely distinct result in this card.
+1. **Ranking.** Paired on average precision (`pr_curves_d3_v2.md`), the Random
+   Forest is **worse**: -0.0394 AP on `ANY_ATTACK`, 95% CI [-0.0471, -0.0321],
+   and it separates on `SAG.DB`, `FRG` and `SAG.PB` individually. It wins on
+   nothing except `SAG.PBM`, where the two do not separate (+0.0118 [-0.0092,
+   +0.0300]).
+2. **It needs no cap.** Every Random Forest number here carries §7's 4M-row
+   train cap; XGBoost trains on the full partition.
+3. **Cost.** XGBoost 37 min/run against the capped forest's 56 min.
+
+**The defensible sentence is "XGBoost and the Random Forest are
+indistinguishable at the argmax, and XGBoost is chosen because it ranks
+strictly better, needs no train cap and costs less", not "XGBoost is the more
+accurate model".**
+
+### The scenario choice inverts: `none` is the one to report
+
+On the defective pool `downsample` was the only scenario that detected
+anything, so card D.1's ablation was scoped to it. That is now backwards.
+Paired over the same runs, `downsample` - `none` for the champion is **-0.0121
+AP on `ANY_ATTACK`, 95% CI [-0.0172, -0.0071]**, and `none` also holds a 0.01%
+ideal-traffic false-positive rate against 8.67%. Rebalancing moves a threshold
+and throws away training rows to do it; the curve says that is a bad trade
+here. **D.1 therefore ablates in `none`** (`ablations_baselines.md` §12).
+
+### `FRG` is indistinguishable from benign congestion loss, by construction
+
+This is a property of the phenomenon, not of the pool, and the decision
+(2026-09-16) is to **keep the class and report the null**.
+
+Fifteen of the 45 `FULLY_RANDOMIZED` runs are **byte-identical in payload** to
+the `BENIGN_CONGESTION_LOSS` control runs of the same loss rate and seed - 250
+distinct payloads across 265 runs, and the 15 collisions are exactly those
+pairs. That is not a generation bug: a grayhole that drops uniformly at random
+and a link that loses packets to congestion are the same stochastic process.
+Nothing in the chain catches it - `merge_runs.py` includes `class` in its
+payload fingerprint, so the two fingerprints differ, and
+`check_label_duplication.py` is intra-run. Extending that gate to cross-run
+payload collisions is the next dataset-integrity task.
+
+The measurement agrees with the construction, in three independent places:
+
+- `FRG` has the **second-lowest AP** of the four classes (0.6395 [0.5484,
+  0.7284]) despite carrying the most positive rows.
+- At a 10-alerts-per-10,000 budget, **99.4% of the champion's `FRG` false
+  alarms are `benign_degradation` rows**, against 26.2% for `SAG.DB`.
+- The champion classifies **73.33% of `CONGESTION_LOSS` benign rows as an
+  attack**, while its false-positive rate on ideal `normal` traffic is 0.01%
+  (`benign_confusion.v2-xgboost-none.md`). The model is not confusing attack
+  with normal traffic; it is confusing attack with *the one benign mechanism
+  that is physically the same process*.
+
+The claim the paper can make is therefore bounded and, stated this way,
+stronger than a uniform one: **a uniformly-random grayhole is indistinguishable
+from congestion loss by construction; the three structured variants are not.**
+`SAG.DB` and `SAG.PB` reach AP 0.88 and 0.86 with 13.5%/9.9% of their false
+alarms coming from benign degradation at the same budget. Card C's benign
+controls are what carry this claim; `benign_controls.md` §8 records the
+decision.
 
 ### How many attack rows are actually being counted
 
-Rates hide the scale this evaluation operates at, so the same results in
-counts. The pool holds **216,545 attack rows, 0.932% of 23,226,530**:
+The corrected pool holds **216,529 attack rows, 1.958% of 11,057,478** - nearly
+the same attack rows as before over half the total rows, because the duplicate
+legitimate stream is what was removed:
 
-| Class | rows | % of pool | independent runs | test runs per fold (min-max) |
-|---|---:|---:|---:|---:|
-| `SAG.DB` | 50,782 | 0.219% | 45 | 3 - 16 |
-| `FRG` | 63,976 | 0.275% | 45 | 6 - 12 |
-| `SAG.PB` | 46,959 | 0.202% | 45 | 7 - 12 |
-| `SAG.PBM` | 54,828 | 0.236% | 45 | 7 - 12 |
-| `benign_degradation` | 270,680 | 1.165% | 85 | - |
-| `normal` | 22,739,305 | 97.902% | 265 | - |
-
-**1. The rows are learnable; the unbalanced models simply never look for
-them.** The same 50,782 `SAG.DB` rows, the same folds and the same features:
-
-| Run | `SAG.DB` found | of | recall |
+| Class | rows | % of pool | independent runs |
 |---|---:|---:|---:|
-| xgboost, `none` | **1** | 50,782 | 0.0000 |
-| xgboost, `downsample` | **45,826** | 50,782 | 0.9024 |
+| `SAG.DB` | 50,779 | 0.459% | 45 |
+| `FRG` | 63,963 | 0.579% | 45 |
+| `SAG.PB` | 46,959 | 0.425% | 45 |
+| `SAG.PBM` | 54,828 | 0.496% | 45 |
+| `benign_degradation` | 270,642 | 2.448% | 85 |
+| `normal` | 10,570,307 | 95.594% | 245 |
 
-Nothing changed but the balance of the training partition, so "too few attack
-samples to learn from" is not the explanation for the `none` results.
-
-**2. The alert burden, in counts.**
-
-| Run | attack alerts raised | of which real | precision |
-|---|---:|---:|---:|
-| random-forest, `none` (4M cap) | 57,301 | 7,957 | **13.9%** |
-| xgboost, `downsample` | 9,769,498 | 149,187 | **1.5%** |
-
-The champion configuration raises **9.8 million** attack alerts across the
-pool to find 149,187 real attack rows. That is the "39% false-positive rate"
-above expressed the way an operator would meet it, and it is why the Random
-Forest's low-recall/13.9%-precision corner is worth more attention than its
-macro F1 suggests.
-
-**3. The unit-level weakness this pool was extended to fix.** `split_group`
-(one ERENO run) is the experimental unit, so a class's effective sample size
-is its **run** count, not its row count. `SAG.DB` and `FRG` originally had 15
-runs each and a fold's test partition could hold a *single* one, making that
-fold's recall a measurement of ~1,000 correlated messages from one run. The
-2026-09-13 extension took both to 45 runs, and the run-level bootstrap shows
-exactly the intended effect - with `SAG.PB`/`SAG.PBM` (unchanged at 45 runs)
-as the control:
-
-| Class | runs before -> after | recall 95% CI width before -> after | change |
-|---|---|---|---:|
-| `SAG.DB` | 15 -> 45 | 0.1184 -> 0.0690 | **-42%** |
-| `FRG` | 15 -> 45 | 0.1820 -> 0.1279 | **-30%** |
-| `SAG.PB` | 45 -> 45 | 0.0853 -> 0.0841 | -1% |
-| `SAG.PBM` | 45 -> 45 | 0.0601 -> 0.0608 | +1% |
-
-Only the classes that gained runs narrowed; the two that did not are flat.
-That is the control which says the narrowing came from the added runs rather
-than from anything else the regeneration changed.
+`normal` is carried by 245 of the 265 runs rather than all of them: 20 runs
+contain no ideal `normal` rows at all. Every per-class interval above is a
+bootstrap over *runs*, so 45 is the effective sample size behind each attack
+class, not ~50,000.
 
 ### What D.3 settles, and what it does not
 
-- Card E's class-imbalance explanation **survives the family comparison**. No
-  model family at library defaults escapes it on the unbalanced pool, so the
-  zero-detection result is not an artifact of the specific tree that produced
-  it.
-- The `downsample` trade-off is likewise **family-independent**: all four
-  models land at macro F1 0.14-0.21 with `normal` recall ~0.44-0.56 and
-  attack_fpr 37-44%. Changing the model does not buy a usable operating point;
-  the balancing method dominates.
-- **Model capacity, not model family, is the axis that moves attack
-  detection.** The only configuration that predicts attack rows with
-  non-trivial precision at a tolerable false-positive rate is the one with
-  fully grown, unpruned trees. That makes depth and estimator count the first
-  thing D.4's grid should spend on.
-- Detectability itself is still **not** established. The best attack-class
-  numbers here are either under 6% recall (Random Forest, `none`) or bought at
-  a ~39% false-positive rate (XGBoost, `downsample`).
-- Cost note for D.1: the champion's `downsample` run takes **2.7 min**, so the
-  six-run ablation is ~20 min of compute rather than the 4-6 h
-  `ablations_baselines.md` §4 budgeted against a possibly-expensive champion.
+- **Card E's imbalance verdict is withdrawn.** Unbalanced training detects
+  three of the four attack classes at 0.65-0.88 recall and 0.01% ideal-traffic
+  false positives. The zero-detection result was an artifact of the defective
+  pool, not of the class balance.
+- **Family matters less than the correction did.** Across XGBoost, the Random
+  Forest and the decision tree the macro-F1 spread in `none` is 0.031 - one
+  ninth of what removing the duplicate stream moved (0.279 → 0.704 for the same
+  tree). Logistic regression remains the honest floor at 0.3677.
+- **`SAG.PBM` is not solved by any family.** 0.18-0.40 recall, AP 0.41 at best,
+  and the label-semantics audit says why: most of its discards happen at a
+  state boundary, where a single message carries no information about whether a
+  discard preceded it (`label_duplication_audit.md` §7). This is the class the
+  window redesign exists for.
+- **Detectability is now a real claim, with a real caveat.** At a
+  1-alert-per-100-messages budget the champion reaches `ANY_ATTACK` recall
+  0.4833 [0.4349, 0.5368] at precision 0.9467 [0.9254, 0.9658], and 93.9% of
+  the remaining false alarms are benign degradation rather than ideal traffic.
+  What the paper may *not* yet claim is that this separates attack from benign
+  packet loss in general - see the `FRG` section above.
+- **The label is still per-message, and that is still the open design
+  question.** `label_duplication_audit.md` §7 measures that a meaningful share
+  of attack rows are unidentifiable *in principle* from a single message. Every
+  recall number here is bounded by that, D.3 included.
+- Cost note for D.1: the champion's `none` run takes **37 min**, so the six-run
+  ablation is ~3.7 h of serial compute.
+
+### The two integrity failures, and what they are
+
+`prediction_integrity_d3_v2.md` runs 351 checks over the nine runs and reports
+**2 failures**, both of the same kind and both on Random Forest:
+`argmax(posterior)` does not reproduce `y_pred` on **7 rows of 11,057,478**
+(`none-cap4m`) and **17 rows** (`downsample`). Every other check passes,
+including the class-sum reconciliation and the posteriors-are-a-distribution
+check on those same two runs.
+
+The shape is consistent with float tie-breaking inside
+`RandomForestClassifier`: `predict` takes the argmax of an average of tree
+votes accumulated in a different order from the `predict_proba` this pipeline
+persists, so an exact tie can resolve either way. It is 2e-6 of the rows and
+cannot move any metric in this section. **It is not dismissed, it is
+delimited**: no number in this file rests on those 24 rows, and the check stays
+red until the cause is confirmed rather than inferred.
+
+### Runner reproducibility
+
+D.3's first pass required reworking how `run_grouped_validation.py` loads data
+and predicts (float32/dictionary cast at read time, the DataFrame released
+before the first `fit()`, prediction in bounded blocks). Both card-E
+decision-tree runs were re-executed on the reworked runner as regression checks
+and `grouped_predictions.csv` came back **byte-identical by SHA-256** in both
+scenarios over all 20,796,921 rows of the then-current pool. The rework changed
+memory and wall clock only. That check predates the pool correction and was not
+repeated on it; what binds the current runs to the current pool is the SHA-256
+dataset hash every artifact in the chain carries.
 
 
 ## The threshold axis (checklist D.5, 2026-09-13)
+
+> **Numbers here are from the defective pool (2026-09-16).** The curves have
+> been recomputed for all nine D.3 runs on the corrected pool
+> (`pr_curves_d3_v2.md`); the champion's are summarised in "Model family
+> comparison (checklist D.3)" above, and the headline moved a long way - AP on
+> `ANY_ATTACK` is 0.8329 [0.8037, 0.8618] against the 0.563-at-budget figures
+> below. **The method in this section is unaffected and is what the corrected
+> curves were produced with**: the argmax/prior arithmetic, cross-fold
+> threshold calibration, the alert-budget framing and the run-level bootstrap.
+> One conclusion does survive verbatim and is worth flagging: downsampling
+> *hurts* the ranking, on both pools.
+
 
 Everything above this section reports `argmax(p)`. That is **one point** on a
 curve, and which point it is was never a modelling decision - it is whatever

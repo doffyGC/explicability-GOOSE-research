@@ -6,16 +6,17 @@ this fits the rest of the revision, `validation_protocol.md` for the grouped
 workflow every run here must reuse, and its "Balancing scenarios" section for
 the card-E results this card is the direct follow-up to.
 
-**Status: BLOCKED (2026-09-13).** Card D.2's design work surfaced a dataset
-defect that invalidates every attack-detection number in this card: 100% of
-attack rows have a content-identical `normal` row in the same run. See
-`label_duplication_audit.md`. D.1, D.2 and D.4 must not run until the pool is
-regenerated - the results would measure the defect. The status below describes
-what was completed before the defect was found.
+**Status: D.3 closed on the corrected pool (2026-09-16).** The defect that
+blocked this card - 100% of attack rows having a content-identical `normal`
+row in the same run, because ERENO wrote both the legitimate stream and the
+grayhole's forwarded copies - was fixed by the regeneration in `d2de01c`. The
+whole D.3 matrix was then re-run on the corrected pool (265 runs,
+11,057,478 rows, SHA-256 `3109e4d4…`).
 
-**Status: D.3 closed (2026-09-13, re-run on the extended 265-run pool).**
-§7 (the per-fold train subsampling policy), §8 (the run matrix) and §9 (the
-result) are done; D.1, D.2, D.4 and D.5 are still plan only. §6 is the
+**Every number in this card now comes from the corrected pool.** The
+defective-pool figures it replaces are in this file's git history; §12 records
+what changed and which of this card's earlier conclusions did not survive.
+D.1, D.2 and D.4 are **unblocked** and still plan only. §6 is the
 authoritative tracker.
 
 ## 1. Why this exists
@@ -46,7 +47,7 @@ widening is a resumption, not a redesign.
 
 | # | Item | Scope taken |
 |---|---|---|
-| D.1 | Feature-group ablation | **6 of 7 groups** (raw GOOSE/SV, delta features, electrical, sequence, no absolute time, no `StNum`/`SqNum`), run **on the champion model only**, in the `downsample` balancing scenario, with `none` kept as the reference point from the existing full run |
+| D.1 | Feature-group ablation | **6 of 7 groups** (raw GOOSE/SV, delta features, electrical, sequence, no absolute time, no `StNum`/`SqNum`), run **on the champion model only**, in the **`none`** balancing scenario (the scenario choice was inverted on 2026-09-16 — see §12), with `downsample` kept as the reference point from the existing full run |
 | D.2 | Rule-based baseline | Full: `sqNum`/`stNum` gap detector + delay threshold, thresholds calibrated **only on each fold's train partition**, emitting the same prediction format the existing audits consume |
 | D.3 | Model comparison | XGBoost, Random Forest and one simple classifier (logistic regression), all on the persisted folds. **No temporal model.** |
 | D.4 | Tuning inside train folds | Inner grouped split over the outer fold's train groups, **small grid on a documented subsample** rather than an exhaustive search on all 16.6M train rows |
@@ -59,7 +60,7 @@ widening is a resumption, not a redesign.
 | **Top-k SHAP ablation** (the 7th feature group in D.1) | Requires SHAP importances computed on held-out grouped data, which is card F's deliverable. Running it now would mean either importances from a train fold (methodologically wrong, and exactly the baseline flaw the revision exists to fix) or pulling card F forward. | **Card F.** When held-out SHAP lands, add the top-k group as a 7th ablation run and update §4 here. |
 | **Simple temporal model** (D.3's "se viável") | The checklist itself marks it conditional. It needs windowed features computed inside each trace without crossing boundaries — new preparation work, not just a new `--model` value; +4–6 h implementation before a single run. | Revisit after D.1–D.5 close, if the calendar allows. |
 | **Ablation × every model family** | 6 feature groups × 3 model families ≈ 15 h of extra serial compute for a table nobody asked for. The checklist asks for an ablation, not an ablation per model. | Only if a second model family turns out to be competitive enough that its feature dependence is itself a finding. |
-| **Ablation in both balancing scenarios** | `none` detects zero attack rows, so ablating it compares variants that are all equally blind. The signal to ablate only exists in `downsample`. | The existing `none` full run stays as the published reference row. |
+| **Ablation in both balancing scenarios** | One scenario has to carry the ablation, and on the corrected pool that scenario is `none`: it is the better ranker on every attack class (§9) and it is the configuration the paper reports. Ablating both would double the runs to answer a question nobody asked. (Until 2026-09-16 this deferral read the other way round — on the defective pool `none` detected zero attack rows, so `downsample` was the only scenario with a signal to ablate. §12 has the inversion.) | The existing `downsample` full run stays as the published reference row. |
 
 ## 3. Execution order
 
@@ -110,14 +111,14 @@ these is not a result:
 
 | Item | Status | Evidence |
 |---|---|---|
-| D.1 feature-group ablation (6/7) | **blocked** on the regeneration (`label_duplication_audit.md`) | — |
+| D.1 feature-group ablation (6/7) | **unblocked, not started** — now runs in `none`, not `downsample` | §12 |
 | D.1 top-k SHAP group | deferred to card F | — |
-| D.2 rule-based baseline | **blocked**; its design work is what found the defect | `label_duplication_audit.md`; `check_label_duplication.py` |
-| D.3 model comparison (XGB/RF/LR) | **done** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/d3-*` (9 runs); `prediction_integrity_d3.md` (315 checks, 0 failures) |
+| D.2 rule-based baseline | **unblocked, not started**; its design work is what found the defect | `label_duplication_audit.md`; `check_label_duplication.py` |
+| D.3 model comparison (XGB/RF/LR) | **done on the corrected pool** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/v2-*` (9 runs); `prediction_integrity_d3_v2.md` (351 checks, **2 failures** — §9.5); `run_bootstrap.{none,downsample,champion}_v2.md`; `pr_curves_d3_v2.md` |
 | D.3 temporal model | deferred | — |
-| D.4 nested tuning | **blocked** | `label_duplication_audit.md` |
+| D.4 nested tuning | **unblocked, not started** | §12 |
 | D.5 per-class cross-run report | not started | — |
-| D.5 threshold axis (AP + alert budgets) | **done for the champion, both scenarios** — see §11 | `grouped_pr_curves.py`; `validation_protocol.md`, "The threshold axis"; `pr_curves.md`; `results/d5-xgboost-{none,downsample}`; `prediction_integrity_d5.md` |
+| D.5 threshold axis (AP + alert budgets) | **done for all nine D.3 runs** on the corrected pool — see §11 | `grouped_pr_curves.py`; `validation_protocol.md`, "The threshold axis"; `pr_curves_d3_v2.md`; `prediction_integrity_d3_v2.md` |
 
 ## 7. Per-fold train subsampling policy (D.3)
 
@@ -230,63 +231,66 @@ question card E left open — whether never predicting an attack class is a
 `DecisionTreeClassifier(max_depth=8)` limit or a limit of every family at
 this class balance.
 
-## 9. D.3 result (2026-09-13, on the 265-run pool)
+## 9. D.3 result (2026-09-16, on the corrected pool)
 
-Ten runs, ~3 h wall clock on the extended pool (23,226,530 rows). Full tables
-are in `validation_protocol.md`, "Model family comparison (checklist D.3)";
-this section records what the card carries forward.
+Nine runs, ~5 h wall clock on the corrected 265-run / 11,057,478-row pool.
+Full tables are in `validation_protocol.md`, "Model family comparison
+(checklist D.3)"; this section records what the card carries forward.
 
-> The card was first completed on the 205-run pool on 2026-09-12 and re-run in
-> full after that pool was extended (see §10). The conclusions held; the
-> numbers moved.
+> The card was completed twice before this: on the 205-run pool (2026-09-12)
+> and on the extended 265-run pool (2026-09-13, §10). Both measured the
+> duplicate-stream defect. **Those conclusions are withdrawn, not adjusted** -
+> §12 lists which ones and why.
 
-### Champion: XGBoost — with a narrower claim than the ranking suggests
+### Champion: XGBoost — chosen on ranking, not on accuracy
 
-| Model (`downsample`) | macro F1 | mean attack recall | ideal-`normal` attack_fpr |
-|---|---:|---:|---:|
-| **xgboost** | **0.2099** | **0.7038** | **39.45%** |
-| decision-tree | 0.2076 | 0.6861 | 44.14% |
-| random-forest | 0.1874 | 0.6423 | 37.21% |
-| logistic-regression | 0.1351 | 0.5473 | 44.44% |
+| Model (`none`) | macro F1 [95% CI] | mean attack recall | ideal-`normal` attack_fpr | AP `ANY_ATTACK` |
+|---|---|---:|---:|---:|
+| **xgboost** | 0.7310 [0.7141, 0.7451] | 0.6338 | **0.01%** | **0.8329** |
+| random-forest (4M cap) | 0.7355 [0.7183, 0.7494] | 0.6408 | 0.12% | 0.7934 |
+| decision-tree | 0.7043 [0.6876, 0.7174] | 0.5893 | 0.02% | 0.7572 |
+| logistic-regression | 0.3677 [0.3486, 0.3879] | 0.2248 | 0.08% | 0.5087 |
 
-The paired bootstrap (same runs resampled for both models) puts XGBoost above
-the decision tree by **+0.0023 macro F1, 95% CI [+0.00002, +0.0045]** — a real
-ordering whose interval clears zero by 2e-5. That is not a margin to lean on.
-**The defensible sentence is "the two are near-indistinguishable on macro F1
-and XGBoost was chosen for its 4.7-point lower false-positive rate on ideal
-traffic", not "XGBoost is the better model."**
+Paired over the same 265 runs, XGBoost and the Random Forest **do not
+separate** on macro F1 (+0.0045, 95% CI [-0.0036, +0.0117]) - so the argmax
+does not choose between them. Average precision does: the forest is -0.0394 AP
+on `ANY_ATTACK` [-0.0471, -0.0321] and loses on three of the four classes
+individually. **XGBoost is champion because it ranks strictly better, needs no
+train cap and costs 37 min against 56.**
 
-### The question card E left open, answered
+### What the correction answered, and what it left open
 
-Zero attack recall on the unbalanced pool is **not** a
-`DecisionTreeClassifier(max_depth=8)` limit: XGBoost at defaults also predicts
-an attack class for essentially no row (1 row out of 216,545), and logistic
-regression predicts `normal` for literally every row (macro F1 0.1649).
-
-Random Forest is the only family that predicts attack rows at all, and it is
-the one genuinely distinct result in this card: **+0.0385 macro F1 over the
-tree, 95% CI [+0.0329, +0.0442]** — an order of magnitude larger than any
-difference among the other families. At under 6% recall it is no detector, but
-it raises 57,301 attack alerts of which **13.9% are real**, against 1.5% for
-the champion's downsampled operating point. The decision-tree control under
-the identical 4M cap differs from the uncapped tree by -0.0002 [-0.0005,
-+0.0000] — **does not separate**, so §7's cap is not producing this.
+- The question card E left - "is zero attack recall a `max_depth=8` limit or
+  every family's?" - **had a false premise**. On the corrected pool the plain
+  unbalanced tree reaches 0.66-0.84 recall on three of four classes at 0.02%
+  ideal-traffic FPR. Nothing about imbalance was being measured.
+- **`SAG.PBM` resists every family** (0.18-0.40 recall, AP 0.41 at best).
+  `label_duplication_audit.md` §7 explains it: most of its discards happen at a
+  state boundary, where a single message carries no information about whether a
+  discard preceded it. No per-message model can fix that.
+- **`FRG` ≡ benign congestion loss, by construction.** 15 of its 45 runs are
+  byte-identical in payload to `BENIGN_CONGESTION_LOSS` controls; the champion
+  calls 73.33% of `CONGESTION_LOSS` rows an attack while its ideal-traffic FPR
+  is 0.01%. Decision (2026-09-16): keep the class, report the null - see
+  `benign_controls.md` §8.
 
 ### Consequences for the rest of card D
 
-- **D.1 gets much cheaper than §4 budgeted.** The champion's `downsample` run
-  takes 2.7 min, so six ablation runs are ~20 min of compute, not 4–6 h. This
-  does **not** license widening the ablation scope — the deferrals in §3 were
-  argued on methodology, not compute.
-- **D.4 has a specific target.** What separates "predicts nothing" from
-  "predicts something precisely but rarely" is model *capacity*, not family:
-  the only configuration that finds attack rows at usable precision is the one
-  with fully grown, unpruned trees. Tree depth and estimator count are where
-  D.4's subsampled grid should go first.
-- **Report per-class, and pair.** Marginal intervals for these models overlap
-  almost everywhere; only the paired comparison separates them. Every D.1/D.4
-  comparison should use `bootstrap_run_intervals.py`'s paired table rather
-  than eyeballing overlapping error bars.
+- **D.1 ablates in `none`, not `downsample`** (§12), at ~37 min per run, so six
+  ablation runs are ~3.7 h of serial compute.
+- **D.1 and D.4 are judged on AP and budgeted recall**, not on argmax macro F1
+  (§11). Every run gets `--save-scores`.
+- **D.4's target is no longer "capacity".** That conclusion came from the
+  Random Forest being the only family to predict attack rows on the defective
+  pool. It now predicts them like everyone else and ranks worse, so the grid
+  should be designed from the champion's own error structure - specifically
+  `SAG.PBM` and the `benign_degradation` boundary - rather than from a
+  depth-and-estimators hunch.
+- **Two integrity checks are red** (`prediction_integrity_d3_v2.md`): 7 and 17
+  rows of 11,057,478 where `argmax(posterior)` disagrees with `y_pred`, both on
+  Random Forest, consistent with float tie-breaking in `predict`. No number in
+  this card rests on those 24 rows, and no Random Forest figure should be
+  published until the cause is confirmed rather than inferred.
 
 ## 10. Pool extension (2026-09-13)
 
@@ -321,6 +325,15 @@ Only the classes that gained runs narrowed. Two consequences to carry:
   D and E and remains an open decision for the paper (`data_card.md` §4).
 
 ## 11. The threshold axis, and what it changes for D.1/D.4 (2026-09-13)
+
+> **Recomputed on the corrected pool (2026-09-16).** The numbers below are
+> defective-pool; `pr_curves_d3_v2.md` has the current curves for all nine D.3
+> runs and §9 the champion's. Two of this section's three consequences survive
+> unchanged - judge D.1/D.4 on AP and budgeted recall, and pair every
+> comparison. The third (D.4's target) is revised in §12. The claim that
+> downsampling *hurts* the ranking survives on both pools: -0.0121 AP on
+> `ANY_ATTACK`, 95% CI [-0.0172, -0.0071].
+
 
 Card D.3 compared model families at `argmax(p)`. That comparison is sound but
 narrow: the argmax is one point on a curve, fixed by the training partition's
@@ -372,3 +385,42 @@ Both scenarios were re-run with `--save-scores` and compared
    by true class only; the per-`impairment_mode` rejoin
    `benign_confusion_report.py` owns has not been run against thresholded
    predictions, so nothing about the benign confound may be updated yet.
+
+## 12. What the corrected pool changed (2026-09-16)
+
+The regeneration in `d2de01c` removed the legitimate publisher's stream that
+ERENO was writing alongside the grayhole's forwarded copies. The pool went from
+23,226,530 rows to 11,057,478 with essentially the same 216.5k attack rows, so
+attack prevalence doubled to 1.958% - but the real change is that an attack row
+no longer has a bit-identical `normal` twin in its own run.
+
+### Withdrawn
+
+| Conclusion (defective pool) | Status |
+|---|---|
+| "No model family at library defaults escapes the class imbalance" | **Withdrawn.** Every tree-based family detects three of four classes unbalanced. It was the twin rows, not the imbalance. |
+| "Model capacity, not family, is the axis that moves attack detection" | **Withdrawn.** It rested on the Random Forest being the only family to predict attack rows; it no longer is, and it ranks worst of the three tree families. |
+| "The signal to ablate only exists in `downsample`" | **Inverted.** `none` is now both the better ranker and the configuration to report. |
+| "Random Forest's low-recall/13.9%-precision corner deserves attention" | **Withdrawn.** That corner was an artifact of the only family that could see past the twins. |
+
+### Survived
+
+- The **protocol**: grouped splitting, the hash binding, the independent
+  leakage audit, the run-level bootstrap, cross-fold threshold calibration.
+- **Pairing every comparison.** Marginal intervals overlap on the corrected
+  pool exactly as they did before; the paired table is still the only thing
+  that separates two models.
+- **Downsampling hurts the ranking** (§11).
+- **The 4M cap has no detectable effect on the decision tree** (-0.0010 macro
+  F1, 95% CI [-0.0029, +0.0011]).
+- **Naming the averaging scheme.** The champion scores weighted F1 0.9793 and
+  macro F1 0.7310 over identical predictions.
+
+### Still open, and unchanged by the correction
+
+The label is still **per-message**, and `label_duplication_audit.md` §7
+measures that a meaningful share of attack rows are unidentifiable in principle
+from a single message - most discards happen at a state boundary, where the
+first `SqNum` does not separate attacked from unattacked states. Every recall
+number in this card is bounded by that. The window redesign is the open scope
+decision, and `SAG.PBM` is where the cost of not taking it is visible.
