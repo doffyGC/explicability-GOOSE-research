@@ -16,18 +16,24 @@ from generate_grouped_splits import (
 )
 from prepare_grouped_dataset import PreparationError, recompute_trace_deltas
 from run_grouped_validation import (
+    FEATURE_GROUPS,
+    FEATURE_SETS,
     MODEL_CHOICES,
+    UNGROUPED_FEATURES,
     GroupedRunError,
     class_counts,
     classifier,
     feature_column_names,
+    features_in_no_group,
     load_frame,
     load_grouped_arrays,
     prepare_arrays,
     resample_train,
+    resolve_feature_set,
     subsample_train,
     verify_artifacts,
 )
+from run_grouped_validation import main as run_grouped_validation_main
 
 
 class EventTypeTests(unittest.TestCase):
@@ -276,6 +282,228 @@ class ModelFamilyTests(unittest.TestCase):
         for key in ("n_estimators", "max_depth", "max_samples", "min_samples_leaf",
                     "class_weight", "criterion"):
             self.assertEqual(getattr(forest, key), getattr(defaults, key), key)
+
+
+class FeatureGroupRegistryTests(unittest.TestCase):
+    """Checklist D.1: an ablation must remove what it names, and nothing else.
+
+    The partition is the experiment. If two groups overlapped, a difference
+    between two ablation runs would not be attributable to either of them; if
+    a group silently resolved to nothing, the run would be identical to the
+    reference and would read as "this feature group does not matter", which is
+    the one conclusion D.1 exists to state.
+    """
+
+    @staticmethod
+    def vocabulary():
+        """Every column the registry knows about, plus an unrelated one."""
+        names = [column for columns in FEATURE_GROUPS.values() for column in columns]
+        names.extend(UNGROUPED_FEATURES)
+        names.append("some_future_feature")
+        return names
+
+    def test_groups_are_pairwise_disjoint(self):
+        owner = {}
+        for group, columns in FEATURE_GROUPS.items():
+            for column in columns:
+                self.assertNotIn(
+                    column, owner,
+                    "%s is claimed by both %s and %s; overlapping groups make an "
+                    "ablation unattributable" % (column, owner.get(column), group))
+                owner[column] = group
+
+    def test_ungrouped_features_are_claimed_by_no_group(self):
+        claimed = {c for columns in FEATURE_GROUPS.values() for c in columns}
+        for name in UNGROUPED_FEATURES:
+            self.assertNotIn(name, claimed)
+
+    def test_every_named_set_composes_real_groups(self):
+        for name, groups in FEATURE_SETS.items():
+            for group in groups:
+                self.assertIn(group, FEATURE_GROUPS, "%s names a group that does "
+                                                     "not exist: %s" % (name, group))
+
+    def test_all_is_the_reference_and_drops_nothing(self):
+        self.assertEqual(resolve_feature_set("all", self.vocabulary()), [])
+
+    def test_each_set_drops_exactly_the_columns_of_its_groups(self):
+        for name, groups in FEATURE_SETS.items():
+            expected = {column for group in groups for column in FEATURE_GROUPS[group]}
+            self.assertEqual(set(resolve_feature_set(name, self.vocabulary())),
+                             expected, "feature set %s" % name)
+
+    def test_every_set_leaves_the_ungrouped_features_in_place(self):
+        for name in FEATURE_SETS:
+            dropped = set(resolve_feature_set(name, self.vocabulary()))
+            self.assertEqual(dropped & set(UNGROUPED_FEATURES), set(),
+                             "feature set %s" % name)
+
+    def test_no_sequence_is_no_counters_plus_the_counter_deltas(self):
+        counters = set(resolve_feature_set("no-counters", self.vocabulary()))
+        sequence = set(resolve_feature_set("no-sequence", self.vocabulary()))
+        self.assertTrue(counters < sequence)
+        self.assertEqual(sequence - counters, set(FEATURE_GROUPS["counter-deltas"]))
+
+    def test_a_missing_column_is_fatal_rather_than_a_silent_no_op(self):
+        vocabulary = [c for c in self.vocabulary()
+                      if c not in FEATURE_GROUPS["electrical"]]
+        with self.assertRaises(GroupedRunError) as ctx:
+            resolve_feature_set("no-electrical", vocabulary)
+        self.assertIn("isbA", str(ctx.exception))
+
+    def test_a_partially_present_group_is_refused(self):
+        """Dropping 17 of 18 columns is a different experiment from the one
+        the card preregistered, and it would be reported under its name."""
+        vocabulary = [c for c in self.vocabulary() if c != "vsbCTrapAreaSum"]
+        with self.assertRaises(GroupedRunError) as ctx:
+            resolve_feature_set("no-electrical", vocabulary)
+        self.assertIn("vsbCTrapAreaSum", str(ctx.exception))
+
+    def test_unknown_set_is_refused(self):
+        with self.assertRaises(GroupedRunError):
+            resolve_feature_set("no-such-group", self.vocabulary())
+
+    def test_features_in_no_group_reports_only_the_unclaimed(self):
+        surviving = list(FEATURE_GROUPS["counters"]) + list(UNGROUPED_FEATURES) + ["new_col"]
+        self.assertEqual(features_in_no_group(surviving),
+                         list(UNGROUPED_FEATURES) + ["new_col"])
+
+
+class FeatureSetRunnerTests(unittest.TestCase):
+    """The flag has to reach the feature matrix, not just the report."""
+
+    ROWS_PER_GROUP = 12
+    GROUPS = ("run-0", "run-1", "run-2", "run-3")
+
+    def _dataset(self, directory):
+        """A Parquet dataset whose feature vocabulary *is* the registry.
+
+        Built from `FEATURE_GROUPS` rather than from a hand-written column
+        list, so a group renamed in the registry cannot leave this fixture
+        agreeing with a stale copy of itself.
+        """
+        import numpy as np
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        rng = np.random.RandomState(11)
+        rows = self.ROWS_PER_GROUP * len(self.GROUPS)
+        columns = {
+            "split_group": [g for g in self.GROUPS for _ in range(self.ROWS_PER_GROUP)],
+            "class": [("normal", "SAG.DB")[index % 2] for index in range(rows)],
+            "run_id": ["R%d" % (index // self.ROWS_PER_GROUP) for index in range(rows)],
+        }
+        for group in FEATURE_GROUPS.values():
+            for name in group:
+                columns[name] = rng.normal(size=rows)
+        for name in UNGROUPED_FEATURES:
+            columns[name] = rng.normal(size=rows)
+        path = os.path.join(directory, "prepared.parquet")
+        pq.write_table(pa.Table.from_pandas(pd.DataFrame(columns), preserve_index=False),
+                       path)
+        return path
+
+    def _artifacts(self, directory, dataset):
+        import json
+
+        with open(dataset, "rb") as fh:
+            digest = hashlib.sha256(fh.read()).hexdigest()
+        preparation = os.path.join(directory, "preparation.json")
+        with open(preparation, "w", encoding="utf-8") as fh:
+            json.dump({"status": "pass", "output": os.path.abspath(dataset),
+                       "output_sha256": digest}, fh)
+        splits = os.path.join(directory, "splits.json")
+        with open(splits, "w", encoding="utf-8") as fh:
+            json.dump({
+                "dataset_sha256": digest,
+                "open_set_diagnostic": False,
+                "protocol": "stratified-group-kfold",
+                "splits": [
+                    {"split_id": "fold-00",
+                     "train_groups": ["run-0", "run-1"],
+                     "test_groups": ["run-2", "run-3"]},
+                ],
+            }, fh)
+        return preparation, splits
+
+    def _run(self, directory, *extra):
+        import json
+
+        dataset = self._dataset(directory)
+        preparation, splits = self._artifacts(directory, dataset)
+        out_dir = os.path.join(directory, "out-%d" % len(os.listdir(directory)))
+        code = run_grouped_validation_main([
+            "--dataset", dataset,
+            "--preparation-report", preparation,
+            "--splits", splits,
+            "--out-dir", out_dir,
+            "--model", "decision-tree",
+        ] + list(extra))
+        report_path = os.path.join(out_dir, "grouped_validation_report.json")
+        if code != 0 or not os.path.exists(report_path):
+            return code, None
+        with open(report_path, encoding="utf-8") as fh:
+            return code, json.load(fh)
+
+    def test_default_run_keeps_every_feature_and_records_the_reference_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, report = self._run(tmp)
+        self.assertEqual(code, 0)
+        self.assertEqual(report["feature_set"], "all")
+        self.assertEqual(report["feature_groups_dropped"], [])
+        self.assertEqual(report["features_dropped"], [])
+        expected = {c for columns in FEATURE_GROUPS.values() for c in columns}
+        self.assertEqual(set(report["features"]), expected | set(UNGROUPED_FEATURES))
+
+    def test_an_ablation_removes_its_group_from_the_fitted_features(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, report = self._run(tmp, "--feature-set", "no-electrical")
+        self.assertEqual(code, 0)
+        self.assertEqual(report["feature_groups_dropped"], ["electrical"])
+        self.assertEqual(set(report["features_dropped"]),
+                         set(FEATURE_GROUPS["electrical"]))
+        self.assertEqual(set(report["features"]) & set(FEATURE_GROUPS["electrical"]),
+                         set())
+        # Everything else survives: an ablation removes one group, not a mood.
+        self.assertTrue(set(FEATURE_GROUPS["counters"]).issubset(report["features"]))
+
+    def test_the_ungrouped_survivors_are_named_in_the_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, report = self._run(tmp, "--feature-set", "no-sequence")
+        self.assertEqual(code, 0)
+        self.assertEqual(report["features_in_no_group"], list(UNGROUPED_FEATURES))
+
+    def test_discard_column_still_composes_with_a_feature_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, report = self._run(tmp, "--feature-set", "no-counters",
+                                     "--discard-column", "delay")
+        self.assertEqual(code, 0)
+        self.assertNotIn("delay", report["features"])
+        self.assertEqual(set(report["features"]) & set(FEATURE_GROUPS["counters"]),
+                         set())
+        self.assertEqual(report["discard_columns"], ["delay"])
+
+    def test_a_dataset_that_cannot_support_the_ablation_fails_the_run(self):
+        """Refused before training, not reported as a null result."""
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        with tempfile.TemporaryDirectory() as tmp:
+            dataset = self._dataset(tmp)
+            frame = pd.read_parquet(dataset)
+            frame = frame.drop(columns=list(FEATURE_GROUPS["electrical"]))
+            pq.write_table(pa.Table.from_pandas(frame, preserve_index=False), dataset)
+            preparation, splits = self._artifacts(tmp, dataset)
+            code = run_grouped_validation_main([
+                "--dataset", dataset,
+                "--preparation-report", preparation,
+                "--splits", splits,
+                "--out-dir", os.path.join(tmp, "out"),
+                "--feature-set", "no-electrical",
+            ])
+            self.assertEqual(code, 1)
+            self.assertFalse(os.path.exists(
+                os.path.join(tmp, "out", "grouped_predictions.csv")))
 
 
 if __name__ == "__main__":

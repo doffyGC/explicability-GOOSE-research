@@ -143,6 +143,12 @@ the fitted model) — without both, materialising the training fold as a dense
 array raised `numpy._core._exceptions._ArrayMemoryError` on a 16GB-RAM
 machine. See "Full-scale results" below.
 
+`--feature-set` (checklist D.1) runs the same protocol with one preregistered
+feature group removed. It resolves against the dataset's own columns and fails
+the run on any mismatch, because an ablation that drops nothing is
+indistinguishable from a null result. The groups, the six runs and what each
+one asks are in `ablations_baselines.md` §13.
+
 ## Full-scale results
 
 > **Re-run on the corrected pool (2026-09-16).** The figures below are the

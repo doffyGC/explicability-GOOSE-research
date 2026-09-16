@@ -86,7 +86,7 @@ is serial.
 | Item | Implementation | Compute | Main risk |
 |---|---|---|---|
 | D.3 | ~2 h (`random-forest`, `logistic-regression` + scaler pipeline in `--model`) | 10–20 h (XGB 2–5 h/run, RF 2–4 h/run, LR ~1 h/run) | **RAM.** The plain tree already came close to the 15.6 GB ceiling; RF will likely need a documented per-fold subsampling policy (+1–2 h) |
-| D.1 | ~2–3 h (feature-set registry + flag + tests + docs) | 4–6 h (6 runs × 30–45 min, champion model) | If the champion is XGB/RF rather than the tree, multiply by that model's per-run cost |
+| D.1 | **done** (feature-set registry + flag + tests + docs, 2026-09-16) | **~3.7 h** (6 runs × 37 min on the champion) + ~5.8 GB | Disk: each run is 968 MB with `--save-scores`. Runs do not parallelise |
 | D.2 | ~3–4 h (new script + tests) | ~30 min | Low |
 | D.4 | ~3–4 h (inner grouped split + grid) | 4–8 h subsampled | This is the multiplier that blows the schedule if run un-subsampled |
 | D.5 | ~3–4 h (cross-run comparison + docs) | ~0 | Low |
@@ -111,7 +111,7 @@ these is not a result:
 
 | Item | Status | Evidence |
 |---|---|---|
-| D.1 feature-group ablation (6/7) | **unblocked, not started** — now runs in `none`, not `downsample` | §12 |
+| D.1 feature-group ablation (6/7) | **implemented, awaiting compute** — runs in `none`, not `downsample` | §13 (groups, run matrix, guard); `run_grouped_validation.py --feature-set`; `test_validation_protocol.py::FeatureGroupRegistryTests`/`FeatureSetRunnerTests` |
 | D.1 top-k SHAP group | deferred to card F | — |
 | D.2 rule-based baseline | **unblocked, not started**; its design work is what found the defect | `label_duplication_audit.md`; `check_label_duplication.py` |
 | D.3 model comparison (XGB/RF/LR) | **done on the corrected pool** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/v2-*` (9 runs); `prediction_integrity_d3_v2.md` (351 checks, **2 failures** — §9.5); `run_bootstrap.{none,downsample,champion}_v2.md`; `pr_curves_d3_v2.md` |
@@ -424,3 +424,126 @@ from a single message - most discards happen at a state boundary, where the
 first `SqNum` does not separate attacked from unattacked states. Every recall
 number in this card is bounded by that. The window redesign is the open scope
 decision, and `SAG.PBM` is where the cost of not taking it is visible.
+
+## 13. D.1: the feature groups and the run matrix (implemented 2026-09-16)
+
+The registry is `FEATURE_GROUPS` in `run_grouped_validation.py` and the flag is
+`--feature-set`. **The partition is the experiment**: every run removes exactly
+one group, so whatever moves against the reference is attributable to that
+group and to nothing else. `no-sequence` is written as a composition of two
+disjoint groups rather than as a group of its own, because overlapping groups
+would make two ablation runs mutually unreadable.
+
+### The groups
+
+The seven entries below partition all 40 model features of the prepared
+dataset. Verified against the current pool (SHA `3109e4d4…`): no group names a
+column the dataset lacks, and `delay` is the only feature no group claims.
+
+| Group | n | Columns |
+|---|---:|---|
+| `electrical` | 18 | `isb{A,B,C}`, `vsb{A,B,C}`, the six `*RmsValue`, the six `*TrapAreaSum` — the Sampled Values process data |
+| `goose-header` | 7 | `cbStatus`, `frameLen`, `gooseTimeAllowedtoLive`, `gooseLen`, `confRev`, `numDatSetEntries`, `APDUSize` |
+| `absolute-time` | 3 | `Time`, `t`, `GooseTimestamp` |
+| `counters` | 2 | `StNum`, `SqNum` |
+| `counter-deltas` | 2 | `stDiff`, `sqDiff` |
+| `other-deltas` | 7 | `gooseLengthDiff`, `cbStatusDiff`, `apduSizeDiff`, `frameLengthDiff`, `timestampDiff`, `tDiff`, `timeFromLastChange` |
+| *(ungrouped)* | 1 | `delay` |
+
+**Why `delay` is ungrouped, and why that is stated rather than hidden.** It is
+the simulated per-message transport delay (`GooseTimestamp - Time`, ±0.24 ms on
+this pool): a *relative* timing measure, so it is not `absolute-time`, and not
+a frame field, so it is not `goose-header`. It therefore survives all six
+ablations, and every run report lists it under `features_in_no_group` — so a
+column added to the dataset after this registry was written shows up as an
+unclaimed survivor instead of quietly sitting outside the partition while the
+D.1 table is read as if the groups covered everything.
+
+### The runs, and what each one asks
+
+| `--feature-set` | drops | n features | The question |
+|---|---|---:|---|
+| `all` | — | 40 | Reference. Same configuration as the D.3 champion run. |
+| `no-electrical` | `electrical` | 22 | Is the grayhole visible in the process data at all, or only in the protocol stream? |
+| `no-goose-header` | `goose-header` | 33 | Do the static frame fields carry anything, or are they near-constant padding? |
+| `no-absolute-time` | `absolute-time` | 37 | Is the model partly identifying *when* a run happened — a run-identity proxy rather than a signature? |
+| `no-delta` | `counter-deltas` + `other-deltas` | 31 | Are the revision's own derived deltas doing the work? |
+| `no-counters` | `counters` | 38 | Can the model still find the gap when only the deltas expose it? |
+| `no-sequence` | `counters` + `counter-deltas` | 36 | With no sequence information at all, is anything left? |
+
+The last two are the pair that matters most for the paper's claim. `SAG.PBM`'s
+weakness and the `FRG`/congestion collision both say the models lean on gap
+structure; `no-counters` and `no-sequence` are what measure how much.
+
+### The guard that makes a null result trustworthy
+
+`resolve_feature_set` is resolved against the dataset's own column names and is
+**fatal** when a group names a column the dataset does not have — including
+when only part of a group is missing. This is deliberate: an ablation that
+silently drops nothing produces a run identical to the reference, which reads
+exactly like the finding "this feature group does not matter". A typo, a
+renamed column or a dataset from before a schema change would all land there.
+`test_validation_protocol.py`'s `FeatureGroupRegistryTests` pins the partition
+(pairwise disjoint, every named set composing real groups) and
+`FeatureSetRunnerTests` runs the flag end to end through `main`, on a fixture
+whose feature vocabulary *is* the registry.
+
+### Run matrix (~3.7 h serial, ~5.8 GB)
+
+All on the champion (XGBoost), in `none`, from the same persisted splits, with
+`--save-scores` — D.5's threshold axis is what these runs are judged on, and it
+is unanswerable from hard labels. Each run is ~37 min and ~968 MB. **Do not run
+two in parallel**: each needs the whole prepared dataset resident.
+
+```bash
+for set in no-electrical no-goose-header no-absolute-time \
+           no-delta no-counters no-sequence; do
+  python experiments/revision_2026/run_grouped_validation.py \
+    --dataset data/runs/gray-GOOSE-runs-prepared.parquet \
+    --preparation-report experiments/revision_2026/preparation_audit.json \
+    --splits experiments/revision_2026/splits_grouped.json \
+    --out-dir results/d1-xgboost-$set \
+    --model xgboost --balance none --feature-set $set --seed 42 --save-scores
+done
+```
+
+**The reference row is the existing `results/v2-xgboost-none`.** Its report
+predates `--feature-set`, but `all` resolves to zero dropped columns, so the
+configuration is identical rather than merely equivalent. Re-running it with
+`--feature-set all` is optional and costs 37 min; its value is a regression
+check — `grouped_predictions.csv` must come back **byte-identical by SHA-256**,
+the same check the loader rework was held to in `validation_protocol.md`.
+
+Then, over the reference plus the six ablations:
+
+```bash
+python experiments/revision_2026/check_prediction_integrity.py \
+  --run results/v2-xgboost-none $(printf -- '--run results/d1-xgboost-%s ' \
+    no-electrical no-goose-header no-absolute-time no-delta no-counters no-sequence) \
+  --out experiments/revision_2026/prediction_integrity_d1.md \
+  --json-out experiments/revision_2026/prediction_integrity_d1.json
+
+python experiments/revision_2026/grouped_pr_curves.py \
+  --run results/v2-xgboost-none $(printf -- '--run results/d1-xgboost-%s ' \
+    no-electrical no-goose-header no-absolute-time no-delta no-counters no-sequence) \
+  --prior auto --out experiments/revision_2026/pr_curves_d1.md \
+  --curve-csv experiments/revision_2026/pr_curves_d1.csv
+```
+
+The reference must be the **first** `--run`: `grouped_pr_curves.py` pairs every
+later run against the first, and the paired table is the only thing that
+separates two of these configurations (§11). Marginal intervals will overlap
+almost everywhere.
+
+### How to read the result
+
+- **AP and budgeted recall, not argmax macro F1** (§11). An ablation that moves
+  the score distribution without moving the ranking looks like a large macro-F1
+  change and is worth nothing; the reverse is equally possible.
+- **Per class.** The four attack classes do not depend on the same groups —
+  `SAG.PBM` is a boundary phenomenon and `FRG` is partly unidentifiable by
+  construction (`benign_controls.md` §8), so a group that matters for `SAG.DB`
+  may be irrelevant to them.
+- **A group whose removal changes nothing is a result**, not a failed run — it
+  is what licenses dropping those columns from the paper's feature table. The
+  guard above is what makes that reading safe.

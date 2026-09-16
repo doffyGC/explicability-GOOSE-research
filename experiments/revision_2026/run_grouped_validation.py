@@ -17,6 +17,12 @@ xgboost, random-forest, logistic-regression).  ``--max-train-rows-per-fold``
 is the documented per-fold train cap that comparison needs on this machine;
 see ``subsample_train`` and ``ablations_baselines.md`` SS7 for the policy and
 the measurements behind it.
+
+``--feature-set`` is checklist D.1's feature-group ablation: each named set
+removes exactly one group of ``FEATURE_GROUPS`` (``no-sequence`` removes two
+disjoint ones), so a difference against the ``all`` reference run is
+attributable to that group alone.  The groups, and what each ablation asks,
+are in ``ablations_baselines.md`` SS13.
 """
 
 from __future__ import annotations
@@ -45,6 +51,71 @@ IDENTIFIER_COLUMNS = {
 BASE_DISCARD_COLUMNS = {
     "ethDst", "ethSrc", "gocbRef", "datSet", "goID", "test", "ndsCom",
     "protocol", "ethType", "TPID", "gooseAppid",
+}
+
+# Checklist D.1: the feature groups an ablation removes, one at a time.
+#
+# These partition the model features of the prepared dataset, and the
+# partition *is* the experiment: a run drops exactly one group, so whatever
+# moves between that run and the reference is attributable to that group and
+# to nothing else. Overlapping groups would make the comparison unreadable,
+# which is why `no-sequence` is written as a composition of two disjoint
+# groups rather than as a group of its own.
+#
+# See ablations_baselines.md SS13 for what each ablation is asking.
+FEATURE_GROUPS = {
+    # Sampled Values: the process data. Dropping it asks whether the grayhole
+    # is visible in the electrical waveform at all, or only in the protocol
+    # stream.
+    "electrical": (
+        "isbA", "isbB", "isbC", "vsbA", "vsbB", "vsbC",
+        "isbARmsValue", "isbBRmsValue", "isbCRmsValue",
+        "vsbARmsValue", "vsbBRmsValue", "vsbCRmsValue",
+        "isbATrapAreaSum", "isbBTrapAreaSum", "isbCTrapAreaSum",
+        "vsbATrapAreaSum", "vsbBTrapAreaSum", "vsbCTrapAreaSum",
+    ),
+    # GOOSE frame fields as published, excluding the two state counters and
+    # the timestamps, which get their own groups because they are what a
+    # grayhole actually perturbs.
+    "goose-header": (
+        "cbStatus", "frameLen", "gooseTimeAllowedtoLive", "gooseLen",
+        "confRev", "numDatSetEntries", "APDUSize",
+    ),
+    # Absolute clocks. A model leaning on these is partly identifying *when* a
+    # run happened, which is a run-identity proxy rather than a signature.
+    "absolute-time": ("Time", "t", "GooseTimestamp"),
+    # The two state counters. Their gap is the grayhole's direct trace.
+    "counters": ("StNum", "SqNum"),
+    # The counter deltas: the same gap, made explicit by
+    # prepare_grouped_dataset.py. Separate from the other deltas so that
+    # "the model cannot see a gap at all" is expressible.
+    "counter-deltas": ("stDiff", "sqDiff"),
+    # The remaining within-trace deltas.
+    "other-deltas": (
+        "gooseLengthDiff", "cbStatusDiff", "apduSizeDiff", "frameLengthDiff",
+        "timestampDiff", "tDiff", "timeFromLastChange",
+    ),
+}
+
+# Features no group claims, and which therefore survive every ablation.
+# `delay` is the simulated per-message transport delay (GooseTimestamp - Time,
+# +-0.24 ms on this pool): a *relative* timing measure, so it does not belong
+# to `absolute-time`, and not a frame field, so it does not belong to
+# `goose-header`. It is listed rather than left implicit so that a column
+# silently appearing outside every group is visible in the run report - see
+# `features_in_no_group`.
+UNGROUPED_FEATURES = ("delay",)
+
+# The preregistered D.1 runs. `all` is the reference row and is the same
+# configuration as the card-D.3 champion run.
+FEATURE_SETS = {
+    "all": (),
+    "no-electrical": ("electrical",),
+    "no-goose-header": ("goose-header",),
+    "no-absolute-time": ("absolute-time",),
+    "no-delta": ("counter-deltas", "other-deltas"),
+    "no-counters": ("counters",),
+    "no-sequence": ("counters", "counter-deltas"),
 }
 
 
@@ -607,6 +678,56 @@ def prepare_arrays(frame, group_column, target_column, extra_discard):
     }
 
 
+def resolve_feature_set(name, available_columns):
+    """The columns one named D.1 ablation removes (checklist D.1).
+
+    Resolved against the dataset's own column names, and **fatal** when a
+    group names a column the dataset does not have. That is the failure this
+    function exists to prevent: an ablation that silently drops nothing
+    produces a run identical to the reference, which reads exactly like the
+    finding "this feature group does not matter". A typo, a renamed column or
+    a dataset from before a schema change would all land there, so the
+    mismatch is refused instead of warned about.
+
+    A partially present group is refused for the same reason: dropping 5 of 7
+    columns is a different experiment from the one the card preregistered, and
+    it would be reported under that experiment's name.
+    """
+    try:
+        groups = FEATURE_SETS[name]
+    except KeyError:
+        raise GroupedRunError(
+            "unknown feature set: %s (choose from %s)"
+            % (name, ", ".join(sorted(FEATURE_SETS)))
+        )
+    available = set(available_columns)
+    dropped = []
+    missing = []
+    for group in groups:
+        for column in FEATURE_GROUPS[group]:
+            (dropped if column in available else missing).append(column)
+    if missing:
+        raise GroupedRunError(
+            "feature set %r drops columns this dataset does not have: %s. "
+            "An ablation that removes nothing is indistinguishable from a null "
+            "result, so this is refused rather than reported."
+            % (name, ", ".join(missing))
+        )
+    return dropped
+
+
+def features_in_no_group(feature_names):
+    """Surviving features that no `FEATURE_GROUPS` entry claims.
+
+    Recorded in every run report so that a column added to the dataset after
+    this registry was written is visible as such, rather than quietly
+    surviving all six ablations while the D.1 table is read as if the groups
+    covered everything.
+    """
+    claimed = {c for columns in FEATURE_GROUPS.values() for c in columns}
+    return [name for name in feature_names if name not in claimed]
+
+
 def feature_column_names(names, target_column, extra_discard):
     """The feature columns, decided from names alone.
 
@@ -881,6 +1002,14 @@ def parse_args(argv=None):
     parser.add_argument("--max-rows-per-group-class", type=int, default=0,
                         help="Non-zero enables a technical smoke sample.")
     parser.add_argument("--discard-column", action="append", default=[])
+    parser.add_argument("--feature-set", choices=sorted(FEATURE_SETS), default="all",
+                        help="Checklist D.1: drop one preregistered feature group "
+                             "(see FEATURE_GROUPS). 'all' keeps every feature and is "
+                             "the reference run. Resolved against the dataset's own "
+                             "columns and fatal on a mismatch, because an ablation "
+                             "that drops nothing reads exactly like a null result. "
+                             "Combines with --discard-column. See "
+                             "ablations_baselines.md SS13.")
     parser.add_argument("--balance", choices=["none", "downsample", "smote"], default="none",
                         help="Checklist E: rebalance each fold's TRAIN partition only; "
                              "test is always evaluated on the original distribution.")
@@ -929,6 +1058,8 @@ def main(argv=None):
             columns = pq.ParquetFile(args.dataset).schema_arrow.names
             if args.group_column not in columns or args.target_column not in columns:
                 raise GroupedRunError("dataset is missing group or target column")
+            ablated = resolve_feature_set(args.feature_set, columns)
+            extra_discard = list(args.discard_column) + ablated
             arrays = None
             frame = load_technical_sample(
                 args.dataset, args.group_column, args.target_column,
@@ -940,10 +1071,14 @@ def main(argv=None):
             # `load_grouped_arrays` for the measurement that forced this - the
             # DataFrame route peaked at 10.02 GB on the 265-run pool, which no
             # longer fits on a 15.6 GB machine whatever model follows it.
+            import pyarrow.parquet as pq
+            ablated = resolve_feature_set(
+                args.feature_set, pq.ParquetFile(args.dataset).schema_arrow.names)
+            extra_discard = list(args.discard_column) + ablated
             frame = None
             arrays = load_grouped_arrays(
                 args.dataset, args.group_column, args.target_column,
-                args.discard_column,
+                extra_discard,
             )
         else:
             arrays = None
@@ -952,6 +1087,8 @@ def main(argv=None):
                                target_column=args.target_column)
             if args.group_column not in frame or args.target_column not in frame:
                 raise GroupedRunError("dataset is missing group or target column")
+            ablated = resolve_feature_set(args.feature_set, list(frame.columns))
+            extra_discard = list(args.discard_column) + ablated
             frame = technical_sample(
                 frame, args.group_column, args.target_column,
                 args.max_rows_per_group_class, args.seed,
@@ -964,7 +1101,7 @@ def main(argv=None):
             # arrays, and on a full run keeping both costs ~3.5 GB that a Random
             # Forest needs for its trees.
             arrays = prepare_arrays(frame, args.group_column, args.target_column,
-                                    args.discard_column)
+                                    extra_discard)
             del frame
         else:
             rows_used = len(arrays["row_index"])
@@ -1008,6 +1145,11 @@ def main(argv=None):
             "splits": os.path.abspath(args.splits),
             "protocol": split_payload["protocol"],
             "model": args.model,
+            "feature_set": args.feature_set,
+            "feature_groups_dropped": list(FEATURE_SETS[args.feature_set]),
+            "features_dropped": ablated,
+            "discard_columns": list(args.discard_column),
+            "features_in_no_group": features_in_no_group(features),
             "seed": args.seed,
             "group_column": args.group_column,
             "target_column": args.target_column,
