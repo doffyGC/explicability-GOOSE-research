@@ -587,6 +587,51 @@ repeated on it; what binds the current runs to the current pool is the SHA-256
 dataset hash every artifact in the chain carries.
 
 
+## Feature-group ablation (checklist D.1)
+
+Seven runs on the corrected pool — the champion plus six ablations, each
+removing exactly one preregistered feature group, all XGBoost/`none` from the
+same persisted splits. 136 min of serial compute; `check_prediction_integrity.py`
+reports 273 checks, 0 failures, all seven pairable. The groups and the guard
+that makes a null ablation trustworthy are in `ablations_baselines.md` §13; the
+full result and its consequences are in its §14.
+
+| Run | n feat | AP `ANY_ATTACK` | paired vs reference | 95% CI | separates? |
+|---|---:|---:|---:|---|---|
+| reference (`all`) | 40 | 0.8329 | — | — | — |
+| `no-goose-header` | 33 | 0.8327 | -0.0002 | [-0.0005, +0.0001] | **no** |
+| `no-electrical` | 22 | 0.8327 | -0.0001 | [-0.0005, +0.0003] | **no** |
+| `no-counters` | 38 | 0.8306 | -0.0023 | [-0.0051, +0.0004] | **no** |
+| `no-absolute-time` | 37 | 0.8304 | -0.0025 | [-0.0050, -0.0002] | yes |
+| `no-sequence` | 36 | 0.8240 | -0.0089 | [-0.0128, -0.0055] | yes |
+| **`no-delta`** | 31 | **0.1101** | **-0.7227** | **[-0.7478, -0.6956]** | **yes** |
+
+**The result is binary, not a ranking.** The nine within-trace delta features
+carry essentially all of the detection: without them AP falls to 0.1101 and the
+1%-budget operating point goes from recall 0.4833 at precision 0.9467 to
+**0.0903 at precision 0.1768**. Every other group is free or nearly so — the 18
+electrical and 7 GOOSE-header columns are indistinguishable from the reference,
+and at the 1% budget all six non-`no-delta` configurations sit inside each
+other's intervals at recall 0.482-0.486.
+
+**Within the deltas it is timing, not the sequence gap.** `no-sequence` removes
+`StNum`, `SqNum`, `stDiff` and `sqDiff` — every piece of sequence information —
+and still recovers to within 1% of the reference on the seven remaining deltas;
+`no-delta` removes those seven as well and collapses. So the non-counter deltas
+are *sufficient* and the sequence columns *redundant given them*. That is
+consistent with `SAG.PBM`'s weakness (its discards fall at state boundaries
+where `SqNum` resets) and with the `FRG`/congestion collision (random drops
+leave a stretched interval, not a counter pattern).
+
+Two things this does **not** say. It is not leakage: the deltas are computed
+strictly within a trace, boundary rows dropped, and a live monitor can compute
+them from messages it has already seen. And it does not rank the surviving
+groups — it says the signal is not in them.
+
+What it does say is that `prepare_grouped_dataset.py`'s within-trace delta
+computation is now **load-bearing for every detection number in this revision**.
+A bug there would not degrade the result; it would be the result.
+
 ## The threshold axis (checklist D.5, 2026-09-13)
 
 > **Numbers here are from the defective pool (2026-09-16).** The curves have

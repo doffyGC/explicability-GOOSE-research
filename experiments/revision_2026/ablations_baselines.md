@@ -67,9 +67,9 @@ widening is a resumption, not a redesign.
 Ordering is a compute decision, not a preference: picking the champion **before**
 the ablation is what keeps the ablation at ~6 runs instead of ~18.
 
-1. **D.3** — model families, no tuning, default hyperparameters → pick champion.
-2. **D.1** — 6 feature groups on the champion only.
-3. **D.2** — rule-based baseline (cheap, independent; can run at any point).
+1. ~~**D.3** — model families, no tuning, default hyperparameters → pick champion.~~ **Done (§9): XGBoost.**
+2. ~~**D.1** — 6 feature groups on the champion only.~~ **Done (§14): the deltas carry it.**
+3. **D.2** — rule-based baseline (cheap, independent; can run at any point). §14 sharpens its target: an inter-message *interval* threshold, not a `sqNum` gap detector.
 4. **D.4** — nested tuning on the champion family, subsampled grid.
 5. **D.5** — consolidate every run into the comparison tables.
 
@@ -86,7 +86,7 @@ is serial.
 | Item | Implementation | Compute | Main risk |
 |---|---|---|---|
 | D.3 | ~2 h (`random-forest`, `logistic-regression` + scaler pipeline in `--model`) | 10–20 h (XGB 2–5 h/run, RF 2–4 h/run, LR ~1 h/run) | **RAM.** The plain tree already came close to the 15.6 GB ceiling; RF will likely need a documented per-fold subsampling policy (+1–2 h) |
-| D.1 | **done** (feature-set registry + flag + tests + docs, 2026-09-16) | **~3.7 h** (6 runs × 37 min on the champion) + ~5.8 GB | Disk: each run is 968 MB with `--save-scores`. Runs do not parallelise |
+| D.1 | **done** (registry + flag + tests + docs, 2026-09-16) | **done: 136 min measured** (18-26 min per run, not the 37 projected) + 5.8 GB | Resolved: peak RSS 4.8-5.4 GB, flat, no training spike (§14) |
 | D.2 | ~3–4 h (new script + tests) | ~30 min | Low |
 | D.4 | ~3–4 h (inner grouped split + grid) | 4–8 h subsampled | This is the multiplier that blows the schedule if run un-subsampled |
 | D.5 | ~3–4 h (cross-run comparison + docs) | ~0 | Low |
@@ -111,7 +111,7 @@ these is not a result:
 
 | Item | Status | Evidence |
 |---|---|---|
-| D.1 feature-group ablation (6/7) | **implemented, awaiting compute** — runs in `none`, not `downsample` | §13 (groups, run matrix, guard); `run_grouped_validation.py --feature-set`; `test_validation_protocol.py::FeatureGroupRegistryTests`/`FeatureSetRunnerTests` |
+| D.1 feature-group ablation (6/7) | **done** — the nine delta features carry essentially all of it (-0.7227 AP paired); 25 of 40 columns are free | §14; `results/d1-xgboost-*` (6 runs); `pr_curves_d1.md`; `prediction_integrity_d1.md` (273 checks, 0 failures) |
 | D.1 top-k SHAP group | deferred to card F | — |
 | D.2 rule-based baseline | **unblocked, not started**; its design work is what found the defect | `label_duplication_audit.md`; `check_label_duplication.py` |
 | D.3 model comparison (XGB/RF/LR) | **done on the corrected pool** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/v2-*` (9 runs); `prediction_integrity_d3_v2.md` (351 checks, **2 failures** — §9.5); `run_bootstrap.{none,downsample,champion}_v2.md`; `pr_curves_d3_v2.md` |
@@ -174,6 +174,11 @@ need no cap at all.
    uncapped run in the same column without labelling it.**
 
 ### Memory prerequisite
+
+> **Superseded again (2026-09-16).** §14 has the *measured* footprint of six
+> full runs: peak RSS 4.8-5.4 GB, **flat** from the end of the load onward.
+> There is no training spike on top of the load at all, which is the
+> assumption both notes below reason from. Read this section as history.
 
 > **Superseded in part (2026-09-13).** The figures below describe the
 > DataFrame-based loader on the 205-run pool. On the 265-run pool that path
@@ -547,3 +552,141 @@ almost everywhere.
 - **A group whose removal changes nothing is a result**, not a failed run — it
   is what licenses dropping those columns from the paper's feature table. The
   guard above is what makes that reading safe.
+
+## 14. D.1 result (2026-09-16)
+
+Seven runs — the reference plus the six ablations of §13 — all XGBoost,
+`none`, from the same persisted splits, on the corrected pool. 136 min of
+serial compute (18, 23, 26, 21, 24, 24 min), well under the 3.7 h §13
+budgeted from D.3's 37 min/run. `check_prediction_integrity.py`: **273 checks,
+0 failures**, all seven pairable (`prediction_integrity_d1.md`).
+
+### The table
+
+AP is the verdict (§11); macro F1 is the argmax point estimate, shown because
+it is what the run reports print, not because it decides anything. The paired
+column is `grouped_pr_curves.py`'s bootstrap over runs, each configuration
+scored on the same redrawn runs with its own cross-fold thresholds.
+
+| Run | n feat | macro F1 | AP `ANY_ATTACK` | paired vs reference | 95% CI | separates? |
+|---|---:|---:|---:|---:|---|---|
+| reference (`all`) | 40 | 0.7288 | 0.8329 | — | — | — |
+| `no-goose-header` | 33 | 0.7285 | 0.8327 | -0.0002 | [-0.0005, +0.0001] | **no** |
+| `no-electrical` | 22 | 0.7271 | 0.8327 | -0.0001 | [-0.0005, +0.0003] | **no** |
+| `no-counters` | 38 | 0.7237 | 0.8306 | -0.0023 | [-0.0051, +0.0004] | **no** |
+| `no-absolute-time` | 37 | 0.7257 | 0.8304 | -0.0025 | [-0.0050, -0.0002] | yes |
+| `no-sequence` | 36 | 0.7126 | 0.8240 | -0.0089 | [-0.0128, -0.0055] | yes |
+| **`no-delta`** | 31 | **0.2259** | **0.1101** | **-0.7227** | **[-0.7478, -0.6956]** | **yes** |
+
+### 1. The delta features are the model
+
+Removing the nine within-trace deltas takes AP on `ANY_ATTACK` from 0.8329 to
+**0.1101** — paired, **-0.7227 [-0.7478, -0.6956]**. Per class it is worse
+still: `SAG.PB` falls from 0.8551 to **0.0256** (-0.8294), `SAG.DB` from 0.8839
+to 0.1126. At a 1-alert-per-100-messages budget the champion's `ANY_ATTACK`
+recall goes from 0.4833 at precision 0.9467 to **0.0903 at precision 0.1768**.
+
+Nothing else in this card comes within two orders of magnitude of that. The
+entire detection result of the revision rests on nine derived columns.
+
+**This is not leakage, and the distinction matters.** The deltas are computed
+by `prepare_grouped_dataset.py` strictly within a trace, the 265
+trace-boundary rows are dropped, and `test_validation_protocol.py` asserts
+they never cross a boundary. A monitor on a live stream can compute exactly
+these quantities from the messages it has already seen. What the result does
+mean is that **that one derivation is now load-bearing for every number in the
+revision** — a bug in it would not degrade the result, it would be the result.
+
+### 2. Twenty-five of the forty features are free
+
+`no-electrical` (-18 columns) and `no-goose-header` (-7) are both
+**indistinguishable from the reference** on `ANY_ATTACK`, and their budgeted
+recall/precision at 1% is identical to three decimals (0.4836/0.9464 and
+0.4841/0.9457 against 0.4833/0.9467). The Sampled Values — the entire
+electrical side of the dataset, 45% of the feature matrix — contribute
+nothing measurable to grayhole detection.
+
+Both in fact *improve* `SAG.DB` slightly and the interval separates
+(+0.0015 [+0.0001, +0.0032] and +0.0017 [+0.0005, +0.0033]). Two-thousandths
+of AP is not a finding to lean on, but it is the expected direction: fewer
+irrelevant features, less for the ensemble to split on by chance.
+
+### 3. The signal is in the timing deltas, not in the sequence gap
+
+This inverts §13's expectation, which called `no-counters`/`no-sequence` "the
+pair that matters most".
+
+- `no-counters` (drops `StNum`, `SqNum`) does **not** separate: -0.0023
+  [-0.0051, +0.0004].
+- `no-sequence` (drops the counters **and** `stDiff`/`sqDiff` — every piece of
+  sequence information the model has) separates, but costs only **-0.0089**
+  AP. It keeps the seven non-counter deltas, and with them it recovers to
+  within 1% of the reference.
+- `no-delta` removes those seven as well, and collapses.
+
+By elimination, the seven non-counter deltas — `timestampDiff`, `tDiff`,
+`timeFromLastChange`, `gooseLengthDiff`, `cbStatusDiff`, `apduSizeDiff`,
+`frameLengthDiff` — are **sufficient**, and the sequence columns are
+**redundant given them**. Stated carefully: this does not prove the counter
+deltas carry nothing, only that whatever they carry is also carried elsewhere.
+
+That is coherent with two things measured earlier and not understood at the
+time. `SAG.PBM` is the weakest class everywhere, and its discards happen at
+state boundaries where `SqNum` resets anyway (`label_duplication_audit.md`
+§7) — a sequence-based detector cannot see them, a timing-based one partly
+can. And `FRG`/congestion loss collide (`benign_controls.md` §8): uniformly
+random drops leave no counter pattern, only a stretched interval, which is
+exactly what congestion also produces.
+
+### 4. Statistically real is not operationally relevant
+
+At the 1% alert budget, every configuration except `no-delta` lands at
+`ANY_ATTACK` recall 0.482-0.486 and precision 0.941-0.947 — inside each
+other's intervals. `no-absolute-time` and `no-sequence` separate on AP and
+change nothing an operator would notice.
+
+The honest summary is **binary, not a ranking**: with the deltas, this
+detector; without them, nothing. The other five ablations are evidence that
+the remaining feature groups are not where the signal lives, not a league
+table of their importance.
+
+### Consequences
+
+- **The paper's feature table can shrink to the deltas plus a small
+  remainder.** 25 of 40 columns are demonstrably free, which is a positive
+  result for deployment cost, not a negative one.
+- **Card F (SHAP) should be aimed at the nine deltas.** An explanation of the
+  electrical features would be explaining columns the model does not use.
+- **A finer split is worth two more runs.** `other-deltas` mixes timing
+  (`timestampDiff`, `tDiff`, `timeFromLastChange`) with size/state
+  (`gooseLengthDiff`, `apduSizeDiff`, `frameLengthDiff`, `cbStatusDiff`).
+  Splitting that group in two and running both would name the carriers
+  directly instead of by elimination: ~50 min, and it is the obvious follow-up
+  D.1 did not preregister.
+- **D.2's rule-based baseline now has a specific target.** The rule to beat is
+  not a `sqNum` gap detector but an inter-message interval threshold, and §2's
+  scope for D.2 ("`sqNum`/`stNum` gap detector + delay threshold") should be
+  read with the second half carrying the weight.
+
+### Measured memory footprint (supersedes §7's projection)
+
+Sampled every 15 s during three of the six runs (process RSS, system free):
+
+| Run | n feat | peak RSS | min system free |
+|---|---:|---:|---:|
+| `no-delta` | 31 | 4.77 GB | 3.66 GB |
+| `no-sequence` | 36 | 5.21 GB | 3.37 GB |
+| `no-counters` | 38 | 5.41 GB | 2.80 GB |
+
+**There is no training peak.** With the streaming loader, RSS is flat from the
+end of the load to the last fold — the `X_train` copy and XGBoost's internal
+structures do not produce the spike §7 projected for a full partition. Peak
+scales mildly with feature count (~0.05 GB per column here), so the 40-feature
+reference sits near 5.6 GB.
+
+Four of these runs were nonetheless killed by the environment's low-memory
+watchdog before completing, at ambient free memory of 7.0-8.5 GB. The runs
+were not the cause; they were merely resident when other pressure crossed the
+threshold. One of the four was self-inflicted — relaunching immediately after
+a kill, before the OS had reclaimed the dead process's pages. **Leave the
+machine quiet and wait for memory to be returned before relaunching.**
