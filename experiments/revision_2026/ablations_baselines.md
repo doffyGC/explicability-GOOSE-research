@@ -114,7 +114,7 @@ these is not a result:
 | D.1 feature-group ablation (6/7) | **done** — the nine delta features carry essentially all of it (-0.7227 AP paired); 25 of 40 columns are free | §14; `results/d1-xgboost-*` (6 runs); `pr_curves_d1.md`; `prediction_integrity_d1.md` (273 checks, 0 failures) |
 | D.1 top-k SHAP group | deferred to card F | — |
 | D.2 rule-based baseline | **unblocked, not started**; its design work is what found the defect | `label_duplication_audit.md`; `check_label_duplication.py` |
-| D.3 model comparison (XGB/RF/LR) | **done on the corrected pool** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/v2-*` (9 runs); `prediction_integrity_d3_v2.md` (351 checks, **2 failures** — §9.5); `run_bootstrap.{none,downsample,champion}_v2.md`; `pr_curves_d3_v2.md` |
+| D.3 model comparison (XGB/RF/LR) | **done on the corrected pool** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/v2-*` (9 runs); `prediction_integrity_d3_v2.md` (351 checks, 0 failures — §9, "The argmax disagreement on Random Forest"); `run_bootstrap.{none,downsample,champion}_v2.md`; `pr_curves_d3_v2.md` |
 | D.3 temporal model | deferred | — |
 | D.4 nested tuning | **unblocked, not started** | §12 |
 | D.5 per-class cross-run report | not started | — |
@@ -291,11 +291,32 @@ train cap and costs 37 min against 56.**
   should be designed from the champion's own error structure - specifically
   `SAG.PBM` and the `benign_degradation` boundary - rather than from a
   depth-and-estimators hunch.
-- **Two integrity checks are red** (`prediction_integrity_d3_v2.md`): 7 and 17
-  rows of 11,057,478 where `argmax(posterior)` disagrees with `y_pred`, both on
-  Random Forest, consistent with float tie-breaking in `predict`. No number in
-  this card rests on those 24 rows, and no Random Forest figure should be
-  published until the cause is confirmed rather than inferred.
+- **The two red integrity checks are closed** — see below. Random Forest
+  figures are citable.
+
+### The argmax disagreement on Random Forest, resolved (2026-09-17)
+
+`prediction_integrity_d3_v2.md` reported 2 failures of 351 checks, both on
+Random Forest: `argmax(posterior)` disagreeing with `y_pred` on 7 rows of
+11,057,478 (`none-cap4m`) and 17 (`downsample`). The documented hypothesis was
+a float tie in `predict`. It is a tie — and the audit, not the runs, is where
+it had to be handled.
+
+Both runs hit the runner's documented fallback (`fell_back_to_predict`) in 9 of
+their 10 folds, which makes `y_pred` an argmax over sklearn's float64
+posteriors while the persisted scores are float32. **All 24 rows are exact
+float32 ties** (top-1 and top-2 bit-identical), and on all 24 the audit picked
+the lower class index where `predict` had kept the higher one — the only
+direction that can disagree. The runs carry 1,224 and 16,420 float32-tied rows
+respectively; the 24 are those whose float64 values were not tied as well.
+`v2-xgboost-none` has 0 tied rows, `v2-decision-tree-none` 31, neither with a
+disagreement.
+
+`check_prediction_integrity.py` now forgives a mismatch only on an exact top-1
+tie in a fold the report marks `fell_back_to_predict`; a strict winner that
+disagrees still fails, as does a tie outside a fallback fold. The audit is
+**351 checks, 0 failures**, with every other number in it unchanged. Full
+account in `validation_protocol.md`, "The Random Forest argmax disagreement".
 
 ## 10. Pool extension (2026-09-13)
 

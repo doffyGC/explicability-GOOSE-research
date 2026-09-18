@@ -330,6 +330,23 @@ def check_scores_consistency(directory, arrays, report_meta, classes,
     failure that would otherwise surface as an unexplained discrepancy
     between two reports rather than as an error.
 
+    One disagreement is legitimate, and only one.  When the runner's first
+    block *did* disagree it falls back to ``model.predict`` for that whole
+    fold, so `y_pred` is then an argmax over scikit-learn's float64
+    posteriors while this file holds the float32 copy that was persisted.
+    Two classes whose float64 posteriors differ by less than float32 can
+    resolve can therefore land on bit-identical float32 values, and on such
+    a row `numpy.argmax` here takes the lowest class index while
+    ``predict`` kept whichever one was larger in float64.  That is not a
+    disagreement about the classifier - at the precision this file stores,
+    the model expressed no preference.  So on a fold the report marks
+    ``fell_back_to_predict``, a mismatch is forgiven **only** where the two
+    leading posteriors are exactly equal; anywhere the persisted posterior
+    has a strict winner, disagreeing with `y_pred` is still a failure.
+    Measured on the two D.3 random-forest runs: 24 mismatches in 11,057,478
+    rows, all 24 exact ties (`validation_protocol.md`, "The Random Forest
+    argmax disagreement").
+
     Returns an empty list when the run has no scores file: `--save-scores` is
     optional, and an unscored run is not a broken one.
     """
@@ -354,17 +371,26 @@ def check_scores_consistency(directory, arrays, report_meta, classes,
         }]
 
     class_to_code = {name: index for index, name in enumerate(classes)}
+    fell_back = {
+        str(fold.get("split_id")): bool((fold.get("scores") or {}).get("fell_back_to_predict"))
+        for fold in report_meta.get("fold_metrics", [])
+    }
+    any_fallback = any(fell_back.values())
+    # `split_id` is only read when a fold fell back: it is the one case where
+    # a mismatch has to be attributed to a fold before it can be judged.
+    read_columns = (["split_id"] + columns) if any_fallback else columns
     order = np.argsort(arrays["row_index"], kind="stable")
     sorted_rows = arrays["row_index"][order]
     scored = 0
     argmax_mismatches = 0
+    tied_mismatches = 0
     truth_mismatches = 0
     unmatched_rows = 0
     worst_sum_drift = 0.0
     out_of_range = 0
 
     for number in range(handle.num_row_groups):
-        frame = handle.read_row_group(number, columns=columns).to_pandas()
+        frame = handle.read_row_group(number, columns=read_columns).to_pandas()
         posteriors = frame[["p_%s" % name for name in classes]].to_numpy(dtype="float64")
         scored += len(frame)
         drift = np.abs(posteriors.sum(axis=1) - 1.0)
@@ -383,8 +409,27 @@ def check_scores_consistency(directory, arrays, report_meta, classes,
         truth = np.asarray([class_to_code.get(str(v), -1)
                             for v in frame["y_true"].astype(str).to_numpy()])
         truth_mismatches += int(np.count_nonzero(truth[found] != arrays["y_true"][mapped]))
-        predicted = posteriors[found].argmax(axis=1)
-        argmax_mismatches += int(np.count_nonzero(predicted != arrays["y_pred"][mapped]))
+        matched = posteriors[found]
+        predicted = matched.argmax(axis=1)
+        disagreed = predicted != arrays["y_pred"][mapped]
+        argmax_mismatches += int(np.count_nonzero(disagreed))
+        if any_fallback and disagreed.any():
+            offending = np.flatnonzero(disagreed)
+            block = matched[offending]
+            tied = np.count_nonzero(block == block.max(axis=1, keepdims=True),
+                                    axis=1) > 1
+            folds = frame["split_id"].astype(str).to_numpy()[found][offending]
+            in_fallback_fold = np.asarray([fell_back.get(fold, False) for fold in folds])
+            tied_mismatches += int(np.count_nonzero(tied & in_fallback_fold))
+
+    if argmax_mismatches == 0:
+        argmax_observed = "0 mismatches"
+    elif tied_mismatches:
+        argmax_observed = ("%d mismatches, %d of them exact top-1 ties in a fold that "
+                           "fell back to model.predict"
+                           % (argmax_mismatches, tied_mismatches))
+    else:
+        argmax_observed = "%d mismatches" % argmax_mismatches
 
     return [
         {
@@ -395,9 +440,10 @@ def check_scores_consistency(directory, arrays, report_meta, classes,
         },
         {
             "check": "argmax(posterior) reproduces y_pred on every scored row",
-            "expected": "0 mismatches",
-            "observed": "%d mismatches" % argmax_mismatches,
-            "passed": argmax_mismatches == 0,
+            "expected": ("0 mismatches outside exact top-1 ties in a fallback fold"
+                         if any_fallback else "0 mismatches"),
+            "observed": argmax_observed,
+            "passed": argmax_mismatches == tied_mismatches,
         },
         {
             "check": "scores y_true agrees with predictions y_true",

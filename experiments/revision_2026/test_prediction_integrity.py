@@ -447,3 +447,78 @@ class ScoresConsistencyTests(unittest.TestCase):
         failed = [c for c in self._checks() if not c["passed"]]
         self.assertEqual([c["check"] for c in failed],
                          ["scores y_true agrees with predictions y_true"])
+
+
+class FallbackTieTests(unittest.TestCase):
+    """The one disagreement the runner is allowed to produce, and its limits.
+
+    When a fold falls back to `model.predict`, `y_pred` is an argmax over
+    float64 posteriors while the file holds their float32 copy, so two
+    classes can tie here that did not tie there. A tie is forgiven; a strict
+    winner that disagrees is still a failure. Reproduced from the two D.3
+    random-forest runs (`ablations_baselines.md` 9.5).
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.rows, self.fold_metrics = consistent_rows()
+
+    def _run(self, fallback_folds, posteriors):
+        folds = [dict(fold) for fold in self.fold_metrics]
+        for fold in folds:
+            fold["scores"] = {
+                "rows_checked": 4,
+                "argmax_mismatches": 1 if fold["split_id"] in fallback_folds else 0,
+                "fell_back_to_predict": fold["split_id"] in fallback_folds,
+            }
+        directory = write_run(os.path.join(self.tmp.name, "run"), self.rows, folds)
+        write_scores(directory, self.rows, posteriors)
+        report = json.load(open(
+            os.path.join(directory, "grouped_validation_report.json"), encoding="utf-8"))
+        arrays = load_prediction_arrays(
+            os.path.join(directory, "grouped_predictions.csv"),
+            CLASSES, [f["split_id"] for f in folds])
+        return check_scores_consistency(directory, arrays, report, CLASSES)
+
+    def _argmax_check(self, checks):
+        return next(c for c in checks
+                    if c["check"].startswith("argmax(posterior) reproduces"))
+
+    def test_tie_in_a_fallback_fold_is_forgiven(self):
+        posteriors = posteriors_agreeing_with(self.rows)
+        # Row 3 is in fold-00 and was predicted `attack` (index 0); an exact
+        # tie makes numpy pick index 0 too, so force the harder direction:
+        # row 2 was predicted `normal` (index 1), which a tie cannot produce.
+        posteriors[2] = [0.5, 0.5]
+        check = self._argmax_check(self._run({"fold-00"}, posteriors))
+        self.assertTrue(check["passed"], check)
+        self.assertIn("1 mismatches, 1 of them exact top-1 ties", check["observed"])
+
+    def test_tie_in_a_fold_that_did_not_fall_back_still_fails(self):
+        posteriors = posteriors_agreeing_with(self.rows)
+        posteriors[2] = [0.5, 0.5]
+        check = self._argmax_check(self._run({"fold-01"}, posteriors))
+        self.assertFalse(check["passed"], check)
+        self.assertEqual(check["observed"], "1 mismatches")
+
+    def test_a_strict_winner_that_disagrees_still_fails_in_a_fallback_fold(self):
+        posteriors = posteriors_agreeing_with(self.rows)
+        # No tie: the file says `attack` outright where `y_pred` says `normal`.
+        posteriors[2] = [0.9, 0.1]
+        check = self._argmax_check(self._run({"fold-00"}, posteriors))
+        self.assertFalse(check["passed"], check)
+        self.assertEqual(check["observed"], "1 mismatches")
+
+    def test_fallback_does_not_forgive_a_tie_in_another_fold(self):
+        posteriors = posteriors_agreeing_with(self.rows)
+        posteriors[2] = [0.5, 0.5]   # fold-00, forgiven
+        posteriors[7] = [0.5, 0.5]   # fold-01, not a fallback fold
+        check = self._argmax_check(self._run({"fold-00"}, posteriors))
+        self.assertFalse(check["passed"], check)
+        self.assertIn("2 mismatches, 1 of them", check["observed"])
+
+    def test_a_clean_run_is_unaffected_by_the_fallback_flag(self):
+        checks = self._run({"fold-00"}, posteriors_agreeing_with(self.rows))
+        self.assertTrue(all(c["passed"] for c in checks), checks)
+        self.assertEqual(self._argmax_check(checks)["observed"], "0 mismatches")

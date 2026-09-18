@@ -557,22 +557,39 @@ class, not ~50,000.
 - Cost note for D.1: the champion's `none` run takes **37 min**, so the six-run
   ablation is ~3.7 h of serial compute.
 
-### The two integrity failures, and what they are
+### The Random Forest argmax disagreement, and what it was (2026-09-17)
 
-`prediction_integrity_d3_v2.md` runs 351 checks over the nine runs and reports
-**2 failures**, both of the same kind and both on Random Forest:
-`argmax(posterior)` does not reproduce `y_pred` on **7 rows of 11,057,478**
-(`none-cap4m`) and **17 rows** (`downsample`). Every other check passes,
-including the class-sum reconciliation and the posteriors-are-a-distribution
-check on those same two runs.
+`prediction_integrity_d3_v2.md` runs 351 checks over the nine runs: **0
+failures**. Until 2026-09-17 it reported two, both of the same kind and both on
+Random Forest - `argmax(posterior)` not reproducing `y_pred` on **7 rows of
+11,057,478** (`none-cap4m`) and **17 rows** (`downsample`). The cause is now
+confirmed, and it was in the audit's premise rather than in either run.
 
-The shape is consistent with float tie-breaking inside
-`RandomForestClassifier`: `predict` takes the argmax of an average of tree
-votes accumulated in a different order from the `predict_proba` this pipeline
-persists, so an exact tie can resolve either way. It is 2e-6 of the rows and
-cannot move any metric in this section. **It is not dismissed, it is
-delimited**: no number in this file rests on those 24 rows, and the check stays
-red until the cause is confirmed rather than inferred.
+A scored run takes a fold's hard labels from `argmax(proba)` and verifies that
+choice against `model.predict` on the fold's first block; on any disagreement
+it falls back to `predict` for the whole fold and records
+`fell_back_to_predict` in its report. **Random Forest triggered that fallback
+in 9 of its 10 folds** - the exception, `none-cap4m` fold-03, contributes none
+of the 24 rows. On a fallback fold `y_pred` is therefore an argmax over
+scikit-learn's float64 posteriors, while the persisted scores are the float32
+copy the writer stores.
+
+All 24 rows are **exact ties at float32**: top-1 and top-2 bit-identical, gap
+0.0. And on all 24 the audit's `numpy.argmax` took the *lower* class index
+while `predict` had kept the higher one - the only direction that can produce a
+mismatch, since on a genuine tie both pick the lower. The two runs carry 1,224
+(`none-cap4m`) and 16,420 (`downsample`) rows tied at float32, so the 24 are
+the few whose float64 values were not tied *as well*, by less than float32 can
+represent. `v2-xgboost-none` has no tied row at all and `v2-decision-tree-none`
+has 31, neither with any disagreement: their labels are that same argmax.
+
+The audit now forgives a mismatch **only** where the report marks that fold
+`fell_back_to_predict` **and** the two leading persisted posteriors are exactly
+equal. A strict winner that disagrees with `y_pred` still fails, in any fold,
+and so does a tie in a fold that did not fall back. At float32 - the precision
+every threshold number in `pr_curves_d3_v2.md` is computed from - the model
+expressed no preference on those rows, so there is nothing left to delimit:
+**Random Forest figures are citable.**
 
 ### Runner reproducibility
 

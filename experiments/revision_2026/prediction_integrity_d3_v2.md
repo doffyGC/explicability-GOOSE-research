@@ -1,6 +1,6 @@
 # Prediction integrity audit - Gray-GOOSE (checklist E.4/E.5)
 
-- Generated: 2026-09-16 03:54:31 UTC
+- Generated: 2026-09-17 16:38:53 UTC
 - Recomputed independently of `run_grouped_validation.py`: every number below
   comes from a `numpy.bincount` confusion matrix over the persisted
   `grouped_predictions.csv`, not from the `sklearn` helpers the runner used.
@@ -376,19 +376,103 @@ statistical test is written.
 
 ### `v2-random-forest-none-cap4m`
 
-39 checks, 1 failed.
+39 checks, 0 failed.
+
+<details><summary>All checks passed - expand for detail</summary>
 
 | check | expected | observed | result |
 |---|---|---|---|
-| argmax(posterior) reproduces y_pred on every scored row | 0 mismatches | 7 mismatches | **FAIL** |
+| each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
+| prediction rows == report rows_used | 11057478 | 11057478 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..11057477 | 0..11057477 over 11057478 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 2046057 == 2046057 | 2046057 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 2311017 == 2311017 | 2311017 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 2731961 == 2731961 | 2731961 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 2365326 == 2365326 | 2365326 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 1603117 == 1603117 | 1603117 predictions | pass |
+| scored rows == predicted rows | 11057478 | 11057478 scored, 0 not found in predictions | pass |
+| argmax(posterior) reproduces y_pred on every scored row | 0 mismatches outside exact top-1 ties in a fallback fold | 7 mismatches, 7 of them exact top-1 ties in a fold that fell back to model.predict | pass |
+| scores y_true agrees with predictions y_true | 0 mismatches | 0 mismatches | pass |
+| posteriors are a distribution (in [0,1], summing to 1) | max |sum - 1| <= 0.0001, 0 values outside [0,1] | max drift 4.84e-08, 0 out of range | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50779 | 50779 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63963 | 63963 | pass |
+| class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
+| class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
+| class sum (predictions vs. report support): benign_degradation | 270642 | 270642 | pass |
+| class sum (predictions vs. report support): normal | 10570307 | 10570307 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50779 in dataset | 50779 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63963 in dataset | 63963 predicted | pass |
+| class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
+| class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
+| class sum (predictions vs. dataset): benign_degradation | 270642 in dataset | 270642 predicted | pass |
+| class sum (predictions vs. dataset): normal | 10570307 in dataset | 10570307 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.977595443333 | 0.977595443333 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.739745324736 | 0.739745324736 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.975770184945 | 0.975770184945 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.985159780305 | 0.985159780305 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.732697314135 | 0.732697314135 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.984162803716 | 0.984162803716 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.987881964640 | 0.987881964640 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.736582761413 | 0.736582761413 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.987259858486 | 0.987259858486 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.981870997909 | 0.981870997909 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.728045793690 | 0.728045793690 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.979787292207 | 0.979787292207 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.969526865475 | 0.969526865475 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.723187589455 | 0.723187589455 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.966513333471 | 0.966513333471 | pass |
+
+</details>
 
 ### `v2-random-forest-downsample`
 
-39 checks, 1 failed.
+39 checks, 0 failed.
+
+<details><summary>All checks passed - expand for detail</summary>
 
 | check | expected | observed | result |
 |---|---|---|---|
-| argmax(posterior) reproduces y_pred on every scored row | 0 mismatches | 17 mismatches | **FAIL** |
+| each row_index predicted at most once | 0 duplicates | 0 duplicates | pass |
+| prediction rows == report rows_used | 11057478 | 11057478 | pass |
+| full run covers dataset rows 0..N-1 with no gaps | 0..11057477 | 0..11057477 over 11057478 rows | pass |
+| fold-00: predictions == test_rows == sum(per-class support) | 2046057 == 2046057 | 2046057 predictions | pass |
+| fold-01: predictions == test_rows == sum(per-class support) | 2311017 == 2311017 | 2311017 predictions | pass |
+| fold-02: predictions == test_rows == sum(per-class support) | 2731961 == 2731961 | 2731961 predictions | pass |
+| fold-03: predictions == test_rows == sum(per-class support) | 2365326 == 2365326 | 2365326 predictions | pass |
+| fold-04: predictions == test_rows == sum(per-class support) | 1603117 == 1603117 | 1603117 predictions | pass |
+| scored rows == predicted rows | 11057478 | 11057478 scored, 0 not found in predictions | pass |
+| argmax(posterior) reproduces y_pred on every scored row | 0 mismatches outside exact top-1 ties in a fallback fold | 17 mismatches, 17 of them exact top-1 ties in a fold that fell back to model.predict | pass |
+| scores y_true agrees with predictions y_true | 0 mismatches | 0 mismatches | pass |
+| posteriors are a distribution (in [0,1], summing to 1) | max |sum - 1| <= 0.0001, 0 values outside [0,1] | max drift 5.03e-08, 0 out of range | pass |
+| class sum (predictions vs. report support): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50779 | 50779 | pass |
+| class sum (predictions vs. report support): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63963 | 63963 | pass |
+| class sum (predictions vs. report support): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 | 46959 | pass |
+| class sum (predictions vs. report support): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 | 54828 | pass |
+| class sum (predictions vs. report support): benign_degradation | 270642 | 270642 | pass |
+| class sum (predictions vs. report support): normal | 10570307 | 10570307 | pass |
+| class sum (predictions vs. dataset): DETERMINISTIC_BURST_ORIENTEDGRAYHOLE | 50779 in dataset | 50779 predicted | pass |
+| class sum (predictions vs. dataset): FULLY_RANDOMIZED_ORIENTEDGRAYHOLE | 63963 in dataset | 63963 predicted | pass |
+| class sum (predictions vs. dataset): RANDOMIC_BURST_ORIENTEDGRAYHOLE | 46959 in dataset | 46959 predicted | pass |
+| class sum (predictions vs. dataset): RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE | 54828 in dataset | 54828 predicted | pass |
+| class sum (predictions vs. dataset): benign_degradation | 270642 in dataset | 270642 predicted | pass |
+| class sum (predictions vs. dataset): normal | 10570307 in dataset | 10570307 predicted | pass |
+| fold-00: recorded accuracy matches recomputation | 0.805596813774 | 0.805596813774 | pass |
+| fold-00: recorded macro_f1 matches recomputation | 0.461464896632 | 0.461464896632 | pass |
+| fold-00: recorded weighted_f1 matches recomputation | 0.860152645034 | 0.860152645034 | pass |
+| fold-01: recorded accuracy matches recomputation | 0.814231137201 | 0.814231137201 | pass |
+| fold-01: recorded macro_f1 matches recomputation | 0.447152626655 | 0.447152626655 | pass |
+| fold-01: recorded weighted_f1 matches recomputation | 0.875468638795 | 0.875468638795 | pass |
+| fold-02: recorded accuracy matches recomputation | 0.816148180739 | 0.816148180739 | pass |
+| fold-02: recorded macro_f1 matches recomputation | 0.408550263417 | 0.408550263417 | pass |
+| fold-02: recorded weighted_f1 matches recomputation | 0.879764852538 | 0.879764852538 | pass |
+| fold-03: recorded accuracy matches recomputation | 0.810457839638 | 0.810457839638 | pass |
+| fold-03: recorded macro_f1 matches recomputation | 0.439626530758 | 0.439626530758 | pass |
+| fold-03: recorded weighted_f1 matches recomputation | 0.870952515074 | 0.870952515074 | pass |
+| fold-04: recorded accuracy matches recomputation | 0.762286844940 | 0.762286844940 | pass |
+| fold-04: recorded macro_f1 matches recomputation | 0.470890254870 | 0.470890254870 | pass |
+| fold-04: recorded weighted_f1 matches recomputation | 0.826993637514 | 0.826993637514 | pass |
+
+</details>
 
 ## 3. Metrics, explicitly labelled
 
