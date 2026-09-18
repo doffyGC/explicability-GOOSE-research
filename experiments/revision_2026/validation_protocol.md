@@ -680,6 +680,55 @@ What it does say is that `prepare_grouped_dataset.py`'s within-trace delta
 computation is now **load-bearing for every detection number in this revision**.
 A bug there would not degrade the result; it would be the result.
 
+## Rule-based baseline (checklist D.2)
+
+The reviewer's question behind card D is not whether the model scores well but
+whether it earns its complexity. Six single-threshold rules answer it, each
+one feature and one comparison, each with its threshold fitted **only on the
+train partition of the fold it is scored on**, from the same persisted
+`splits_grouped.json` the learned runs consume. `run_rule_baseline.py` writes
+what `run_grouped_validation.py` writes, so the baseline is audited by the
+same scripts under the same invariants - `prediction_integrity_d2.md` reports
+7 runs x 39 checks, 0 failures, every rule pairable with the champion row for
+row. Full result and the projection caveat: `ablations_baselines.md` §16.
+
+| Run | recall | precision | F1 | alert rate | AP `ANY_ATTACK` | paired vs champion |
+|---|---:|---:|---:|---:|---|---:|
+| champion (`v2-xgboost-none`) | 0.4833\* | 0.9467\* | — | 1%\* | 0.8329 [0.8037, 0.8618] | — |
+| **`interval-timestamp`** | 0.4416 | 0.6229 | 0.5144 | 1.45% | **0.2411** [0.1895, 0.3052] | **-0.5918** [-0.6385, -0.5392] |
+| `stnum-gap` | 0.4116 | 0.3981 | 0.4025 | 2.04% | 0.2192 [0.1754, 0.2712] | -0.6137 [-0.6509, -0.5708] |
+| `interval-t` | 0.4714 | 0.1497 | 0.2258 | 6.29% | 0.1010 [0.0822, 0.1237] | -0.7319 [-0.7588, -0.7035] |
+| `sqnum-gap` | 0.3559 | 0.1383 | 0.1982 | 5.20% | 0.0451 [0.0338, 0.0592] | -0.7878 [-0.8186, -0.7557] |
+| `delay` | 0.8882 | 0.0246 | 0.0478 | 72.6% | 0.0175 [0.0147, 0.0211] | -0.8153 [-0.8439, -0.7867] |
+| `time-since-change` | 1.0000 | 0.0202 | 0.0395 | 99.98% | 0.0127 [0.0105, 0.0153] | -0.8202 [-0.8489, -0.7921] |
+
+\* the champion's row is its cross-fold operating point at a 1% alert budget,
+not an argmax; each rule's is its own calibrated threshold. Every paired
+difference separates.
+
+**The model earns its complexity.** Against the best single threshold it is
+worth -0.5918 AP paired, ~3.5x, and at a matched 1% budget it recovers recall
+0.4833 at precision 0.9467 where the rule manages 0.2980 at 0.5842. **And the
+baseline is a real detector**: AP 0.2411 against a 0.0196 prevalence floor is
+12.3x chance, so the comparison is not a straw man - which is what makes the
+verdict worth reporting.
+
+Two secondary findings. The preregistered `sqNum` gap detector loses to the
+interval rule by a factor of 5.3 in AP (paired -0.1960 [-0.2535, -0.1481]),
+confirming what the feature ablation predicted - kept as an arm and measured
+rather than dropped on that prediction. But `stnum-gap` is *indistinguishable*
+from the interval rule (paired -0.0219 [-0.0884, +0.0452]), and the two carry
+different classes: the interval rule ranks `FRG` at 25x its floor, the state
+counter at 1x. Uniformly random loss leaves a stretched interval and no
+counter pattern, which is the same mechanism behind the `FRG`/congestion
+collision in `benign_controls.md` §8.
+
+**A rule run's per-class rows are not a per-class result.** A rule has one
+score and cannot name a family, so the emitted posterior carries it on one
+designated attack class and exactly zero on the other three; those three come
+back at the prevalence floor by construction. Every report records this under
+`rule.per_class_curves`.
+
 ## The threshold axis (checklist D.5, 2026-09-13)
 
 > **Numbers here are from the defective pool (2026-09-16).** The curves have

@@ -69,7 +69,7 @@ the ablation is what keeps the ablation at ~6 runs instead of ~18.
 
 1. ~~**D.3** — model families, no tuning, default hyperparameters → pick champion.~~ **Done (§9): XGBoost.**
 2. ~~**D.1** — 6 feature groups on the champion only.~~ **Done (§14): the deltas carry it.**
-3. **D.2** — rule-based baseline (cheap, independent; can run at any point). §14 sharpens its target: an inter-message *interval* threshold, not a `sqNum` gap detector.
+3. ~~**D.2** — rule-based baseline.~~ **Done (§16): the model earns its complexity.** §15 aimed it at the interval rather than the `sqNum` gap, and that aim was right — though `stDiff` turned out to be an equally good single threshold.
 4. **D.4** — nested tuning on the champion family, subsampled grid.
 5. **D.5** — consolidate every run into the comparison tables.
 
@@ -87,7 +87,7 @@ is serial.
 |---|---|---|---|
 | D.3 | ~2 h (`random-forest`, `logistic-regression` + scaler pipeline in `--model`) | 10–20 h (XGB 2–5 h/run, RF 2–4 h/run, LR ~1 h/run) | **RAM.** The plain tree already came close to the 15.6 GB ceiling; RF will likely need a documented per-fold subsampling policy (+1–2 h) |
 | D.1 | **done** (registry + flag + tests + docs, 2026-09-16) | **done: 136 min measured** (18-26 min per run, not the 37 projected) + 5.8 GB | Resolved: peak RSS 4.8-5.4 GB, flat, no training spike (§14) |
-| D.2 | ~3–4 h (new script + tests) | ~30 min | Low |
+| D.2 | **done** (~3.5 h: script + 31 tests + docs, 2026-09-18) | **done: 14 min measured** (2 min 20 s per rule - one column, not forty) + 5.4 GB | Resolved |
 | D.4 | ~3–4 h (inner grouped split + grid) | 4–8 h subsampled | This is the multiplier that blows the schedule if run un-subsampled |
 | D.5 | ~3–4 h (cross-run comparison + docs) | ~0 | Low |
 
@@ -114,7 +114,7 @@ these is not a result:
 | D.1 feature-group ablation (6/7) | **done** — the nine delta features carry essentially all of it (-0.7227 AP paired); 29 of 40 columns are free | §14; `results/d1-xgboost-*` (6 runs); `pr_curves_d1.md`; `prediction_integrity_d1.md` (273 checks, 0 failures) |
 | D.1 delta split (unpreregistered follow-up) | **done** (2026-09-17) — inside the deltas the carrier is **timing** (-0.0645 AP paired, and the only ablation besides `no-delta` that moves the 1% operating point); the four size/state deltas are free | §15; `results/d1-xgboost-no-{timing,size-state}-deltas`; `pr_curves_d1_split.md`; `prediction_integrity_d1_split.md` (195 checks, 0 failures) |
 | D.1 top-k SHAP group | deferred to card F | — |
-| D.2 rule-based baseline | **unblocked, not started**; its design work is what found the defect | `label_duplication_audit.md`; `check_label_duplication.py` |
+| D.2 rule-based baseline | **done** (2026-09-18) — the champion beats the best single threshold by **-0.5918 AP paired** [-0.6385, -0.5392]; the baseline is real (12.3x chance), not a straw man | §16; `run_rule_baseline.py`; `results/d2-rule-*` (6 runs); `pr_curves_d2.md`; `pr_curves_d2_rules.md`; `prediction_integrity_d2.md` (273 checks, 0 failures) |
 | D.3 model comparison (XGB/RF/LR) | **done on the corrected pool** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/v2-*` (9 runs); `prediction_integrity_d3_v2.md` (351 checks, 0 failures — §9, "The argmax disagreement on Random Forest"); `run_bootstrap.{none,downsample,champion}_v2.md`; `pr_curves_d3_v2.md` |
 | D.3 temporal model | deferred | — |
 | D.4 nested tuning | **unblocked, not started** | §12 |
@@ -805,3 +805,93 @@ one.
   congestion loss both leave a stretched interval and no counter pattern
   (`benign_controls.md` §8). Both are the classes the timing ablation hurts
   most.
+
+## 16. D.2 result: the rule the model has to beat (2026-09-18)
+
+Six rules, one feature and one comparison each, calibrated on each fold's
+train partition alone and scored on the persisted `splits_grouped.json` the
+learned runs use. Implementation, artifact contract and the reason the
+multiclass projection is not a result: `run_rule_baseline.py`'s module
+docstring and §2's preregistered scope. Cost: **~2 min 20 s per rule, 14 min
+for all six**, 5.4 GB — the rule reads one column, so it never pays the
+40-feature load. Integrity: `prediction_integrity_d2.md`, 7 runs × 39 checks,
+**0 failures**, every rule pairable with the champion row for row.
+
+### The result
+
+At each rule's own calibrated threshold, and threshold-free as AP on
+`ANY_ATTACK` (prevalence 1.9582%, so a coin scores 0.0196):
+
+| Rule | column | recall | precision | F1 | alert rate | AP `ANY_ATTACK` |
+|---|---|---:|---:|---:|---:|---|
+| **`interval-timestamp`** | `timestampDiff` | 0.4416 | 0.6229 | **0.5144** | 1.45% | **0.2411** [0.1895, 0.3052] |
+| `stnum-gap` | `stDiff` | 0.4116 | 0.3981 | 0.4025 | 2.04% | 0.2192 [0.1754, 0.2712] |
+| `interval-t` | `tDiff` | 0.4714 | 0.1497 | 0.2258 | 6.29% | 0.1010 [0.0822, 0.1237] |
+| `sqnum-gap` | `sqDiff` | 0.3559 | 0.1383 | 0.1982 | 5.20% | 0.0451 [0.0338, 0.0592] |
+| `delay` | `delay` | 0.8882 | 0.0246 | 0.0478 | 72.6% | 0.0175 [0.0147, 0.0211] |
+| `time-since-change` | `timeFromLastChange` | 1.0000 | 0.0202 | 0.0395 | 99.98% | 0.0127 [0.0105, 0.0153] |
+
+Train and test F1 agree to within 0.003 on every rule, so no threshold is
+overfitting its fold; the last two rules do not have an operating point at all
+— their F1 optimum is "alert on almost everything", which is the shape of a
+feature that carries nothing, not of a badly calibrated detector.
+
+### The model earns its complexity
+
+Paired against the champion (`v2-xgboost-none`, AP 0.8329 [0.8037, 0.8618]),
+both scored on the same resampled runs:
+
+| Rule (B) | B − A average precision | 95% CI | separates? |
+|---|---:|---|---|
+| `interval-timestamp` | **−0.5918** | [−0.6385, −0.5392] | **yes** |
+| `stnum-gap` | −0.6137 | [−0.6509, −0.5708] | yes |
+| `interval-t` | −0.7319 | [−0.7588, −0.7035] | yes |
+| `sqnum-gap` | −0.7878 | [−0.8186, −0.7557] | yes |
+| `delay` | −0.8153 | [−0.8439, −0.7867] | yes |
+| `time-since-change` | −0.8202 | [−0.8489, −0.7921] | yes |
+
+At a matched 1% alert budget the champion recovers recall 0.4833 at precision
+0.9467 against the best rule's 0.2980 at 0.5842 (paired recall −0.1853
+[−0.2436, −0.1332]). **The learned detector is worth roughly 3.5x the best
+single threshold in AP, and the separation is unambiguous at every budget.**
+That is the answer card D.2 exists to give.
+
+The baseline is not a straw man, and saying so is part of the result: at AP
+0.2411 against a 0.0196 floor, a single threshold on the inter-message
+interval is **12.3x better than chance**. A reviewer asking "would a threshold
+have done?" gets a quantified no rather than an assertion.
+
+### Where §15's prediction held, and where it did not
+
+§15 predicted the interval rule would beat the preregistered `sqNum` gap
+detector. It does, decisively — paired **−0.1960 [−0.2535, −0.1481]**,
+separating, a factor of 5.3 in AP (`pr_curves_d2_rules.md`). Keeping the
+preregistered arm rather than dropping it on that prediction is what turned it
+into a measurement.
+
+What §15 did not anticipate: **`stnum-gap` is statistically indistinguishable
+from the interval rule** — paired −0.0219 [−0.0884, +0.0452], interval as
+reference. So "the interval is *the* best rule" is not established; what is
+established is that the *state* counter and the interval are two equally good
+single thresholds and the *sequence* counter is far behind. The two are not
+redundant either: the interval rule's per-class curve carries `FRG` (AP 0.1457
+against a 0.0058 floor, 25x) while `stnum-gap`'s does not (0.0066, at the
+floor). They detect different attacks at the same aggregate score, which is
+coherent with §15 — `FRG` is uniformly random loss, visible only as a
+stretched interval.
+
+### Reading the per-class rows of a rule run
+
+A rule has one score and cannot name a family, so its posterior block puts
+that score on one designated attack class (the fold's train-majority attack —
+`FULLY_RANDOMIZED_ORIENTEDGRAYHOLE` in all five folds of all six rules) and
+**exactly zero** on the other three. Their per-class AP therefore comes back
+at the prevalence floor by construction; it measures the projection, not the
+rule. `run_rule_baseline.py` records this in every report under
+`rule.per_class_curves` and `test_rule_baseline.py` pins the zero columns.
+Read a rule run's `ANY_ATTACK` row, and its designated class's row only as a
+statement about that one class.
+
+### Status
+
+D.2 closes. Execution order continues D.4 → D.5.
