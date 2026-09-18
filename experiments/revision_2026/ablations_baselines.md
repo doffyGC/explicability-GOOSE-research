@@ -111,7 +111,8 @@ these is not a result:
 
 | Item | Status | Evidence |
 |---|---|---|
-| D.1 feature-group ablation (6/7) | **done** — the nine delta features carry essentially all of it (-0.7227 AP paired); 25 of 40 columns are free | §14; `results/d1-xgboost-*` (6 runs); `pr_curves_d1.md`; `prediction_integrity_d1.md` (273 checks, 0 failures) |
+| D.1 feature-group ablation (6/7) | **done** — the nine delta features carry essentially all of it (-0.7227 AP paired); 29 of 40 columns are free | §14; `results/d1-xgboost-*` (6 runs); `pr_curves_d1.md`; `prediction_integrity_d1.md` (273 checks, 0 failures) |
+| D.1 delta split (unpreregistered follow-up) | **done** (2026-09-17) — inside the deltas the carrier is **timing** (-0.0645 AP paired, and the only ablation besides `no-delta` that moves the 1% operating point); the four size/state deltas are free | §15; `results/d1-xgboost-no-{timing,size-state}-deltas`; `pr_curves_d1_split.md`; `prediction_integrity_d1_split.md` (195 checks, 0 failures) |
 | D.1 top-k SHAP group | deferred to card F | — |
 | D.2 rule-based baseline | **unblocked, not started**; its design work is what found the defect | `label_duplication_audit.md`; `check_label_duplication.py` |
 | D.3 model comparison (XGB/RF/LR) | **done on the corrected pool** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/v2-*` (9 runs); `prediction_integrity_d3_v2.md` (351 checks, 0 failures — §9, "The argmax disagreement on Random Forest"); `run_bootstrap.{none,downsample,champion}_v2.md`; `pr_curves_d3_v2.md` |
@@ -462,7 +463,7 @@ would make two ablation runs mutually unreadable.
 
 ### The groups
 
-The seven entries below partition all 40 model features of the prepared
+The eight entries below partition all 40 model features of the prepared
 dataset. Verified against the current pool (SHA `3109e4d4…`): no group names a
 column the dataset lacks, and `delay` is the only feature no group claims.
 
@@ -473,8 +474,14 @@ column the dataset lacks, and `delay` is the only feature no group claims.
 | `absolute-time` | 3 | `Time`, `t`, `GooseTimestamp` |
 | `counters` | 2 | `StNum`, `SqNum` |
 | `counter-deltas` | 2 | `stDiff`, `sqDiff` |
-| `other-deltas` | 7 | `gooseLengthDiff`, `cbStatusDiff`, `apduSizeDiff`, `frameLengthDiff`, `timestampDiff`, `tDiff`, `timeFromLastChange` |
+| `timing-deltas` | 3 | `timestampDiff`, `tDiff`, `timeFromLastChange` |
+| `size-state-deltas` | 4 | `gooseLengthDiff`, `cbStatusDiff`, `apduSizeDiff`, `frameLengthDiff` |
 | *(ungrouped)* | 1 | `delay` |
+
+The last two were a single `other-deltas` group of 7 until 2026-09-17, when
+§15 split it. `no-delta` composes both halves and therefore still drops the
+same nine columns the executed run dropped — a regression test pins that, so
+the split refines the registry without invalidating §14.
 
 **Why `delay` is ungrouped, and why that is stated rather than hidden.** It is
 the simulated per-message transport delay (`GooseTimestamp - Time`, ±0.24 ms on
@@ -493,9 +500,17 @@ D.1 table is read as if the groups covered everything.
 | `no-electrical` | `electrical` | 22 | Is the grayhole visible in the process data at all, or only in the protocol stream? |
 | `no-goose-header` | `goose-header` | 33 | Do the static frame fields carry anything, or are they near-constant padding? |
 | `no-absolute-time` | `absolute-time` | 37 | Is the model partly identifying *when* a run happened — a run-identity proxy rather than a signature? |
-| `no-delta` | `counter-deltas` + `other-deltas` | 31 | Are the revision's own derived deltas doing the work? |
+| `no-delta` | `counter-deltas` + `timing-deltas` + `size-state-deltas` | 31 | Are the revision's own derived deltas doing the work? |
 | `no-counters` | `counters` | 38 | Can the model still find the gap when only the deltas expose it? |
 | `no-sequence` | `counters` + `counter-deltas` | 36 | With no sequence information at all, is anything left? |
+
+Added 2026-09-17, after §14 closed and outside the preregistered six — §15
+records why and reports them:
+
+| `--feature-set` | drops | n features | The question |
+|---|---|---:|---|
+| `no-timing-deltas` | `timing-deltas` | 37 | Is the carrier inside the deltas the *interval between messages*? |
+| `no-size-state-deltas` | `size-state-deltas` | 36 | Or is it the *change in the frame* the delta measures? |
 
 The last two are the pair that matters most for the paper's claim. `SAG.PBM`'s
 weakness and the `FRG`/congestion collision both say the models lean on gap
@@ -678,16 +693,17 @@ table of their importance.
   result for deployment cost, not a negative one.
 - **Card F (SHAP) should be aimed at the nine deltas.** An explanation of the
   electrical features would be explaining columns the model does not use.
-- **A finer split is worth two more runs.** `other-deltas` mixes timing
-  (`timestampDiff`, `tDiff`, `timeFromLastChange`) with size/state
-  (`gooseLengthDiff`, `apduSizeDiff`, `frameLengthDiff`, `cbStatusDiff`).
-  Splitting that group in two and running both would name the carriers
-  directly instead of by elimination: ~50 min, and it is the obvious follow-up
-  D.1 did not preregister.
+- ~~**A finer split is worth two more runs.**~~ **Done — §15.** `other-deltas`
+  mixed timing (`timestampDiff`, `tDiff`, `timeFromLastChange`) with
+  size/state (`gooseLengthDiff`, `apduSizeDiff`, `frameLengthDiff`,
+  `cbStatusDiff`). Both halves were ablated on 2026-09-17: the timing half
+  carries it (-0.0645 AP paired, and the operating point moves), the
+  size/state half is free (-0.0004).
 - **D.2's rule-based baseline now has a specific target.** The rule to beat is
   not a `sqNum` gap detector but an inter-message interval threshold, and §2's
   scope for D.2 ("`sqNum`/`stNum` gap detector + delay threshold") should be
-  read with the second half carrying the weight.
+  read with the second half carrying the weight. §15 measured that inference rather than
+  leaving it inferred.
 
 ### Measured memory footprint (supersedes §7's projection)
 
@@ -711,3 +727,81 @@ were not the cause; they were merely resident when other pressure crossed the
 threshold. One of the four was self-inflicted — relaunching immediately after
 a kill, before the OS had reclaimed the dead process's pages. **Leave the
 machine quiet and wait for memory to be returned before relaunching.**
+
+## 15. Splitting the non-counter deltas (2026-09-17)
+
+§14 named the seven non-counter deltas as the carriers **by elimination**:
+`no-delta` collapses the detector and `no-sequence` barely moves it, so
+whatever is left must be in those seven. That group mixed two different
+physical quantities — the interval between messages and the change in the
+frame itself — and the distinction matters twice over: D.2's rule-based
+baseline is an interval threshold, and card F will have to explain these
+columns by name.
+
+Two runs, outside the preregistered six and recorded as such: the group was
+split into `timing-deltas` (3 columns) and `size-state-deltas` (4), and each
+half was ablated on its own. Same champion configuration as every other D.1
+run — XGBoost, `--balance none`, the persisted `splits_grouped.json`, dataset
+SHA `3109e4d4…`, `--save-scores`. **`no-delta` still drops the same nine
+columns**, pinned by `test_no_delta_is_still_the_union_of_the_three_delta_groups`,
+so §14's numbers stand unchanged and the new runs are comparable against them.
+
+Cost: **~40 min** of serial compute for the two runs, 1.9 GB. Integrity:
+`prediction_integrity_d1_split.md` — 5 runs × 39 checks, **0 failures**, all
+four pairable against the reference. Curves:
+`pr_curves_d1_split.md`.
+
+### The result
+
+AP on `ANY_ATTACK`, and the paired difference against the `v2-xgboost-none`
+reference (same resampled runs, so shared variation cancels):
+
+| Run | n feat | AP `ANY_ATTACK` | paired B − A | separates? |
+|---|---:|---|---:|---|
+| `v2-xgboost-none` (reference) | 40 | 0.8329 [0.8037, 0.8618] | — | — |
+| `no-size-state-deltas` | 36 | 0.8325 [0.8032, 0.8616] | **−0.0004** [−0.0007, −0.0001] | yes, and meaningless |
+| `no-sequence` | 36 | 0.8240 [0.7934, 0.8531] | −0.0089 [−0.0128, −0.0055] | yes |
+| `no-timing-deltas` | 37 | 0.7683 [0.7296, 0.8021] | **−0.0645** [−0.0832, −0.0501] | yes |
+| `no-delta` | 31 | 0.1101 [0.0906, 0.1344] | −0.7227 [−0.7478, −0.6956] | yes |
+
+**The timing half is where the signal is, and it is the only ablation besides
+`no-delta` that an operator would notice.** Dropping the three timing deltas
+separates on *every* class — `FRG` −0.1293, `SAG.PBM` −0.0673, `SAG.PB`
+−0.0500, `SAG.DB` −0.0387 — and it moves the operating point, which §14 said
+nothing else did: at the 1% alert budget recall falls 0.4833 → 0.4512 and
+precision 0.9467 → 0.8791 (paired recall −0.0321 [−0.0475, −0.0167]). It is a
+7.7% relative loss of AP against a 7.5% loss of features.
+
+**The size/state half is free.** −0.0004 AP on `ANY_ATTACK` and
+*indistinguishable* on all four attack classes individually; at the 1% budget
+it reproduces the reference to the fourth decimal (recall 0.4832 vs 0.4833,
+precision 0.9464 vs 0.9467). The `ANY_ATTACK` interval excludes zero by
+0.0001, which is a demonstration that the paired test has resolution, not a
+finding. Four more of the forty columns are demonstrably free: **29 of 40**.
+
+### What this does not say
+
+It does not name a sufficient sub-group. Removing the timing half costs
+−0.0645; removing the size/state half costs nothing; removing all nine costs
+−0.7227. Neither half alone comes within an order of magnitude of the
+collapse, so the remaining features **reconstruct most of the signal whenever
+any one piece is taken away**. The honest statement is the same shape as
+§14's, one level down: the deltas are jointly necessary, and within them the
+timing columns are the only sub-group whose removal is operationally visible.
+Naming a minimal sufficient set would need a different experiment — a forward
+selection rather than a leave-one-group-out — and nothing in card D asks for
+one.
+
+### Consequences
+
+- **D.2's target is confirmed, not just sharpened.** §14 inferred an
+  inter-message interval threshold from the elimination argument; this
+  measures it. The rule to beat operates on `timestampDiff`/`tDiff`, and
+  `cbStatusDiff`-style frame-change rules are not worth implementing.
+- **Card F should aim at the three timing deltas first.** They are the only
+  columns whose removal changes what an operator sees.
+- **Coherent with the two known weaknesses.** `SAG.PBM` discards at state
+  boundaries, where `SqNum` resets and only the interval survives; `FRG` and
+  congestion loss both leave a stretched interval and no counter pattern
+  (`benign_controls.md` §8). Both are the classes the timing ablation hurts
+  most.

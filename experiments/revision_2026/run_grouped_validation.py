@@ -20,9 +20,9 @@ the measurements behind it.
 
 ``--feature-set`` is checklist D.1's feature-group ablation: each named set
 removes exactly one group of ``FEATURE_GROUPS`` (``no-sequence`` removes two
-disjoint ones), so a difference against the ``all`` reference run is
-attributable to that group alone.  The groups, and what each ablation asks,
-are in ``ablations_baselines.md`` SS13.
+disjoint ones and ``no-delta`` three), so a difference against the ``all``
+reference run is attributable to that group alone.  The groups, and what each
+ablation asks, are in ``ablations_baselines.md`` SS13.
 """
 
 from __future__ import annotations
@@ -90,10 +90,18 @@ FEATURE_GROUPS = {
     # prepare_grouped_dataset.py. Separate from the other deltas so that
     # "the model cannot see a gap at all" is expressible.
     "counter-deltas": ("stDiff", "sqDiff"),
-    # The remaining within-trace deltas.
-    "other-deltas": (
+    # The within-trace deltas that measure *time between messages*. A
+    # grayhole that drops a message stretches the interval to the next one,
+    # so this is where a discard shows up when the counters cannot see it -
+    # at a state boundary, where SqNum resets anyway.
+    "timing-deltas": ("timestampDiff", "tDiff", "timeFromLastChange"),
+    # The within-trace deltas that measure a *change in the frame itself*
+    # rather than in timing. Split from the timing deltas on 2026-09-17: D.1
+    # established by elimination that the seven non-counter deltas carry the
+    # signal (SS14), and these two groups are the two candidate carriers
+    # inside that set.
+    "size-state-deltas": (
         "gooseLengthDiff", "cbStatusDiff", "apduSizeDiff", "frameLengthDiff",
-        "timestampDiff", "tDiff", "timeFromLastChange",
     ),
 }
 
@@ -113,9 +121,16 @@ FEATURE_SETS = {
     "no-electrical": ("electrical",),
     "no-goose-header": ("goose-header",),
     "no-absolute-time": ("absolute-time",),
-    "no-delta": ("counter-deltas", "other-deltas"),
+    "no-delta": ("counter-deltas", "timing-deltas", "size-state-deltas"),
     "no-counters": ("counters",),
     "no-sequence": ("counters", "counter-deltas"),
+    # Added 2026-09-17, after D.1 closed. `no-delta` collapses the model and
+    # `no-sequence` barely moves it, which names the seven non-counter deltas
+    # as the carriers *by elimination*; these two sets name them directly.
+    # They drop the same columns `no-delta` drops, one half at a time, so
+    # neither changes the meaning of a run already executed.
+    "no-timing-deltas": ("timing-deltas",),
+    "no-size-state-deltas": ("size-state-deltas",),
 }
 
 

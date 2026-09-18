@@ -640,6 +640,37 @@ consistent with `SAG.PBM`'s weakness (its discards fall at state boundaries
 where `SqNum` resets) and with the `FRG`/congestion collision (random drops
 leave a stretched interval, not a counter pattern).
 
+### Which half of the deltas (2026-09-17, two runs outside the preregistered six)
+
+The seven non-counter deltas mix two quantities — the interval between
+messages and the change in the frame itself — so the paragraph above names the
+carrier by elimination. Splitting the group in two and ablating each half
+measures it directly (~40 min; `ablations_baselines.md` §15,
+`pr_curves_d1_split.md`, `prediction_integrity_d1_split.md`: 195 checks, 0
+failures). `no-delta` still drops the same nine columns, so the table above is
+unchanged.
+
+| Run | n feat | AP `ANY_ATTACK` | paired vs reference | 95% CI | separates? |
+|---|---:|---:|---:|---|---|
+| `no-size-state-deltas` | 36 | 0.8325 | -0.0004 | [-0.0007, -0.0001] | yes, and meaningless |
+| `no-timing-deltas` | 37 | 0.7683 | **-0.0645** | **[-0.0832, -0.0501]** | **yes** |
+
+**The three timing deltas** (`timestampDiff`, `tDiff`, `timeFromLastChange`)
+**are the carriers.** Dropping them separates on every class (`FRG` -0.1293,
+`SAG.PBM` -0.0673, `SAG.PB` -0.0500, `SAG.DB` -0.0387) and is the only
+ablation besides `no-delta` that moves an operating point: at the 1% alert
+budget recall falls 0.4833 → 0.4512 and precision 0.9467 → 0.8791. The four
+size/state deltas are indistinguishable from the reference on every individual
+class and reproduce the 1% operating point to the fourth decimal — 29 of the
+40 columns are now demonstrably free.
+
+Neither half alone reproduces the collapse (-0.0645 and -0.0004 against
+-0.7227), so the deltas remain **jointly** necessary and no minimal sufficient
+set is being claimed; a leave-one-group-out design cannot name one. The
+operational statement is narrower and holds: the timing columns are the only
+sub-group whose removal an operator would notice, which is what card F should
+explain and what D.2's interval-threshold baseline has to beat.
+
 Two things this does **not** say. It is not leakage: the deltas are computed
 strictly within a trace, boundary rows dropped, and a live monitor can compute
 them from messages it has already seen. And it does not rank the surviving

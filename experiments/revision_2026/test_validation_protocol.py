@@ -344,6 +344,31 @@ class FeatureGroupRegistryTests(unittest.TestCase):
         self.assertTrue(counters < sequence)
         self.assertEqual(sequence - counters, set(FEATURE_GROUPS["counter-deltas"]))
 
+    def test_no_delta_is_still_the_union_of_the_three_delta_groups(self):
+        """The 2026-09-17 split must not have moved the `no-delta` row.
+
+        `timing-deltas` and `size-state-deltas` replaced a single
+        `other-deltas` group. That is only a refinement if `no-delta` keeps
+        dropping exactly the nine columns the executed D.1 run dropped -
+        otherwise the new runs are not comparable against it.
+        """
+        self.assertEqual(
+            set(resolve_feature_set("no-delta", self.vocabulary())),
+            {"stDiff", "sqDiff",
+             "timestampDiff", "tDiff", "timeFromLastChange",
+             "gooseLengthDiff", "cbStatusDiff", "apduSizeDiff",
+             "frameLengthDiff"})
+
+    def test_the_two_new_sets_partition_the_non_counter_deltas(self):
+        timing = set(resolve_feature_set("no-timing-deltas", self.vocabulary()))
+        size_state = set(
+            resolve_feature_set("no-size-state-deltas", self.vocabulary()))
+        counter = set(FEATURE_GROUPS["counter-deltas"])
+        self.assertEqual(timing & size_state, set())
+        self.assertEqual(
+            timing | size_state,
+            set(resolve_feature_set("no-delta", self.vocabulary())) - counter)
+
     def test_a_missing_column_is_fatal_rather_than_a_silent_no_op(self):
         vocabulary = [c for c in self.vocabulary()
                       if c not in FEATURE_GROUPS["electrical"]]
