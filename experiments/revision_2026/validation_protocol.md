@@ -729,6 +729,57 @@ designated attack class and exactly zero on the other three; those three come
 back at the prevalence floor by construction. Every report records this under
 `rule.per_class_curves`.
 
+## Nested tuning (checklist D.4, protocol added 2026-09-19)
+
+Card D.4 adds a second level to the split invariant this document exists to
+enforce, so it is recorded here rather than only in `ablations_baselines.md`.
+
+Up to D.3 every run consumed the persisted folds and fitted one configuration
+per fold. A tuning run fits many, and the question "which rows chose this
+model?" gets a new wrong answer available to it: selecting on the outer test
+fold. That is the ordinary "tune by cross-validation, then report the
+cross-validated score" mistake, and it is the same leak as message-level
+splitting, one level up - the reported number is no longer an estimate of
+performance on unseen runs, because unseen runs picked the model.
+
+The protocol closes it structurally:
+
+- **The outer folds never change.** `run_nested_tuning.py` consumes the same
+  hash-bound `splits_grouped.json`, through the same `verify_artifacts`, and
+  generates nothing internally.
+- **The inner split is grouped too.** `StratifiedGroupKFold` over the outer
+  fold's train groups only, by `split_group`, for the same reason the outer
+  protocol is stratified: at 0.42-0.58% per attack class a plain `GroupKFold`
+  can starve an inner fold of a whole class.
+- **The selector is handed train positions and nothing else.** It runs inside
+  `run_grouped_validation.run_folds`, before the train slice exists, so there
+  is no test row in scope to select on. `test_nested_tuning.py` pins that with
+  a sentinel value present only in outer test rows, which no fitted block may
+  contain.
+- **One fold loop, not two.** The tuned runner injects a `model_selector` into
+  the existing loop rather than reimplementing it, so it inherits the
+  group-overlap refusal, the empty-partition and test-only-class refusals,
+  train-only balancing and the untouched test distribution. A sibling script
+  with its own copy of those checks would be a second place for them to
+  weaken.
+- **The artifacts are unchanged.** Same `grouped_predictions.csv`,
+  `grouped_scores.parquet` and `grouped_validation_report.json`, so
+  `check_prediction_integrity.py`, `bootstrap_run_intervals.py` and
+  `grouped_pr_curves.py` audit a tuned run exactly as they audit an untuned
+  one - verified on a technical smoke at 38 checks, 0 failures. The report
+  adds `tuned` (the grid name) and a per-fold `selection` record; `tuned` is
+  what stops a tuned run being mistaken for the untuned champion, whose report
+  is otherwise identically shaped.
+
+**Selection is on AP over `ANY_ATTACK`, not on argmax macro F1** - "The
+threshold axis" below is why: an argmax criterion at ~2% prevalence selects a
+threshold artifact. Macro F1 is recorded for every grid point beside the AP,
+so the two criteria can be compared rather than argued about.
+
+The grid itself, its derivation from the champion's error structure, what was
+excluded, the nulls expected in advance and the measured cost are preregistered
+in `ablations_baselines.md` §17. **Implemented; the run is still open.**
+
 ## The threshold axis (checklist D.5, 2026-09-13)
 
 > **Numbers here are from the defective pool (2026-09-16).** The curves have

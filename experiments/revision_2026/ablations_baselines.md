@@ -16,8 +16,9 @@ whole D.3 matrix was then re-run on the corrected pool (265 runs,
 **Every number in this card now comes from the corrected pool.** The
 defective-pool figures it replaces are in this file's git history; §12 records
 what changed and which of this card's earlier conclusions did not survive.
-D.1, D.2 and D.4 are **unblocked** and still plan only. §6 is the
-authoritative tracker.
+D.1 and D.2 are **closed** on it; D.4 is implemented and preregistered (§17)
+with its run still open, and D.5 has not started. §6 is the authoritative
+tracker.
 
 ## 1. Why this exists
 
@@ -71,6 +72,7 @@ the ablation is what keeps the ablation at ~6 runs instead of ~18.
 2. ~~**D.1** — 6 feature groups on the champion only.~~ **Done (§14): the deltas carry it.**
 3. ~~**D.2** — rule-based baseline.~~ **Done (§16): the model earns its complexity.** §15 aimed it at the interval rather than the `sqNum` gap, and that aim was right — though `stDiff` turned out to be an equally good single threshold.
 4. **D.4** — nested tuning on the champion family, subsampled grid.
+   Preregistered in §17 (implemented; the run is the open step).
 5. **D.5** — consolidate every run into the comparison tables.
 
 ## 4. Cost estimate per item
@@ -88,7 +90,7 @@ is serial.
 | D.3 | ~2 h (`random-forest`, `logistic-regression` + scaler pipeline in `--model`) | 10–20 h (XGB 2–5 h/run, RF 2–4 h/run, LR ~1 h/run) | **RAM.** The plain tree already came close to the 15.6 GB ceiling; RF will likely need a documented per-fold subsampling policy (+1–2 h) |
 | D.1 | **done** (registry + flag + tests + docs, 2026-09-16) | **done: 136 min measured** (18-26 min per run, not the 37 projected) + 5.8 GB | Resolved: peak RSS 4.8-5.4 GB, flat, no training spike (§14) |
 | D.2 | **done** (~3.5 h: script + 31 tests + docs, 2026-09-18) | **done: 14 min measured** (2 min 20 s per rule - one column, not forty) + 5.4 GB | Resolved |
-| D.4 | ~3–4 h (inner grouped split + grid) | 4–8 h subsampled | This is the multiplier that blows the schedule if run un-subsampled |
+| D.4 | **done** (~4 h: runner + `run_folds` selector hook + 28 tests + §17, 2026-09-19) | **~3.5 h projected** from a measured per-point probe (§17); 180 inner fits + 5 refits | Resolved by measurement rather than by estimate: `--plan-only` prints the multiplier and the probe prices each point before anything is committed |
 | D.5 | ~3–4 h (cross-run comparison + docs) | ~0 | Low |
 
 ## 5. Invariants every run in this card must respect
@@ -117,7 +119,7 @@ these is not a result:
 | D.2 rule-based baseline | **done** (2026-09-18) — the champion beats the best single threshold by **-0.5918 AP paired** [-0.6385, -0.5392]; the baseline is real (12.3x chance), not a straw man | §16; `run_rule_baseline.py`; `results/d2-rule-*` (6 runs); `pr_curves_d2.md`; `pr_curves_d2_rules.md`; `prediction_integrity_d2.md` (273 checks, 0 failures) |
 | D.3 model comparison (XGB/RF/LR) | **done on the corrected pool** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/v2-*` (9 runs); `prediction_integrity_d3_v2.md` (351 checks, 0 failures — §9, "The argmax disagreement on Random Forest"); `run_bootstrap.{none,downsample,champion}_v2.md`; `pr_curves_d3_v2.md` |
 | D.3 temporal model | deferred | — |
-| D.4 nested tuning | **unblocked, not started** | §12 |
+| D.4 nested tuning | **implemented and preregistered, not executed** — grid, exclusions and expected nulls fixed before the run; 185 fits, ~3.5 h measured | §17; `run_nested_tuning.py`; `test_nested_tuning.py` (28 tests); smoke: 38 integrity checks, 0 failures |
 | D.5 per-class cross-run report | not started | — |
 | D.5 threshold axis (AP + alert budgets) | **done for all nine D.3 runs** on the corrected pool — see §11 | `grouped_pr_curves.py`; `validation_protocol.md`, "The threshold axis"; `pr_curves_d3_v2.md`; `prediction_integrity_d3_v2.md` |
 
@@ -895,3 +897,169 @@ statement about that one class.
 ### Status
 
 D.2 closes. Execution order continues D.4 → D.5.
+
+## 17. D.4: the grid, and where each axis came from (preregistered 2026-09-19)
+
+Written **before** the run, because a grid shaped after seeing its own result
+is not a search, it is a selection effect. `run_nested_tuning.py` implements
+what is below, and records this section's exclusions and expected nulls in
+every report it writes, so the preregistration travels with the artifact
+rather than only with this file.
+
+### The question
+
+D.3 picked a family at library defaults, D.1 named the features it runs on and
+D.2 the rule it has to beat. None of them answers whether the champion is
+*fitted*: whether XGBoost at `max_depth=6`, 100 rounds and `learning_rate=0.3`
+is near the best this data supports, or whether the paper reports an arbitrary
+point in hyperparameter space as if it were a capability claim.
+
+### The protocol
+
+Nested, and the nesting is the point:
+
+1. Outer folds are the persisted, hash-bound `splits_grouped.json`. Nothing
+   generates folds internally (§5).
+2. Inside each outer fold, `StratifiedGroupKFold` over **that fold's train
+   groups only**, 3 inner folds, grouped by `run_id` exactly as the outer
+   protocol is. A hyperparameter chosen on rows from a run that is also in the
+   inner train partition would be this revision's own defect, one level down.
+3. The winning point is refit on the **full** outer train partition and scored
+   once on the outer test groups, which nothing in the selection has seen.
+4. The runner injects a selector into `run_grouped_validation.run_folds`
+   instead of owning a fold loop, so a tuned run inherits that loop's
+   invariants — group-overlap refusal, empty-partition and test-only-class
+   refusals, train-only balancing, untouched test distribution, the same three
+   artifacts — rather than a second copy of them. `test_nested_tuning.py` pins
+   the isolation structurally: the fits are handed an array in which every
+   outer test row carries a sentinel value, and no fitted block may contain it.
+
+### What it selects on
+
+**AP on `ANY_ATTACK`**, per §11: every argmax metric this pipeline writes sits
+at whatever threshold the training prior implies, so a point that moves the
+score distribution without moving the ranking would read as a large macro-F1
+change and be worth nothing. Macro F1 at the argmax is computed for every
+point anyway and recorded beside the AP, so the disagreement between the two
+criteria is a column rather than an argument.
+
+### The axes, each read off the champion's error structure
+
+§9 and §12 require the grid to come from the champion's own errors rather than
+from the withdrawn "capacity is the axis" hunch. From `pr_curves_d3_v2.md` and
+`results/v2-xgboost-none`:
+
+| Axis | Values | The error it is aimed at |
+|---|---|---|
+| `max_depth` | 6 (default), 10, 14 | `SAG.DB` and `SAG.PB` rank well (AP 0.8839 / 0.8551) and confuse with **each other** — 71.3% and 53.3% of their false alarms at the 0.1%/1% budgets. A fine boundary between two burst variants is the one error in this matrix that more capacity could plausibly move. |
+| `min_child_weight` | 1 (default), 20 | At the default a leaf may form on a single row. With runs as the split unit, a leaf carved around one run's noise generalises to nothing — and the grouped protocol is what makes that measurable rather than invisible. |
+| `n_estimators` × `learning_rate` | (100, 0.3) default, (300, 0.1) | Fit budget, as **one** axis: the two only make sense together, and a product would also generate the two incoherent corners. |
+
+3 × 2 × 2 = **12 points, and point 0 is the library default** — verified bit
+for bit against `classifier("xgboost", ...)` in the tests, because XGBoost's
+sklearn wrapper leaves unset parameters as `None` and applies the booster's
+defaults in C++, so "point 0 spells out the defaults" is an assumption rather
+than something `get_params()` shows. Ties go to the earlier point, so a tie
+keeps the default and the card never reports a gain that is really a tie.
+
+### Deliberately excluded
+
+| Not in the grid | Why |
+|---|---|
+| Class weights / `scale_pos_weight` | Rebalancing is card E's axis and lives in `--balance`. In the grid it would re-open E's question inside D's and make the comparison against the untuned champion unreadable. |
+| `colsample_bytree` | §15 measured that three columns carry the detection and 29 of 40 are free. Subsampling columns at 0.5 would keep the carriers out of half the trees. **Predicted to lose**; left out to keep the grid small, and the prediction recorded rather than tested. |
+| Features, folds, balancing | D.1's, card B's and card E's. A run that moved them would not be comparable to the champion it exists to be compared against. |
+
+### Expected nulls, stated in advance
+
+So that a null reads as a confirmation rather than as a disappointment:
+
+- **`SAG.PBM`** (AP 0.4094, recall 0.2773, 57.2% of its false alarms `normal`)
+  is bounded by per-message label semantics — `label_duplication_audit.md` §7,
+  most of its discards happen at a state boundary. If depth or fit budget
+  recovers a meaningful part of it, the label-semantics explanation is weaker
+  than this card claims, and that is worth knowing either way.
+- **`FRG`** loses 99.4% of its 0.1%-budget false alarms to
+  `benign_degradation`, which is the by-construction `CONGESTION_LOSS`
+  collision (`benign_controls.md` §8). No hyperparameter separates
+  byte-identical rows.
+
+### The subsample, and the bias it carries
+
+§2 preregistered "a small grid on a documented subsample rather than an
+exhaustive search on all 16.6M train rows". `--inner-max-rows` is that
+subsample, drawn by `subsample_train`, so it is proportional inside every
+(`split_group`, `class`) stratum: **all 212 training runs stay represented**
+(verified on the smoke run below), no rare class can be emptied, and what
+shrinks is rows per run rather than group diversity — which is the thing the
+grouped protocol actually cares about.
+
+The bias that leaves points one way: less data favours smaller capacity, so a
+null here is *partly* confounded with the subsample, and the honest reading of
+"the default won" is "the default won at this budget", not "no tuning could
+help".
+
+### Cost, measured before committing
+
+`--plan-only` prints the multiplier without touching the dataset: 5 outer
+folds × 3 inner folds × 12 points = **180 inner fits plus 5 refits**. The
+per-point cost was then measured on fold-00's real train partition rather than
+estimated — one inner split, all 12 points, at 800k inner rows, `--n-jobs 4`:
+
+| Point | fit | AP | Point | fit | AP |
+|---|---:|---:|---|---:|---:|
+| depth 6, mcw 1, 100@0.3 (default) | 14.9 s | 0.7965 | depth 10, mcw 20, 300@0.1 | 51.0 s | 0.7962 |
+| depth 6, mcw 1, 300@0.1 | 43.3 s | 0.7975 | depth 14, mcw 1, 100@0.3 | 27.1 s | 0.7739 |
+| depth 6, mcw 20, 100@0.3 | 15.2 s | 0.7983 | depth 14, mcw 1, 300@0.1 | 78.0 s | 0.7767 |
+| depth 6, mcw 20, 300@0.1 | 43.4 s | **0.7986** | depth 14, mcw 20, 100@0.3 | 20.8 s | 0.7926 |
+| depth 10, mcw 1, 100@0.3 | 20.7 s | 0.7877 | depth 14, mcw 20, 300@0.1 | 65.3 s | 0.7938 |
+| depth 10, mcw 1, 300@0.1 | 58.2 s | 0.7895 | **one inner split, 12 points** | **7.6 min** | |
+| depth 10, mcw 20, 100@0.3 | 18.2 s | 0.7955 | | | |
+
+That is **~1.9 h** of inner fits at 800k rows and **~3.5 h** at 1.5M, plus the
+five refits. Both sit inside §4's 4–8 h band, so the default is the larger
+one: it buys a materially weaker caveat on exactly the axis the grid is about.
+
+### Wiring evidence (not a result)
+
+A technical smoke on the corrected pool — 102,000 rows, `smoke-xgboost`, 3
+inner folds — completed in 2.5 min, used **all 212 train groups** in every
+inner subsample, and passed `check_prediction_integrity.py` at **38 checks, 0
+failures**, which is what establishes that a tuned run's artifacts are
+consumed by the existing audits unchanged. Its two points separated (AP 0.9443
+vs 0.9396), so a grid point demonstrably reaches the booster — the D.1 failure
+mode is an experiment that silently changes nothing and reads like a null.
+
+The `model_selector` hook the tuned runner injects had to be provably free,
+because `run_grouped_validation.py` produced every published result in this
+card. The same capped smoke was run through the plain runner before and after
+the refactor: `grouped_predictions.csv` and `grouped_scores.parquet` are
+**md5-identical** and the report JSON differs only in its timestamp. The hook
+changes nothing when it is not used.
+
+The cost probe above is the first hint at the answer, and it is worth writing
+down before the run so it cannot be reconstructed afterwards to fit whatever
+comes out: across all 12 points on one inner split of fold-00, AP spans
+**0.7739–0.7986** with the default at 0.7965, **depth hurts monotonically**,
+and `min_child_weight=20` helps slightly at every depth. One inner split of
+one fold is not a result, and the +0.0021 between the best point and the
+default is very probably inside the noise the run-level bootstrap reports — but
+the grid is aimed where the errors are, and the champion is not sitting in an
+obviously bad corner of it.
+
+### Status
+
+**Implemented and preregistered; not executed.** The run below is the next
+step, and its result belongs in a new section rather than in this one.
+
+```bash
+python experiments/revision_2026/run_nested_tuning.py \
+  --dataset data/runs/gray-GOOSE-runs-prepared.parquet \
+  --preparation-report experiments/revision_2026/preparation_audit.json \
+  --splits experiments/revision_2026/splits_grouped.json \
+  --out-dir results/d4-xgboost-tuned --grid champion-xgboost --save-scores
+```
+
+It must then be read the way §11 requires — paired against
+`results/v2-xgboost-none` through `grouped_pr_curves.py`, never as two
+overlapping marginal intervals, and never from a single argmax.

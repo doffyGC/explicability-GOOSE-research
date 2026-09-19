@@ -869,7 +869,27 @@ def load_grouped_arrays(path, group_column, target_column, extra_discard):
 
 def run_folds(arrays, splits, model_name, seed, predictions_writer,
               balance_strategy="none", smote_factor=20.0, smote_max_target=200_000,
-              max_train_rows=0, n_jobs=-1, scores_writer=None):
+              max_train_rows=0, n_jobs=-1, scores_writer=None, model_selector=None):
+    """Fit and score every persisted fold.
+
+    ``model_selector`` is card D.4's injection point.  Left ``None`` - every
+    run up to and including D.3/D.1/D.2 - each fold is fitted with
+    ``classifier(model_name, ...)`` at the family's library defaults and
+    nothing about this function's behaviour changes.  Given a callable, it is
+    handed the fold's TRAIN positions (after ``--max-train-rows-per-fold``,
+    before balancing) and returns ``{"estimator": ..., "record": ...}``: the
+    estimator to fit on that train partition, and a JSON-serialisable record
+    of how it was chosen, which lands in the fold's metrics as ``selection``.
+
+    The selector deliberately sits *inside* this loop rather than beside it,
+    so a tuned run inherits every invariant a plain one is held to - the
+    group-overlap check, the empty-partition check, the test-only-class
+    check, the train-only balancing, the untouched test partition and the
+    score/prediction contract - instead of a second copy of them drifting in
+    a sibling script.  It is called before the train slice exists, so it can
+    never see a test row: ``train_positions`` is the only view of the data it
+    is given.
+    """
     import gc
 
     import numpy as np
@@ -916,6 +936,16 @@ def run_folds(arrays, splits, model_name, seed, predictions_writer,
         del strata, keep, train_mask
         gc.collect()
 
+        # Card D.4: hyperparameters are chosen here, from the train positions
+        # alone, before any array the test partition touches exists.
+        selection = None
+        if model_selector is not None:
+            selection = model_selector(
+                fold_index=fold_index, split_id=split["split_id"],
+                X=X, y=y, group_codes=group_codes,
+                train_positions=train_positions, classes=classes,
+            )
+
         X_train, y_train = X[train_positions], y[train_positions]
         del train_positions
         counts_before = class_counts(y_train, classes)
@@ -925,7 +955,8 @@ def run_folds(arrays, splits, model_name, seed, predictions_writer,
         )
         counts_after = class_counts(y_train, classes)
 
-        model = classifier(model_name, seed + fold_index, n_jobs=n_jobs)
+        model = (classifier(model_name, seed + fold_index, n_jobs=n_jobs)
+                 if selection is None else selection["estimator"])
         model.fit(X_train, y_train)
         rows_trained = int(len(y_train))
         diagnostics = fit_diagnostics(model)
@@ -951,7 +982,7 @@ def run_folds(arrays, splits, model_name, seed, predictions_writer,
             y_test, predicted, labels=all_labels,
             target_names=classes, output_dict=True, zero_division=0,
         )
-        metrics.append({
+        fold_metrics = {
             "split_id": split["split_id"],
             "train_rows": rows_available,
             "test_rows": int(len(test_positions)),
@@ -980,7 +1011,12 @@ def run_folds(arrays, splits, model_name, seed, predictions_writer,
                 "train_class_counts_before": counts_before,
                 "train_class_counts_after": counts_after,
             },
-        })
+        }
+        # Only present on a tuned run, so a plain run's report keeps exactly
+        # the shape every existing audit and comparison table already reads.
+        if selection is not None:
+            fold_metrics["selection"] = selection["record"]
+        metrics.append(fold_metrics)
         true_labels = classes[y_test]
         predicted_labels = classes[np.asarray(predicted, dtype=int)]
         # Written straight to disk instead of accumulated in a list: on a
@@ -1054,72 +1090,135 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
+def load_inputs(args):
+    """Everything between the command line and the fold loop, for any runner.
+
+    Extracted from ``main`` so card D.4's nested-tuning runner reaches the
+    fold loop through *this* code rather than through a second copy of it.
+    What lives here is not boilerplate: it is the hash binding that refuses a
+    stale artifact (``verify_artifacts``), the ablation resolution that
+    refuses a feature set the dataset cannot honour, and the choice of load
+    path that keeps peak RSS under this machine's ceiling. A sibling script
+    with its own copy would be a second place for those refusals to weaken.
+
+    Returns the arrays the fold loop reads plus the provenance the report has
+    to record. Reads nothing from disk twice.
+    """
+    preparation = load_json(args.preparation_report)
+    split_payload = load_json(args.splits)
+    digest = verify_artifacts(args.dataset, preparation, split_payload)
+
+    if args.max_rows_per_group_class and args.dataset.lower().endswith((".parquet", ".pq")):
+        # A capped (technical smoke) run only ever needs a small sample,
+        # so it is read chunked - see load_technical_sample - and the
+        # full dataset is never loaded. Column existence is checked from
+        # the file's schema alone, before any row is read.
+        import pyarrow.parquet as pq
+        columns = pq.ParquetFile(args.dataset).schema_arrow.names
+        if args.group_column not in columns or args.target_column not in columns:
+            raise GroupedRunError("dataset is missing group or target column")
+        ablated = resolve_feature_set(args.feature_set, columns)
+        extra_discard = list(args.discard_column) + ablated
+        frame = load_technical_sample(
+            args.dataset, args.group_column, args.target_column,
+            args.max_rows_per_group_class, args.seed,
+        )
+        arrays = None
+    elif args.dataset.lower().endswith((".parquet", ".pq")):
+        # The full-training path never builds a DataFrame at all: it fills
+        # the feature array straight from the row groups. See
+        # `load_grouped_arrays` for the measurement that forced this - the
+        # DataFrame route peaked at 10.02 GB on the 265-run pool, which no
+        # longer fits on a 15.6 GB machine whatever model follows it.
+        import pyarrow.parquet as pq
+        ablated = resolve_feature_set(
+            args.feature_set, pq.ParquetFile(args.dataset).schema_arrow.names)
+        extra_discard = list(args.discard_column) + ablated
+        frame = None
+        arrays = load_grouped_arrays(
+            args.dataset, args.group_column, args.target_column, extra_discard,
+        )
+    else:
+        frame = load_frame(args.dataset, columns=None,
+                           group_column=args.group_column,
+                           target_column=args.target_column)
+        if args.group_column not in frame or args.target_column not in frame:
+            raise GroupedRunError("dataset is missing group or target column")
+        ablated = resolve_feature_set(args.feature_set, list(frame.columns))
+        extra_discard = list(args.discard_column) + ablated
+        frame = technical_sample(
+            frame, args.group_column, args.target_column,
+            args.max_rows_per_group_class, args.seed,
+        )
+        arrays = None
+
+    if arrays is None:
+        rows_used = len(frame)
+        # The frame is released here, before the first fit: `prepare_arrays`
+        # has already copied everything the fold loop reads into compact
+        # arrays, and on a full run keeping both costs ~3.5 GB that a Random
+        # Forest needs for its trees.
+        arrays = prepare_arrays(frame, args.group_column, args.target_column,
+                                extra_discard)
+        del frame
+    else:
+        rows_used = len(arrays["row_index"])
+    return {
+        "arrays": arrays, "rows_used": rows_used, "digest": digest,
+        "splits": split_payload, "features_dropped": ablated,
+        "discard_columns": extra_discard,
+    }
+
+
+def provenance_block(args, inputs, classes, features):
+    """The report keys that describe *what was run on what*, for any runner.
+
+    Shared for the same reason ``load_inputs`` is: `check_prediction_integrity.py`,
+    `grouped_pr_curves.py` and `bootstrap_run_intervals.py` all read these
+    keys, so a sibling runner that spelled one of them differently would be
+    silently unauditable rather than loudly broken.
+    """
+    return {
+        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "status": "technical_smoke" if args.max_rows_per_group_class else "full_grouped_run",
+        "dataset": os.path.abspath(args.dataset),
+        "dataset_sha256": inputs["digest"],
+        "splits": os.path.abspath(args.splits),
+        "protocol": inputs["splits"]["protocol"],
+        "model": args.model,
+        "feature_set": args.feature_set,
+        "feature_groups_dropped": list(FEATURE_SETS[args.feature_set]),
+        "features_dropped": inputs["features_dropped"],
+        "discard_columns": list(args.discard_column),
+        "features_in_no_group": features_in_no_group(features),
+        "seed": args.seed,
+        "group_column": args.group_column,
+        "target_column": args.target_column,
+        "balance": args.balance,
+        "smote_oversample_factor": args.smote_oversample_factor if args.balance == "smote" else None,
+        "smote_max_target": args.smote_max_target if args.balance == "smote" else None,
+        "sample_cap_per_group_class": args.max_rows_per_group_class or None,
+        "max_train_rows_per_fold": args.max_train_rows_per_fold or None,
+        "n_jobs": args.n_jobs,
+        "scores_file": SCORES_FILENAME if args.save_scores else None,
+        "rows_used": inputs["rows_used"],
+        "classes": classes,
+        "features": features,
+    }
+
+
 def main(argv=None):
     args = parse_args(argv)
     # Both staging paths are named before anything that can fail, so the
     # cleanup handler never has to ask whether they exist as names.
     predictions_tmp = scores_tmp = None
     try:
-        preparation = load_json(args.preparation_report)
-        split_payload = load_json(args.splits)
-        digest = verify_artifacts(args.dataset, preparation, split_payload)
+        inputs = load_inputs(args)
+        arrays = inputs["arrays"]
+        rows_used = inputs["rows_used"]
+        split_payload = inputs["splits"]
 
-        if args.max_rows_per_group_class and args.dataset.lower().endswith((".parquet", ".pq")):
-            # A capped (technical smoke) run only ever needs a small sample,
-            # so it is read chunked - see load_technical_sample - and the
-            # full dataset is never loaded. Column existence is checked from
-            # the file's schema alone, before any row is read.
-            import pyarrow.parquet as pq
-            columns = pq.ParquetFile(args.dataset).schema_arrow.names
-            if args.group_column not in columns or args.target_column not in columns:
-                raise GroupedRunError("dataset is missing group or target column")
-            ablated = resolve_feature_set(args.feature_set, columns)
-            extra_discard = list(args.discard_column) + ablated
-            arrays = None
-            frame = load_technical_sample(
-                args.dataset, args.group_column, args.target_column,
-                args.max_rows_per_group_class, args.seed,
-            )
-        elif args.dataset.lower().endswith((".parquet", ".pq")):
-            # The full-training path never builds a DataFrame at all: it fills
-            # the feature array straight from the row groups. See
-            # `load_grouped_arrays` for the measurement that forced this - the
-            # DataFrame route peaked at 10.02 GB on the 265-run pool, which no
-            # longer fits on a 15.6 GB machine whatever model follows it.
-            import pyarrow.parquet as pq
-            ablated = resolve_feature_set(
-                args.feature_set, pq.ParquetFile(args.dataset).schema_arrow.names)
-            extra_discard = list(args.discard_column) + ablated
-            frame = None
-            arrays = load_grouped_arrays(
-                args.dataset, args.group_column, args.target_column,
-                extra_discard,
-            )
-        else:
-            arrays = None
-            frame = load_frame(args.dataset, columns=None,
-                               group_column=args.group_column,
-                               target_column=args.target_column)
-            if args.group_column not in frame or args.target_column not in frame:
-                raise GroupedRunError("dataset is missing group or target column")
-            ablated = resolve_feature_set(args.feature_set, list(frame.columns))
-            extra_discard = list(args.discard_column) + ablated
-            frame = technical_sample(
-                frame, args.group_column, args.target_column,
-                args.max_rows_per_group_class, args.seed,
-            )
         os.makedirs(args.out_dir, exist_ok=True)
-        if arrays is None:
-            rows_used = len(frame)
-            # The frame is released here, before the first fit: `prepare_arrays`
-            # has already copied everything the fold loop reads into compact
-            # arrays, and on a full run keeping both costs ~3.5 GB that a Random
-            # Forest needs for its trees.
-            arrays = prepare_arrays(frame, args.group_column, args.target_column,
-                                    extra_discard)
-            del frame
-        else:
-            rows_used = len(arrays["row_index"])
         predictions_path = os.path.join(args.out_dir, "grouped_predictions.csv")
         # Predictions are written straight to disk as each fold finishes
         # instead of being collected into one Python list first (on a full
@@ -1152,34 +1251,8 @@ def main(argv=None):
         finally:
             if scores_writer is not None:
                 scores_writer.close()
-        report = {
-            "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "status": "technical_smoke" if args.max_rows_per_group_class else "full_grouped_run",
-            "dataset": os.path.abspath(args.dataset),
-            "dataset_sha256": digest,
-            "splits": os.path.abspath(args.splits),
-            "protocol": split_payload["protocol"],
-            "model": args.model,
-            "feature_set": args.feature_set,
-            "feature_groups_dropped": list(FEATURE_SETS[args.feature_set]),
-            "features_dropped": ablated,
-            "discard_columns": list(args.discard_column),
-            "features_in_no_group": features_in_no_group(features),
-            "seed": args.seed,
-            "group_column": args.group_column,
-            "target_column": args.target_column,
-            "balance": args.balance,
-            "smote_oversample_factor": args.smote_oversample_factor if args.balance == "smote" else None,
-            "smote_max_target": args.smote_max_target if args.balance == "smote" else None,
-            "sample_cap_per_group_class": args.max_rows_per_group_class or None,
-            "max_train_rows_per_fold": args.max_train_rows_per_fold or None,
-            "n_jobs": args.n_jobs,
-            "scores_file": SCORES_FILENAME if args.save_scores else None,
-            "rows_used": rows_used,
-            "classes": classes,
-            "features": features,
-            "fold_metrics": metrics,
-        }
+        report = provenance_block(args, inputs, classes, features)
+        report["fold_metrics"] = metrics
         with open(os.path.join(args.out_dir, "grouped_validation_report.json"),
                   "w", encoding="utf-8", newline="\n") as fh:
             json.dump(report, fh, indent=2)
