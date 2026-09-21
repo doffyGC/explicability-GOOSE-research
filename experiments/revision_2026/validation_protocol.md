@@ -778,7 +778,40 @@ so the two criteria can be compared rather than argued about.
 
 The grid itself, its derivation from the champion's error structure, what was
 excluded, the nulls expected in advance and the measured cost are preregistered
-in `ablations_baselines.md` §17. **Implemented; the run is still open.**
+in `ablations_baselines.md` §17; the result is §18.
+
+### Result (2026-09-21): the nesting was worth building, and the tuning was not
+
+185 fits over 4 h 51 min, 39 integrity checks with 0 failures, read paired in
+`pr_curves_d4.md`.
+
+| Target | tuned − untuned AP | 95% CI | separates? |
+|---|---:|---|---|
+| `ANY_ATTACK` | -0.0001 | [-0.0003, +0.0002] | no |
+| `SAG.DB` | +0.0002 | [-0.0008, +0.0012] | no |
+| `FRG` | -0.0011 | [-0.0029, +0.0009] | no |
+| `SAG.PB` | -0.0003 | [-0.0009, +0.0004] | no |
+| `SAG.PBM` | -0.0013 | [-0.0023, -0.0003] | **yes**, against tuning |
+
+**The champion is already fitted**, so it is reported at library defaults
+without an asterisk and `v2-xgboost-none` stays the published configuration.
+
+For *this* document the load-bearing number is a different one. All five outer
+folds selected the same non-default point, each beating the default on its own
+inner folds by +0.0001 to +0.0009 AP. On the outer test groups that selection
+is worth **-0.0001**. A run that had tuned against the outer test fold — the
+ordinary "tune by cross-validation, then report the cross-validated score"
+mistake this section exists to refuse — would have reported those inner gains
+as capability. The leak is small here because the gains were small, but it is
+measured rather than argued, and it is the same leak as message-level
+splitting with one more level of indirection.
+
+A second reading falls out of the recorded selection table: **macro F1 at the
+argmax would have chosen a different point in all five folds**, reaching for
+`max_depth=10` in three of them — a point the ranking criterion places 5th of
+12. That is "The threshold axis" below, reproduced inside the selection loop,
+and it is why the criterion was preregistered as AP rather than settled after
+the fact.
 
 ## The threshold axis (checklist D.5, 2026-09-13)
 

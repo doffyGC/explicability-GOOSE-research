@@ -1,0 +1,1933 @@
+{
+  "generated": "2026-09-21 11:45:43 UTC",
+  "grid": {
+    "edges": 2048,
+    "logit_span": 20.0
+  },
+  "bootstrap": {
+    "iterations": 1000,
+    "confidence": 0.95,
+    "seed": 42
+  },
+  "budgets": [
+    0.0001,
+    0.001,
+    0.01,
+    0.1
+  ],
+  "runs": [
+    {
+      "label": "v2-xgboost-none",
+      "model": "xgboost",
+      "balance": "none",
+      "dataset_sha256": "3109e4d480524d8ac94f80abe54719aff1125b286fa0312428ec332abc64f026",
+      "prior": "as-trained",
+      "prior_requested": "auto",
+      "threshold_selection": "cross-fold",
+      "n_runs": 265,
+      "targets": {
+        "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+          "positives": 50779,
+          "prevalence": 0.004592276828405175,
+          "average_precision": 0.8839239802003213,
+          "average_precision_ci": {
+            "lower": 0.8349485849224504,
+            "upper": 0.9160993453200846
+          },
+          "runs_with_positives": 45,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9754799672984351,
+                "fold-01": 0.9740380105778617,
+                "fold-02": 0.9793526801618005,
+                "fold-03": 0.9793526801618005,
+                "fold-04": 0.9750082067675104
+              },
+              "observed": {
+                "recall": 0.023080407254967603,
+                "precision": 0.9957519116397621,
+                "alert_rate": 0.00010644380210387938,
+                "tp": 1172.0,
+                "fp": 5.0,
+                "positives": 50779.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.010686083356886774,
+                  "upper": 0.04019906757466609
+                },
+                "precision": {
+                  "lower": 0.9851359909217365,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 4.413779110940689e-05,
+                  "upper": 0.0001932673872953404
+                }
+              },
+              "false_alarm_sources": {
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 5,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.9207345421186376,
+                "fold-01": 0.9148391281127075,
+                "fold-02": 0.9275784373633033,
+                "fold-03": 0.9288802048747794,
+                "fold-04": 0.917834964018745
+              },
+              "observed": {
+                "recall": 0.2175308690600445,
+                "precision": 0.9542156185210781,
+                "alert_rate": 0.0010468933331814,
+                "tp": 11046.0,
+                "fp": 530.0,
+                "positives": 50779.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.15789240357416606,
+                  "upper": 0.2776962721844817
+                },
+                "precision": {
+                  "lower": 0.9192168751487784,
+                  "upper": 0.97520822430699
+                },
+                "alert_rate": {
+                  "lower": 0.0006522012731981498,
+                  "upper": 0.001512787117924874
+                }
+              },
+              "false_alarm_sources": {
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 3,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 378,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 10,
+                "benign_degradation": 139,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.0014196340411772072,
+                "fold-01": 0.0010802234055098245,
+                "fold-02": 0.01608999807364498,
+                "fold-03": 0.005340072328028607,
+                "fold-04": 0.0007904169341870868
+              },
+              "observed": {
+                "recall": 0.9990350341676677,
+                "precision": 0.46468810112668313,
+                "alert_rate": 0.009872956563874692,
+                "tp": 50730.0,
+                "fp": 58440.0,
+                "positives": 50779.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9974870830483679,
+                  "upper": 1.0
+                },
+                "precision": {
+                  "lower": 0.38240361041584936,
+                  "upper": 0.5401015185798339
+                },
+                "alert_rate": {
+                  "lower": 0.008112632862507518,
+                  "upper": 0.012016110838978982
+                }
+              },
+              "false_alarm_sources": {
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 1297,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 10275,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 2768,
+                "benign_degradation": 8259,
+                "normal": 35841
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 1.1580364023498317e-06,
+                "fold-01": 1.0502434190569377e-06,
+                "fold-02": 1.1356271406902516e-06,
+                "fold-03": 1.0099899925363078e-06,
+                "fold-04": 9.712793862261634e-07
+              },
+              "observed": {
+                "recall": 1.0,
+                "precision": 0.04675890328967057,
+                "alert_rate": 0.0982118164738831,
+                "tp": 50779.0,
+                "fp": 1035196.0,
+                "positives": 50779.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "precision": {
+                  "lower": 0.03384642706553913,
+                  "upper": 0.06143114244889012
+                },
+                "alert_rate": {
+                  "lower": 0.08706820813023278,
+                  "upper": 0.11264461583969586
+                }
+              },
+              "false_alarm_sources": {
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 52229,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 38186,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 40033,
+                "benign_degradation": 84267,
+                "normal": 820481
+              }
+            }
+          ]
+        },
+        "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+          "positives": 63963,
+          "prevalence": 0.00578459211042518,
+          "average_precision": 0.6395088060269971,
+          "average_precision_ci": {
+            "lower": 0.5484095404284012,
+            "upper": 0.728433548127562
+          },
+          "runs_with_positives": 45,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9428971706844116,
+                "fold-01": 0.9439402274660468,
+                "fold-02": 0.9148391281127075,
+                "fold-03": 0.9314191246171384,
+                "fold-04": 0.9385400854260271
+              },
+              "observed": {
+                "recall": 0.019620718227725403,
+                "precision": 0.9952418715305313,
+                "alert_rate": 0.00011404047107306024,
+                "tp": 1255.0,
+                "fp": 6.0,
+                "positives": 63963.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.004310964222631962,
+                  "upper": 0.040560506453543525
+                },
+                "precision": {
+                  "lower": 0.9744316365380145,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 2.494950386643005e-05,
+                  "upper": 0.00024181175178683846
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 6,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.7954482841546195,
+                "fold-01": 0.7857445303633919,
+                "fold-02": 0.7922504355383908,
+                "fold-03": 0.7954482841546195,
+                "fold-04": 0.7857445303633919
+              },
+              "observed": {
+                "recall": 0.13368666260181666,
+                "precision": 0.7770104497955475,
+                "alert_rate": 0.0009952540714980396,
+                "tp": 8551.0,
+                "fp": 2454.0,
+                "positives": 63963.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.09846776206004983,
+                  "upper": 0.17396683350706302
+                },
+                "precision": {
+                  "lower": 0.6357143778680706,
+                  "upper": 0.9027156753451443
+                },
+                "alert_rate": {
+                  "lower": 0.0006355380071562894,
+                  "upper": 0.0014429824558821046
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 13,
+                "benign_degradation": 2440,
+                "normal": 1
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.07509120472876452,
+                "fold-01": 0.07645968083671169,
+                "fold-02": 0.09475067741111337,
+                "fold-03": 0.07645968083671169,
+                "fold-04": 0.05710282931558842
+              },
+              "observed": {
+                "recall": 0.8186138861529322,
+                "precision": 0.47905325660332476,
+                "alert_rate": 0.0098848037500052,
+                "tp": 52361.0,
+                "fp": 56940.0,
+                "positives": 63963.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.8029293122991864,
+                  "upper": 0.8325800914969028
+                },
+                "precision": {
+                  "lower": 0.38750372794166726,
+                  "upper": 0.5617885755254823
+                },
+                "alert_rate": {
+                  "lower": 0.0075536658541131224,
+                  "upper": 0.012596447938001062
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 793,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 867,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 14060,
+                "benign_degradation": 29899,
+                "normal": 11321
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 6.612882023547613e-05,
+                "fold-01": 8.525236218409405e-05,
+                "fold-02": 9.039898611690265e-05,
+                "fold-03": 8.525236218409405e-05,
+                "fold-04": 4.932887410919709e-05
+              },
+              "observed": {
+                "recall": 0.9998280255772869,
+                "precision": 0.054534399939967136,
+                "alert_rate": 0.10605411107306748,
+                "tp": 63952.0,
+                "fp": 1108739.0,
+                "positives": 63963.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9994309756181674,
+                  "upper": 1.0
+                },
+                "precision": {
+                  "lower": 0.04005252873417231,
+                  "upper": 0.07026190627462865
+                },
+                "alert_rate": {
+                  "lower": 0.09102761508153599,
+                  "upper": 0.12506361447968084
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 44162,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 13746,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 41074,
+                "benign_degradation": 129527,
+                "normal": 880230
+              }
+            }
+          ]
+        },
+        "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+          "positives": 46959,
+          "prevalence": 0.004246809263378141,
+          "average_precision": 0.8550802817962421,
+          "average_precision_ci": {
+            "lower": 0.8247302188974757,
+            "upper": 0.879706240056012
+          },
+          "runs_with_positives": 45,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9999746153000405,
+                "fold-01": 0.9999810644481194,
+                "fold-02": 0.9999795250367849,
+                "fold-03": 0.9999831593003735,
+                "fold-04": 0.9999810644481194
+              },
+              "observed": {
+                "recall": 0.02451074341446794,
+                "precision": 1.0,
+                "alert_rate": 0.00010409245218484722,
+                "tp": 1151.0,
+                "fp": 0.0,
+                "positives": 46959.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.01099494796847117,
+                  "upper": 0.04092862522518587
+                },
+                "precision": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 4.751044303395228e-05,
+                  "upper": 0.00016425030521441188
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.9993105624740267,
+                "fold-01": 0.9993867899022898,
+                "fold-02": 0.9989812188016511,
+                "fold-03": 0.9993746970169679,
+                "fold-04": 0.9990938269823783
+              },
+              "observed": {
+                "recall": 0.2356097872612279,
+                "precision": 0.9982856627266985,
+                "alert_rate": 0.001002308121255136,
+                "tp": 11064.0,
+                "fp": 19.0,
+                "positives": 46959.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.16854348566285524,
+                  "upper": 0.30567581909745956
+                },
+                "precision": {
+                  "lower": 0.9939135428257473,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 0.00068446170055312,
+                  "upper": 0.0012962969861857962
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 19,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.04322226166791498,
+                "fold-01": 0.04163462204554458,
+                "fold-02": 0.04571250620476695,
+                "fold-03": 0.04403760511301147,
+                "fold-04": 0.04163462204554458
+              },
+              "observed": {
+                "recall": 0.9218254221767925,
+                "precision": 0.3943518265464152,
+                "alert_rate": 0.009927218485083126,
+                "tp": 43288.0,
+                "fp": 66482.0,
+                "positives": 46959.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9130391874674247,
+                  "upper": 0.9300608028874684
+                },
+                "precision": {
+                  "lower": 0.3208959580576238,
+                  "upper": 0.45946419587915444
+                },
+                "alert_rate": {
+                  "lower": 0.008703632032761397,
+                  "upper": 0.011260643373273956
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 35417,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 1208,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 3248,
+                "benign_degradation": 6054,
+                "normal": 20555
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 1.6840699626515092e-05,
+                "fold-01": 1.6840699626515092e-05,
+                "fold-02": 1.4403549358521887e-05,
+                "fold-03": 1.651481881674807e-05,
+                "fold-04": 1.5881853023122447e-05
+              },
+              "observed": {
+                "recall": 1.0,
+                "precision": 0.04208957310799038,
+                "alert_rate": 0.10089931899480152,
+                "tp": 46959.0,
+                "fp": 1068733.0,
+                "positives": 46959.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "precision": {
+                  "lower": 0.033738635554920154,
+                  "upper": 0.05014786522778684
+                },
+                "alert_rate": {
+                  "lower": 0.0953661355450204,
+                  "upper": 0.10737391529965078
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 50779,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 21648,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 43817,
+                "benign_degradation": 47052,
+                "normal": 905437
+              }
+            }
+          ]
+        },
+        "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+          "positives": 54828,
+          "prevalence": 0.004958454360026762,
+          "average_precision": 0.4093940480617816,
+          "average_precision_ci": {
+            "lower": 0.357679862838013,
+            "upper": 0.4601017330870063
+          },
+          "runs_with_positives": 45,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9994856317806082,
+                "fold-01": 0.9960112218602303,
+                "fold-02": 0.991325385334889,
+                "fold-03": 0.9964509442191984,
+                "fold-04": 0.9994216841602682
+              },
+              "observed": {
+                "recall": 0.021850149558619684,
+                "precision": 0.9991659716430359,
+                "alert_rate": 0.00010843340588152199,
+                "tp": 1198.0,
+                "fp": 1.0,
+                "positives": 54828.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.0061216072023929785,
+                  "upper": 0.041032548123899865
+                },
+                "precision": {
+                  "lower": 0.9956428601578658,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 2.872010562530301e-05,
+                  "upper": 0.0002109357731330119
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 1,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.662433423042193,
+                "fold-01": 0.635737864555697,
+                "fold-02": 0.6402509137294946,
+                "fold-03": 0.6220574332786458,
+                "fold-04": 0.6128264167915167
+              },
+              "observed": {
+                "recall": 0.17018676588604362,
+                "precision": 0.844205193160228,
+                "alert_rate": 0.0009995950251947144,
+                "tp": 9331.0,
+                "fp": 1722.0,
+                "positives": 54828.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.15087946762013876,
+                  "upper": 0.19147141691106137
+                },
+                "precision": {
+                  "lower": 0.7684725517646641,
+                  "upper": 0.9055468326221415
+                },
+                "alert_rate": {
+                  "lower": 0.0007369949263483791,
+                  "upper": 0.0013392664712246695
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 1236,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 441,
+                "normal": 45
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.0673431316201699,
+                "fold-01": 0.06858087538286162,
+                "fold-02": 0.06858087538286162,
+                "fold-03": 0.06858087538286162,
+                "fold-04": 0.0637532549313068
+              },
+              "observed": {
+                "recall": 0.5105420588020719,
+                "precision": 0.25461855426289604,
+                "alert_rate": 0.00994232138648614,
+                "tp": 27992.0,
+                "fp": 81945.0,
+                "positives": 54828.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.4702135338502019,
+                  "upper": 0.546483711649105
+                },
+                "precision": {
+                  "lower": 0.2004019486545363,
+                  "upper": 0.3143001113402141
+                },
+                "alert_rate": {
+                  "lower": 0.008338839149702461,
+                  "upper": 0.01188530203522037
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 2280,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 16609,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 4722,
+                "benign_degradation": 11436,
+                "normal": 46898
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 0.0007904169341870868,
+                "fold-01": 0.0009990863502195347,
+                "fold-02": 0.0005561626224686406,
+                "fold-03": 0.0006894375259732263,
+                "fold-04": 0.0005454061295376016
+              },
+              "observed": {
+                "recall": 0.9980119646895746,
+                "precision": 0.04930652422299355,
+                "alert_rate": 0.10036393470554497,
+                "tp": 54719.0,
+                "fp": 1055053.0,
+                "positives": 54828.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9943184403931951,
+                  "upper": 0.9997840114470664
+                },
+                "precision": {
+                  "lower": 0.03687830701651507,
+                  "upper": 0.06393512130306925
+                },
+                "alert_rate": {
+                  "lower": 0.09232008419485394,
+                  "upper": 0.10999712378947725
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 35926,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 29865,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 25944,
+                "benign_degradation": 39294,
+                "normal": 924024
+              }
+            }
+          ]
+        },
+        "ANY_ATTACK": {
+          "positives": 216529,
+          "prevalence": 0.019582132562235257,
+          "average_precision": 0.8328541986434453,
+          "average_precision_ci": {
+            "lower": 0.803668857512806,
+            "upper": 0.8618419895439601
+          },
+          "runs_with_positives": 180,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9999924417824501,
+                "fold-01": 0.9999928721229246,
+                "fold-02": 0.9999909885043395,
+                "fold-03": 0.9999932779613683,
+                "fold-04": 0.9999924417824501
+              },
+              "observed": {
+                "recall": 0.005985341455417057,
+                "precision": 1.0,
+                "alert_rate": 0.00011720574981021893,
+                "tp": 1296.0,
+                "fp": 0.0,
+                "positives": 216529.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.003361866355014976,
+                  "upper": 0.0092784854382557
+                },
+                "precision": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 6.943864247031627e-05,
+                  "upper": 0.0001667697673834784
+                }
+              },
+              "false_alarm_sources": {
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.99994769306371,
+                "fold-01": 0.9999466609479605,
+                "fold-02": 0.99993256635024,
+                "fold-03": 0.9999543798212723,
+                "fold-04": 0.9999434407986868
+              },
+              "observed": {
+                "recall": 0.05106013513201465,
+                "precision": 1.0,
+                "alert_rate": 0.0009998663348007566,
+                "tp": 11056.0,
+                "fp": 0.0,
+                "positives": 216529.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.03446021877809719,
+                  "upper": 0.07093981240285843
+                },
+                "precision": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 0.0007394523621459391,
+                  "upper": 0.001262704349251216
+                }
+              },
+              "false_alarm_sources": {
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.8254176450854704,
+                "fold-01": 0.8108877620215789,
+                "fold-02": 0.8468128383591529,
+                "fold-03": 0.8442607760755465,
+                "fold-04": 0.8108877620215789
+              },
+              "observed": {
+                "recall": 0.4832932309298062,
+                "precision": 0.9467318044058443,
+                "alert_rate": 0.00999640243462388,
+                "tp": 104647.0,
+                "fp": 5888.0,
+                "positives": 216529.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.43494971503055885,
+                  "upper": 0.5368276106377288
+                },
+                "precision": {
+                  "lower": 0.9253743606621015,
+                  "upper": 0.9657896975263841
+                },
+                "alert_rate": {
+                  "lower": 0.008451491180291993,
+                  "upper": 0.011806186959016777
+                }
+              },
+              "false_alarm_sources": {
+                "benign_degradation": 5530,
+                "normal": 358
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 0.014898270887315022,
+                "fold-01": 0.015187792891857824,
+                "fold-02": 0.014898270887315022,
+                "fold-03": 0.015482852823924313,
+                "fold-04": 0.014335439468247271
+              },
+              "observed": {
+                "recall": 0.9841406924707545,
+                "precision": 0.19367888541593767,
+                "alert_rate": 0.09950270757943176,
+                "tp": 213095.0,
+                "fp": 887154.0,
+                "positives": 216529.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9772919750897895,
+                  "upper": 0.9895191025116568
+                },
+                "precision": {
+                  "lower": 0.17182727517405952,
+                  "upper": 0.21833801048804427
+                },
+                "alert_rate": {
+                  "lower": 0.0908975713119599,
+                  "upper": 0.1102171501145033
+                }
+              },
+              "false_alarm_sources": {
+                "benign_degradation": 57900,
+                "normal": 829254
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "label": "d4-xgboost-tuned",
+      "model": "xgboost",
+      "balance": "none",
+      "dataset_sha256": "3109e4d480524d8ac94f80abe54719aff1125b286fa0312428ec332abc64f026",
+      "prior": "as-trained",
+      "prior_requested": "auto",
+      "threshold_selection": "cross-fold",
+      "n_runs": 265,
+      "targets": {
+        "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+          "positives": 50779,
+          "prevalence": 0.004592276828405175,
+          "average_precision": 0.8841310222288143,
+          "average_precision_ci": {
+            "lower": 0.8357305756204513,
+            "upper": 0.9164120695721882
+          },
+          "runs_with_positives": 45,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9725136456508259,
+                "fold-01": 0.9719864526447135,
+                "fold-02": 0.9772816593676275,
+                "fold-03": 0.9772816593676275,
+                "fold-04": 0.9730311925765012
+              },
+              "observed": {
+                "recall": 0.023395498138994466,
+                "precision": 0.9966442953020134,
+                "alert_rate": 0.00010780035013409025,
+                "tp": 1188.0,
+                "fp": 4.0,
+                "positives": 50779.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.010004344443351007,
+                  "upper": 0.041730699179376836
+                },
+                "precision": {
+                  "lower": 0.9872016411090023,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 4.140448440208396e-05,
+                  "upper": 0.0001973550040944838
+                }
+              },
+              "false_alarm_sources": {
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 4,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.917834964018745,
+                "fold-01": 0.9133043418311129,
+                "fold-02": 0.9249087952712354,
+                "fold-03": 0.9275784373633033,
+                "fold-04": 0.9163492324291037
+              },
+              "observed": {
+                "recall": 0.21550247149412158,
+                "precision": 0.9545533845080251,
+                "alert_rate": 0.001036764441222492,
+                "tp": 10943.0,
+                "fp": 521.0,
+                "positives": 50779.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.15185165829971198,
+                  "upper": 0.27503504770132203
+                },
+                "precision": {
+                  "lower": 0.9192948437124787,
+                  "upper": 0.975156767364131
+                },
+                "alert_rate": {
+                  "lower": 0.000644300798797759,
+                  "upper": 0.0014948715045806282
+                }
+              },
+              "false_alarm_sources": {
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 5,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 366,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 11,
+                "benign_degradation": 139,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.001692138839211189,
+                "fold-01": 0.0013130368997271496,
+                "fold-02": 0.017044869639902125,
+                "fold-03": 0.006485022912563165,
+                "fold-04": 0.000942254797936518
+              },
+              "observed": {
+                "recall": 0.9994879773134564,
+                "precision": 0.46463915921304394,
+                "alert_rate": 0.009878473192530882,
+                "tp": 50753.0,
+                "fp": 58478.0,
+                "positives": 50779.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9984256730905664,
+                  "upper": 1.0
+                },
+                "precision": {
+                  "lower": 0.3823125044878973,
+                  "upper": 0.5398445505106771
+                },
+                "alert_rate": {
+                  "lower": 0.008127576873854183,
+                  "upper": 0.012014765583891042
+                }
+              },
+              "false_alarm_sources": {
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 1306,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 10278,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 2760,
+                "benign_degradation": 8371,
+                "normal": 35763
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 1.2768928326491053e-06,
+                "fold-01": 1.2768928326491053e-06,
+                "fold-02": 1.2521835729014497e-06,
+                "fold-03": 1.227952463513747e-06,
+                "fold-04": 1.1808878640917483e-06
+              },
+              "observed": {
+                "recall": 1.0,
+                "precision": 0.04672216144398061,
+                "alert_rate": 0.09828904927506978,
+                "tp": 50779.0,
+                "fp": 1036050.0,
+                "positives": 50779.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "precision": {
+                  "lower": 0.03385767486501987,
+                  "upper": 0.0610963084894937
+                },
+                "alert_rate": {
+                  "lower": 0.08702213517222016,
+                  "upper": 0.11250971170519455
+                }
+              },
+              "false_alarm_sources": {
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 47588,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 39147,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 40615,
+                "benign_degradation": 79007,
+                "normal": 829693
+              }
+            }
+          ]
+        },
+        "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+          "positives": 63963,
+          "prevalence": 0.00578459211042518,
+          "average_precision": 0.6384377736805689,
+          "average_precision_ci": {
+            "lower": 0.5460324039040515,
+            "upper": 0.7280664752586063
+          },
+          "runs_with_positives": 45,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9385400854260271,
+                "fold-01": 0.9385400854260271,
+                "fold-02": 0.9163492324291037,
+                "fold-03": 0.9275784373633033,
+                "fold-04": 0.9362467450686932
+              },
+              "observed": {
+                "recall": 0.018870284383159013,
+                "precision": 0.9958745874587459,
+                "alert_rate": 0.00010960908084103807,
+                "tp": 1207.0,
+                "fp": 5.0,
+                "positives": 63963.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.004344859144432331,
+                  "upper": 0.03902292601039746
+                },
+                "precision": {
+                  "lower": 0.9769070462409564,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 2.4794064558110705e-05,
+                  "upper": 0.00022887779880726046
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 5,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.7922504355383908,
+                "fold-01": 0.7824364710293209,
+                "fold-02": 0.7922504355383908,
+                "fold-03": 0.7954482841546195,
+                "fold-04": 0.7857445303633919
+              },
+              "observed": {
+                "recall": 0.13249847568125322,
+                "precision": 0.7729138166894665,
+                "alert_rate": 0.000991636610084144,
+                "tp": 8475.0,
+                "fp": 2490.0,
+                "positives": 63963.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.09632705822921245,
+                  "upper": 0.17423225129224504
+                },
+                "precision": {
+                  "lower": 0.6257446724844011,
+                  "upper": 0.9006570506409726
+                },
+                "alert_rate": {
+                  "lower": 0.0006381930198521151,
+                  "upper": 0.001438003406653055
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 11,
+                "benign_degradation": 2477,
+                "normal": 2
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.07374526583835422,
+                "fold-01": 0.07645968083671169,
+                "fold-02": 0.09475067741111337,
+                "fold-03": 0.07645968083671169,
+                "fold-04": 0.056059772533953174
+              },
+              "observed": {
+                "recall": 0.8188483967293592,
+                "precision": 0.478149334940067,
+                "alert_rate": 0.009906327645417878,
+                "tp": 52376.0,
+                "fp": 57163.0,
+                "positives": 63963.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.8031438915467312,
+                  "upper": 0.8322994976837661
+                },
+                "precision": {
+                  "lower": 0.3869177040065279,
+                  "upper": 0.5596175822059662
+                },
+                "alert_rate": {
+                  "lower": 0.007574817735486273,
+                  "upper": 0.01261553727002923
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 771,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 890,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 13958,
+                "benign_degradation": 29981,
+                "normal": 11563
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 5.8813253493685835e-05,
+                "fold-01": 7.150464773382811e-05,
+                "fold-02": 8.198509885057898e-05,
+                "fold-03": 7.731745999319346e-05,
+                "fold-04": 5.030222996030605e-05
+              },
+              "observed": {
+                "recall": 0.9998592936541438,
+                "precision": 0.056418666485526583,
+                "alert_rate": 0.10251532944492406,
+                "tp": 63954.0,
+                "fp": 1069607.0,
+                "positives": 63963.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9995123311679076,
+                  "upper": 1.0
+                },
+                "precision": {
+                  "lower": 0.04119285392659123,
+                  "upper": 0.07277304897679798
+                },
+                "alert_rate": {
+                  "lower": 0.08835927611155962,
+                  "upper": 0.12014701733397838
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 44755,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 13829,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 41083,
+                "benign_degradation": 129553,
+                "normal": 840387
+              }
+            }
+          ]
+        },
+        "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+          "positives": 46959,
+          "prevalence": 0.004246809263378141,
+          "average_precision": 0.8548259520711142,
+          "average_precision_ci": {
+            "lower": 0.8243637241477326,
+            "upper": 0.8795173757905562
+          },
+          "runs_with_positives": 45,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9999774236095766,
+                "fold-01": 0.999978709018061,
+                "fold-02": 0.9999821425656642,
+                "fold-03": 0.9999841181469767,
+                "fold-04": 0.9999824881207472
+              },
+              "observed": {
+                "recall": 0.02549032134415128,
+                "precision": 1.0,
+                "alert_rate": 0.0001082525328108272,
+                "tp": 1197.0,
+                "fp": 0.0,
+                "positives": 46959.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.011650845097262282,
+                  "upper": 0.04245196482002412
+                },
+                "precision": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 5.06364183475963e-05,
+                  "upper": 0.00017067683427804888
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.999268968291373,
+                "fold-01": 0.9994328688655564,
+                "fold-02": 0.9990009136497805,
+                "fold-03": 0.9993986490611078,
+                "fold-04": 0.9991453778182845
+              },
+              "observed": {
+                "recall": 0.23582273898507208,
+                "precision": 0.9995486957306616,
+                "alert_rate": 0.0010019463751137466,
+                "tp": 11074.0,
+                "fp": 5.0,
+                "positives": 46959.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.16701224902371667,
+                  "upper": 0.3061768308567999
+                },
+                "precision": {
+                  "lower": 0.998376568245728,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 0.0006908196351714532,
+                  "upper": 0.0012976849902612657
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 5,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 0,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.04242134418317062,
+                "fold-01": 0.04086186741962513,
+                "fold-02": 0.04571250620476695,
+                "fold-03": 0.04403760511301147,
+                "fold-04": 0.04086186741962513
+              },
+              "observed": {
+                "recall": 0.9215911752805639,
+                "precision": 0.3928879447304155,
+                "alert_rate": 0.009961674805050483,
+                "tp": 43277.0,
+                "fp": 66874.0,
+                "positives": 46959.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9131399751952852,
+                  "upper": 0.9294471655508907
+                },
+                "precision": {
+                  "lower": 0.3191702490900529,
+                  "upper": 0.4584664560030386
+                },
+                "alert_rate": {
+                  "lower": 0.008715204489377236,
+                  "upper": 0.011330522764763346
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 36352,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 1220,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 3267,
+                "benign_degradation": 6153,
+                "normal": 19882
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 1.61952439553438e-05,
+                "fold-01": 1.6840699626515092e-05,
+                "fold-02": 1.5881853023122447e-05,
+                "fold-03": 1.61952439553438e-05,
+                "fold-04": 1.4687769881086347e-05
+              },
+              "observed": {
+                "recall": 1.0,
+                "precision": 0.04293366808166713,
+                "alert_rate": 0.09891559359195651,
+                "tp": 46959.0,
+                "fp": 1046798.0,
+                "positives": 46959.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "precision": {
+                  "lower": 0.03434391268361856,
+                  "upper": 0.05098486672375613
+                },
+                "alert_rate": {
+                  "lower": 0.09383218135257339,
+                  "upper": 0.10540599542670152
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 50779,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 22354,
+                "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": 45045,
+                "benign_degradation": 50221,
+                "normal": 878399
+              }
+            }
+          ]
+        },
+        "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+          "positives": 54828,
+          "prevalence": 0.004958454360026762,
+          "average_precision": 0.4080976019334933,
+          "average_precision_ci": {
+            "lower": 0.35574069704110123,
+            "upper": 0.4591989173278917
+          },
+          "runs_with_positives": 45,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9995053366050357,
+                "fold-01": 0.9956883360901997,
+                "fold-02": 0.9904435632897737,
+                "fold-03": 0.995603628240273,
+                "fold-04": 0.9994545938704625
+              },
+              "observed": {
+                "recall": 0.02186838841467863,
+                "precision": 0.9991666666666666,
+                "alert_rate": 0.00010852384241686938,
+                "tp": 1199.0,
+                "fp": 1.0,
+                "positives": 54828.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.006060297464972367,
+                  "upper": 0.040609227511174184
+                },
+                "precision": {
+                  "lower": 0.9955942263459514,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 2.8225710976604716e-05,
+                  "upper": 0.00020956890242126929
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 1,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.6492023580147519,
+                "fold-01": 0.6220574332786458,
+                "fold-02": 0.6266404353422129,
+                "fold-03": 0.6128264167915167,
+                "fold-04": 0.6128264167915167
+              },
+              "observed": {
+                "recall": 0.16936601736339096,
+                "precision": 0.8462589993620705,
+                "alert_rate": 0.0009923601023669232,
+                "tp": 9286.0,
+                "fp": 1687.0,
+                "positives": 54828.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.15049596269548077,
+                  "upper": 0.1900806687756233
+                },
+                "precision": {
+                  "lower": 0.7696235406757181,
+                  "upper": 0.9072646948796667
+                },
+                "alert_rate": {
+                  "lower": 0.000729269326722949,
+                  "upper": 0.0013257739465915449
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 1214,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 0,
+                "benign_degradation": 443,
+                "normal": 30
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.0673431316201699,
+                "fold-01": 0.06858087538286162,
+                "fold-02": 0.06858087538286162,
+                "fold-03": 0.06858087538286162,
+                "fold-04": 0.0625967842394104
+              },
+              "observed": {
+                "recall": 0.5092653388779456,
+                "precision": 0.25618158964337157,
+                "alert_rate": 0.009856949297118204,
+                "tp": 27922.0,
+                "fp": 81071.0,
+                "positives": 54828.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.4690790474112447,
+                  "upper": 0.5453288737490318
+                },
+                "precision": {
+                  "lower": 0.20123108287367578,
+                  "upper": 0.316216539488286
+                },
+                "alert_rate": {
+                  "lower": 0.008263828481886094,
+                  "upper": 0.011778877735386642
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 2336,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 16720,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 4786,
+                "benign_degradation": 11422,
+                "normal": 45807
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 0.0008060016303667197,
+                "fold-01": 0.001018781198348945,
+                "fold-02": 0.0006253029830320271,
+                "fold-03": 0.0007601450600798493,
+                "fold-04": 0.000589720994595191
+              },
+              "observed": {
+                "recall": 0.9980666812577516,
+                "precision": 0.04906856525423349,
+                "alert_rate": 0.10085618076744082,
+                "tp": 54722.0,
+                "fp": 1060493.0,
+                "positives": 54828.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9944999542439534,
+                  "upper": 0.9998224084967627
+                },
+                "precision": {
+                  "lower": 0.03670040303708815,
+                  "upper": 0.06363489872898213
+                },
+                "alert_rate": {
+                  "lower": 0.09267399998132962,
+                  "upper": 0.11052265793745358
+                }
+              },
+              "false_alarm_sources": {
+                "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": 35998,
+                "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": 29926,
+                "RANDOMIC_BURST_ORIENTEDGRAYHOLE": 25518,
+                "benign_degradation": 38323,
+                "normal": 930728
+              }
+            }
+          ]
+        },
+        "ANY_ATTACK": {
+          "positives": 216529,
+          "prevalence": 0.019582132562235257,
+          "average_precision": 0.8327896246018991,
+          "average_precision_ci": {
+            "lower": 0.8037120397168741,
+            "upper": 0.8618759549398771
+          },
+          "runs_with_positives": 180,
+          "estimable": true,
+          "operating_points": [
+            {
+              "budget": 0.0001,
+              "thresholds": {
+                "fold-00": 0.9999911628852212,
+                "fold-01": 0.9999915015890684,
+                "fold-02": 0.9999911628852212,
+                "fold-03": 0.9999918273113756,
+                "fold-04": 0.9999913338916987
+              },
+              "observed": {
+                "recall": 0.005075532607641471,
+                "precision": 1.0,
+                "alert_rate": 9.938975234678288e-05,
+                "tp": 1099.0,
+                "fp": 0.0,
+                "positives": 216529.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.0027607007411971996,
+                  "upper": 0.00805444995218524
+                },
+                "precision": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 5.8051209361805294e-05,
+                  "upper": 0.00014579377794158763
+                }
+              },
+              "false_alarm_sources": {
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.001,
+              "thresholds": {
+                "fold-00": 0.9999445352211758,
+                "fold-01": 0.9999400262563926,
+                "fold-02": 0.999936405587468,
+                "fold-03": 0.999945608467704,
+                "fold-04": 0.9999376361330459
+              },
+              "observed": {
+                "recall": 0.05145269224907518,
+                "precision": 1.0,
+                "alert_rate": 0.0010075534403052849,
+                "tp": 11141.0,
+                "fp": 0.0,
+                "positives": 216529.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.03549001846031168,
+                  "upper": 0.0704151838978758
+                },
+                "precision": {
+                  "lower": 1.0,
+                  "upper": 1.0
+                },
+                "alert_rate": {
+                  "lower": 0.000755197895483161,
+                  "upper": 0.001254866385964095
+                }
+              },
+              "false_alarm_sources": {
+                "benign_degradation": 0,
+                "normal": 0
+              }
+            },
+            {
+              "budget": 0.01,
+              "thresholds": {
+                "fold-00": 0.8254176450854704,
+                "fold-01": 0.8108877620215789,
+                "fold-02": 0.8468128383591529,
+                "fold-03": 0.841674146252256,
+                "fold-04": 0.8138661305833026
+              },
+              "observed": {
+                "recall": 0.4833486507580971,
+                "precision": 0.947671996957569,
+                "alert_rate": 0.009987630090695183,
+                "tp": 104659.0,
+                "fp": 5779.0,
+                "positives": 216529.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.4354727625121569,
+                  "upper": 0.5374847866270998
+                },
+                "precision": {
+                  "lower": 0.9261131608994863,
+                  "upper": 0.9668094700600137
+                },
+                "alert_rate": {
+                  "lower": 0.00845265752201789,
+                  "upper": 0.011783193787096014
+                }
+              },
+              "false_alarm_sources": {
+                "benign_degradation": 5429,
+                "normal": 350
+              }
+            },
+            {
+              "budget": 0.1,
+              "thresholds": {
+                "fold-00": 0.015187792891857824,
+                "fold-01": 0.015482852823924313,
+                "fold-02": 0.014898270887315022,
+                "fold-03": 0.015482852823924313,
+                "fold-04": 0.014614186084534466
+              },
+              "observed": {
+                "recall": 0.9840529444092939,
+                "precision": 0.19302722706128014,
+                "alert_rate": 0.09982972609124793,
+                "tp": 213076.0,
+                "fp": 890789.0,
+                "positives": 216529.0,
+                "rows": 11057478.0
+              },
+              "ci": {
+                "recall": {
+                  "lower": 0.9771978210957799,
+                  "upper": 0.9894727835164318
+                },
+                "precision": {
+                  "lower": 0.17095228950598995,
+                  "upper": 0.2179552513525617
+                },
+                "alert_rate": {
+                  "lower": 0.0910878211493993,
+                  "upper": 0.11061606732787971
+                }
+              },
+              "false_alarm_sources": {
+                "benign_degradation": 57980,
+                "normal": 832809
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "pairings": [
+    {
+      "first": "v2-xgboost-none",
+      "second": "d4-xgboost-tuned",
+      "targets": [
+        {
+          "target": "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE",
+          "ap": {
+            "observed": 0.0002070420284930874,
+            "lower": -0.0008171026384662378,
+            "upper": 0.0012201700935648872,
+            "separates": false
+          },
+          "recall": {
+            "0.0001": {
+              "observed": 0.00031509088402686264,
+              "lower": -0.002597847503152475,
+              "upper": 0.003930937483548894,
+              "separates": false
+            },
+            "0.001": {
+              "observed": -0.0020283975659229347,
+              "lower": -0.006461430311996676,
+              "upper": 0.0020084740160392295,
+              "separates": false
+            },
+            "0.01": {
+              "observed": 0.0004529431457886979,
+              "lower": 0.0,
+              "upper": 0.0015314251871397814,
+              "separates": false
+            },
+            "0.1": {
+              "observed": 0.0,
+              "lower": 0.0,
+              "upper": 0.0,
+              "separates": false
+            }
+          }
+        },
+        {
+          "target": "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
+          "ap": {
+            "observed": -0.0010710323464282467,
+            "lower": -0.0028809435068279433,
+            "upper": 0.0009378584486845559,
+            "separates": false
+          },
+          "recall": {
+            "0.0001": {
+              "observed": -0.0007504338445663908,
+              "lower": -0.0023824200151087893,
+              "upper": 0.0006871386639278365,
+              "separates": false
+            },
+            "0.001": {
+              "observed": -0.0011881869205634388,
+              "lower": -0.003887347820439237,
+              "upper": 0.0017561227103558257,
+              "separates": false
+            },
+            "0.01": {
+              "observed": 0.0002345105764269828,
+              "lower": -0.0010239058923257208,
+              "upper": 0.0013795047198428279,
+              "separates": false
+            },
+            "0.1": {
+              "observed": 3.126807685693844e-05,
+              "lower": 0.0,
+              "upper": 8.387314540842236e-05,
+              "separates": false
+            }
+          }
+        },
+        {
+          "target": "RANDOMIC_BURST_ORIENTEDGRAYHOLE",
+          "ap": {
+            "observed": -0.00025432972512784424,
+            "lower": -0.0008968795408994284,
+            "upper": 0.0003752280398066631,
+            "separates": false
+          },
+          "recall": {
+            "0.0001": {
+              "observed": 0.0009795779296833396,
+              "lower": -0.006263989705706263,
+              "upper": 0.008885526933181466,
+              "separates": false
+            },
+            "0.001": {
+              "observed": 0.0002129517238441958,
+              "lower": -0.007513052502035691,
+              "upper": 0.008101060630084304,
+              "separates": false
+            },
+            "0.01": {
+              "observed": -0.00023424689622864037,
+              "lower": -0.0009609069885775895,
+              "upper": 0.0004568739612159004,
+              "separates": false
+            },
+            "0.1": {
+              "observed": 0.0,
+              "lower": 0.0,
+              "upper": 0.0,
+              "separates": false
+            }
+          }
+        },
+        {
+          "target": "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE",
+          "ap": {
+            "observed": -0.0012964461282882755,
+            "lower": -0.0022511411653906867,
+            "upper": -0.00028329945635727644,
+            "separates": true
+          },
+          "recall": {
+            "0.0001": {
+              "observed": 1.8238856058946235e-05,
+              "lower": -0.0008480890961336291,
+              "upper": 0.0009177187370890745,
+              "separates": false
+            },
+            "0.001": {
+              "observed": -0.0008207485226526534,
+              "lower": -0.0031141818184354996,
+              "upper": 0.0014061538967297606,
+              "separates": false
+            },
+            "0.01": {
+              "observed": -0.0012767199241263683,
+              "lower": -0.00256685433231115,
+              "upper": -8.50627973217555e-05,
+              "separates": true
+            },
+            "0.1": {
+              "observed": 5.471656817690462e-05,
+              "lower": -4.9917294216453294e-05,
+              "upper": 0.00016377448772089687,
+              "separates": false
+            }
+          }
+        },
+        {
+          "target": "ANY_ATTACK",
+          "ap": {
+            "observed": -6.457404154625035e-05,
+            "lower": -0.00029944604388308356,
+            "upper": 0.00018916737477306923,
+            "separates": false
+          },
+          "recall": {
+            "0.0001": {
+              "observed": -0.0009098088477755865,
+              "lower": -0.0032694238270546683,
+              "upper": 0.0009019010685684326,
+              "separates": false
+            },
+            "0.001": {
+              "observed": 0.00039255711706052965,
+              "lower": -0.0038362051758763956,
+              "upper": 0.004291609933452016,
+              "separates": false
+            },
+            "0.01": {
+              "observed": 5.541982829088132e-05,
+              "lower": -0.001433675832352972,
+              "upper": 0.0015710491231158016,
+              "separates": false
+            },
+            "0.1": {
+              "observed": -8.774806146061298e-05,
+              "lower": -0.0007912791105968236,
+              "upper": 0.0006873400117782757,
+              "separates": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
