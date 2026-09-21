@@ -254,3 +254,137 @@ established by outcome rather than by code reading: `test_grouped_shap.py`
 produces a reference run with `run_grouped_validation.py` and then explains it
 **with verification on**, so a passing test means the refit reproduces that
 run's predictions row for row - same fold rows, same seed, same estimator.
+
+## 9. F.3/F.4 result: the model leans on the counters, and needs the clocks (2026-09-21)
+
+Executed 2026-09-21, five folds, **99,744 held-out rows explained** against
+100-row train backgrounds. `results/f3-xgboost-shap`.
+
+### The two gates, before any ranking was read
+
+- **The model explained is the model published.** Every fold was refit from
+  the persisted split at the reference run's seed and thread count, and the
+  refits reproduce `results/v2-xgboost-none/grouped_predictions.csv` across
+  **11,057,478 rows, 0 mismatches** — the whole pool, since the five test
+  partitions cover it exactly once.
+- **The conditional axis changed nothing that already existed.** The run was
+  repeated after adding the class-conditional aggregation; its 720 global
+  values (6 classes × 40 features × 3 statistics) are **identical** to the
+  archived global-only run in `results/f3-xgboost-shap-globalonly`. The
+  sample and the seed did not move, so anything else would have been a bug.
+
+### §4.1's prediction did not hold
+
+§4.1 preregistered the three timing deltas at or near the top, on the
+strength of §15's ablation. They are not there. Share of total conditional
+attribution (a class's own score, on held-out rows whose true class it is):
+
+| Class | rows | dominant groups | timing deltas |
+|---|---:|---|---:|
+| `SAG.DB` | 461 | counter-deltas **51.6%** + counters 28.6% | 5.3% |
+| `SAG.PB` | 394 | counter-deltas **47.0%** + counters 23.9% | 11.3% |
+| `FRG` | 590 | counters **32.9%** + counter-deltas 28.3% | 17.1% |
+| `SAG.PBM` | 485 | counters **32.1%** | **21.0%** |
+| `benign_degradation` | 2,576 | **absolute time 47.6%** | 25.2% |
+| `normal` | 95,238 | **timing deltas 28.9%** | 28.9% |
+
+`stDiff` alone carries `SAG.DB` (7.78, about 3× the next feature) and
+`SAG.PB` (6.25). The prediction was wrong, and it was written down in
+advance, which is the only reason that sentence can be said plainly.
+
+### What replaced it, and why it is not a contradiction of D.1
+
+§4.2 exists for exactly this moment: **ablation measures necessity given
+everything else; SHAP measures attribution inside the fitted model**, and a
+group can be heavily attributed yet removable.
+
+Put the two together and they are consistent, not in tension:
+
+- §14 measured that removing **all** sequence information costs only
+  **-0.0089 AP**. The counters are *replaceable* — the timing deltas
+  reconstruct what they carried.
+- §15 measured that removing the three timing deltas costs **-0.0645 AP**,
+  separates in every class, and is the only ablation besides `no-delta` that
+  moves the 1% operating point. The clocks are *not* replaceable.
+- This card measures that the fitted model nonetheless **attributes** 70-80%
+  of its burst-family scores to the counters.
+
+**The model leans on the counters because they are the cleaner signal when
+present; it needs the clocks because nothing else covers the case where the
+counters go blind.** That is a sharper statement than the one predicted, and
+it is only sayable because two methods that answer different questions were
+both run.
+
+The case where the counters go blind is not hypothetical, and the card
+locates it: `SAG.PBM`'s discards happen at a state boundary, where `SqNum`
+resets (`label_duplication_audit.md` §7). It is the **only attack class
+where timing leads** — `timeFromLastChange` second, 21.0% share — and it is
+the class the detector is worst at (AP 0.4094, recall 0.2721). The
+explanation and the limitation are the same fact seen twice.
+
+### §4.3's leakage watch fired
+
+`benign_degradation` attributes **47.6% to absolute time** — `Time` first,
+`GooseTimestamp` second, `t` fourth — the largest group share of any class
+in the table. §4.3 wrote, before the run: high attribution here "would mean
+the model is partly identifying *when* a run happened — a run-identity proxy
+rather than a signature — which is exactly what the grouped protocol exists
+to expose."
+
+It is also the **least stable** group. Across the five folds, top features
+elsewhere sit at max/median **1.03-1.5**; the absolute-time features on
+`benign_degradation` sit at **2.13-2.53**. A feature whose attribution
+doubles depending on which runs are held out is behaving like a run
+identifier, not like a signature.
+
+**This is a signal, not a proof**, and the remedy is cheap but **not free** —
+a claim worth stating precisely, because getting it wrong in the other
+direction would make the recommendation look costless when it is not. §14's
+paired table:
+
+| Ablation | paired AP on `ANY_ATTACK` | 95% CI | separates? |
+|---|---:|---|---|
+| `no-electrical` (-18 cols) | -0.0001 | [-0.0005, +0.0003] | no |
+| `no-goose-header` (-7 cols) | -0.0002 | [-0.0005, +0.0001] | no |
+| **`no-absolute-time` (-3 cols)** | **-0.0025** | **[-0.0050, -0.0002]** | **yes** |
+
+So dropping the three clocks costs a small but statistically separating
+-0.0025 AP, and per class -0.0046 (`SAG.PB`) to -0.0396 (`FRG`). At the 1%
+alert budget the picture is softer still: of five targets only `SAG.PB`
+separates, at -0.0014 recall.
+
+That makes this a **trade-off rather than a free win**, and the trade is
+worth naming: -0.0025 AP against a detector that no longer has wall-clock
+columns to lean on. An attribution that doubles depending on which runs are
+held out will not survive deployment in a substation whose clock has no
+relationship to this generator's, so the 0.0025 is arguably a price for a
+number that transfers rather than a loss. The evaluation is §10 — and the
+question it has to answer is not only *what does removing the clocks cost*,
+which §14 already measured, but *whether the model then finds another
+run-identity proxy to lean on*, which only SHAP can see.
+
+### F.4: stability
+
+Reported per fold and shown rather than averaged. Top features are stable
+across the five folds at **max/median 1.03-1.5**, which is tighter than the
+~44-190 rows per attack class per fold would suggest, and is the check that
+those thin per-class samples are not driving the ranking. The exceptions are
+the absolute-time features, above.
+
+Two floors travel with every number here, both preregistered: the five folds
+are one partition of the same 265 runs rather than five draws from the
+generator, and a class's conditional rows come from ~9 test runs per fold, so
+the spread moves in steps of roughly one run's worth of attribution.
+
+### What this card does not say
+
+No statement here is causal. SHAP attributes **this model's output** to
+**its inputs**; that `stDiff` carries `SAG.DB` is a fact about the detector,
+not about what a grayhole does to a substation (F.5, §7). The label is
+per-message, which bounds every explanation exactly as it bounds every
+recall number.
+
+### Status
+
+**Done.** Evidence: `results/f3-xgboost-shap` (`shap_importances.json` /
+`.md`); `results/f3-xgboost-shap-globalonly` (the regression reference).

@@ -490,6 +490,38 @@ class EndToEndTests(unittest.TestCase):
             self.assertFalse(os.path.exists(
                 os.path.join(out_dir, "shap_importances.json")))
 
+    def test_a_reference_fitted_on_another_feature_set_is_refused(self):
+        """Explaining an ablated model with a full-feature refit is not a near miss."""
+        with tempfile.TemporaryDirectory() as tmp:
+            dataset = self._dataset(tmp)
+            preparation, splits = self._artifacts(tmp, dataset)
+            reference = self._reference_run(tmp, dataset, preparation, splits)
+            self.assertEqual(shap_main([
+                "--dataset", dataset, "--preparation-report", preparation,
+                "--splits", splits, "--reference-run", reference,
+                "--out-dir", os.path.join(tmp, "shap"), "--n-jobs", "1",
+                "--feature-set", "no-delta",
+            ]), 1)
+
+    def test_a_legacy_reference_without_a_feature_set_counts_as_all(self):
+        """Runs made before D.1 added the flag record None, and are the full set."""
+        with tempfile.TemporaryDirectory() as tmp:
+            dataset = self._dataset(tmp)
+            preparation, splits = self._artifacts(tmp, dataset)
+            reference = self._reference_run(tmp, dataset, preparation, splits)
+            report_path = os.path.join(reference, "grouped_validation_report.json")
+            with open(report_path, encoding="utf-8") as handle:
+                report = json.load(handle)
+            report["feature_set"] = None
+            with open(report_path, "w", encoding="utf-8") as handle:
+                json.dump(report, handle)
+            self.assertEqual(shap_main([
+                "--dataset", dataset, "--preparation-report", preparation,
+                "--splits", splits, "--reference-run", reference,
+                "--out-dir", os.path.join(tmp, "shap"), "--n-jobs", "1",
+                "--explain-max-rows", "60", "--background-rows", "30",
+            ]), 0)
+
     def test_a_different_thread_count_is_refused(self):
         """Not a hyperparameter, but it can move the last decimals."""
         with tempfile.TemporaryDirectory() as tmp:

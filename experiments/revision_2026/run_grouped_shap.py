@@ -684,6 +684,17 @@ def main(argv=None):
             raise ShapRunError(
                 "reference run used seed %r, the refit %r - the model would "
                 "differ" % (reference.get("seed"), args.seed))
+        # `feature_set` is recorded as None by runs made before D.1 added the
+        # flag, and those runs are the full feature set - which is what
+        # `all` means. Anything else must match exactly: explaining a model
+        # fitted without a column group, with a refit that has it, is not a
+        # near miss but a different model.
+        reference_features = reference.get("feature_set") or "all"
+        if reference_features != args.feature_set:
+            raise ShapRunError(
+                "reference run was fitted on feature set %r but the refit is "
+                "configured for %r - it would be a different model"
+                % (reference_features, args.feature_set))
         if reference.get("n_jobs") != args.n_jobs:
             raise ShapRunError(
                 "reference run used n_jobs=%r, the refit %r. It is a "
