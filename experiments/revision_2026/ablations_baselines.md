@@ -76,7 +76,8 @@ the ablation is what keeps the ablation at ~6 runs instead of ~18.
    §17 found nothing that survives the outer folds, and the inner gain that
    every fold selected on turned out to be noise — which prices the leak the
    nesting exists to prevent.
-5. **D.5** — consolidate every run into the comparison tables.
+5. ~~**D.5** — consolidate every run into the comparison tables.~~
+   **Done (§19): `cross_run_report.py`, 24 runs on one pool.**
 
 ## 4. Cost estimate per item
 
@@ -94,7 +95,7 @@ is serial.
 | D.1 | **done** (registry + flag + tests + docs, 2026-09-16) | **done: 136 min measured** (18-26 min per run, not the 37 projected) + 5.8 GB | Resolved: peak RSS 4.8-5.4 GB, flat, no training spike (§14) |
 | D.2 | **done** (~3.5 h: script + 31 tests + docs, 2026-09-18) | **done: 14 min measured** (2 min 20 s per rule - one column, not forty) + 5.4 GB | Resolved |
 | D.4 | **done** (~4 h: runner + `run_folds` selector hook + 28 tests + §17, 2026-09-19; +1 h for the selection cache and 17 more tests, 2026-09-20) | **done: 4 h 51 min measured** (3 h 46 min of inner search + 5 refits; the 3.5 h projection was low because the machine was contended) | Resolved by measurement rather than by estimate: `--plan-only` prints the multiplier and the probe prices each point before anything is committed. A first attempt was killed by system memory pressure mid-run, which is why the runner can now replay a completed fold search |
-| D.5 | ~3–4 h (cross-run comparison + docs) | ~0 | Low |
+| D.5 | **done** (~3 h: `cross_run_report.py` + 32 tests + §19, 2026-09-21) | **done: under 1 s** for the 24-run table (it reads only the per-run report JSONs), plus 54 s for the five verified confusion matrices | Resolved. The risk was never compute: it was a consolidated table silently mixing two pools, which is refused rather than rendered |
 
 ## 5. Invariants every run in this card must respect
 
@@ -123,7 +124,7 @@ these is not a result:
 | D.3 model comparison (XGB/RF/LR) | **done on the corrected pool** — champion: **XGBoost** | §9; `validation_protocol.md`, "Model family comparison"; `results/v2-*` (9 runs); `prediction_integrity_d3_v2.md` (351 checks, 0 failures — §9, "The argmax disagreement on Random Forest"); `run_bootstrap.{none,downsample,champion}_v2.md`; `pr_curves_d3_v2.md` |
 | D.3 temporal model | deferred | — |
 | D.4 nested tuning | **done** (2026-09-21) — the champion is already fitted: paired **-0.0001 AP** [-0.0003, +0.0002] on `ANY_ATTACK`, and the only separation in the card is **against** tuning (`SAG.PBM`, -0.0013 [-0.0023, -0.0003]). The inner gain every fold selected on was noise | §17 (preregistration), §18 (result); `run_nested_tuning.py`; `test_nested_tuning.py` (45 tests); `results/d4-xgboost-tuned`; `pr_curves_d4.md`; `prediction_integrity_d4.md` (39 checks, 0 failures) |
-| D.5 per-class cross-run report | not started | — |
+| D.5 per-class cross-run report | **done** (2026-09-21) — 24 runs, one pool, per class + macro, with five confusion matrices that double as verification of the pooled arithmetic | §19; `cross_run_report.py`; `test_cross_run_report.py` (32 tests); `cross_run_comparison.md` / `.json` |
 | D.5 threshold axis (AP + alert budgets) | **done for all nine D.3 runs** on the corrected pool — see §11 | `grouped_pr_curves.py`; `validation_protocol.md`, "The threshold axis"; `pr_curves_d3_v2.md`; `prediction_integrity_d3_v2.md` |
 
 ## 7. Per-fold train subsampling policy (D.3)
@@ -1240,3 +1241,119 @@ macro F1 0.7310 [0.7141, 0.7451] from its own run-level bootstrap.
 **Done.** Evidence: `results/d4-xgboost-tuned`;
 `prediction_integrity_d4.md` (39 checks, 0 failures); `pr_curves_d4.md` /
 `pr_curves_d4.json` (paired against `results/v2-xgboost-none`).
+
+## 19. D.5: every card-D run in one table (2026-09-21)
+
+`cross_run_report.py` → `cross_run_comparison.md` / `.json`. **24 runs, one
+pool** (`3109e4d4…`, 11,057,478 rows each), one split file, five folds: eight
+D.1 ablations, six D.2 rules, nine D.3 family runs and D.4's tuned champion.
+
+Regenerated in **under a second** — it reads only each run's
+`grouped_validation_report.json`, never a dataset and never a predictions file
+— plus 54 s for the five confusion matrices, which are the expensive and
+optional part.
+
+### Why a consolidation needed building rather than writing
+
+By the time D.4 closed, card D's evidence was seven documents, none showing
+more than one card and none checked against another. The risk in merging them
+is not effort, it is that **a consolidated table looks equally authoritative
+whether or not its rows share a pool** — and this revision regenerated its
+pool once already (§12), which is exactly the accident that would produce a
+convincing wrong artifact. So the script refuses rather than renders: two
+dataset hashes, two split files, two protocols, two fold counts, two
+evaluated-row counts, or a technical smoke without `--allow-smoke`, and a
+curve file built on another pool is fatal instead of skipped.
+
+### The arithmetic, and what verifies it
+
+Pooled counts are reconstructed from the per-fold block — `TP = recall ×
+support`, `FP = TP/precision − TP`, summed over folds — which is why the table
+is free. That is a reconstruction, so it is checked three ways rather than
+trusted:
+
+1. `TP` must land on an integer. Observed deviation across all 24 runs:
+   **0.0000**.
+2. `--confusion` rebuilds the real matrix from a run's predictions and checks
+   the pooled metrics against
+   `check_prediction_integrity.metrics_from_confusion`. **Five runs verified
+   at 1e-9**: the champion, the tuned champion, `no-delta`,
+   `no-timing-deltas` and the best rule.
+3. The tests reproduce `run_bootstrap.champion_v2.md`'s published per-class
+   numbers and macro F1 (**0.7310**) — computed the expensive way, from 11M
+   rows of predictions — to four decimals on every class.
+
+Metrics are **pooled**, never averaged over folds: the folds partition the
+runs rather than replicate them, so a fold mean would weight a fold holding
+one `SAG.DB` run the same as one holding four. These are the same point
+estimates the run-level bootstrap reports.
+
+### What one table made visible that seven did not
+
+**1. The two criteria disagree across model families, not just inside D.4's
+grid.** Random Forest scores macro F1 **0.7355** against the champion's
+**0.7310**, while its AP on `ANY_ATTACK` is **0.7934** against **0.8329**. On
+the hardest class it is further ahead — `SAG.PBM` F1 0.4822 against 0.3929.
+Read on argmax alone, the family comparison has a different winner. §9 chose
+on ranking and said so; what the table adds is that the choice of criterion
+was load-bearing rather than incidental, and it is the same disagreement §18
+found one level down. Neither number settles anything on its own — the paired
+verdict is `pr_curves_d3_v2.md`.
+
+**2. The balancing scenario is one score read twice, and the table shows the
+gap directly.** `v2-xgboost-downsample` ranks at AP 0.8208 against the
+unbalanced 0.8329 — close — while its macro F1 is **0.4594** against 0.7310.
+The same is true of every `downsample` row. §11's "the same score read ~213×
+apart" stops being a claim about arithmetic and becomes two adjacent columns.
+
+**3. A cross-card comparison nobody had run: the model without its delta
+features loses to a single threshold.** `no-delta` sits at AP 0.1101 and the
+best rule at 0.2411, so the ablation is *below* the baseline it exists to
+beat. Paired properly (`pr_curves_d5_crosscard.md`), on `ANY_ATTACK`:
+**−0.1310** [−0.1948, −0.0724], and on `FRG` — the rule's designated class —
+**−0.1138** [−0.1489, −0.0793]. Both separate. §14 said the nine delta
+features are the model; this prices that statement against D.2's baseline
+rather than against the reference run, and the answer is that without them
+XGBoost is not merely worse, it is worse than one comparison on one column.
+
+**The other three per-class rows of that pairing are not results**, and the
+trap is worth recording because it was nearly walked into while reading the
+output: a rule carries its score on one designated class and exactly zero on
+the other three, so "the delta-less model beats the rule on `SAG.DB`" is a
+comparison against an all-zero score, not against a detector (§16). Only the
+designated class and `ANY_ATTACK` may be read from a pairing that includes a
+rule. `cross_run_report.py` renders those cells as `n/a` for the same reason.
+
+### What it deliberately does not do
+
+It computes **no interval of its own**, and its own output says so. A 24-row
+table with no uncertainty invites precisely the reading
+`validation_protocol.md` forbids — comparing two configurations by their
+marginal numbers. Every difference in this section that is stated as a result
+comes from a paired test over the same runs; every number quoted without one
+is labelled as context. The resampling stays in `grouped_pr_curves.py` and
+`bootstrap_run_intervals.py`, which own it.
+
+### Status
+
+**Done.** Card D is closed: D.3 (§9) → D.1 (§14, §15) → D.2 (§16) → D.4 (§18)
+→ D.5. Evidence: `cross_run_report.py`; `test_cross_run_report.py` (32
+tests); `cross_run_comparison.md` / `.json`; `pr_curves_d5_crosscard.md` /
+`.json`.
+
+```bash
+python experiments/revision_2026/cross_run_report.py \
+  --runs-glob 'results/*' \
+  --pr-curves experiments/revision_2026/pr_curves_d3_v2.json \
+  --pr-curves experiments/revision_2026/pr_curves_d1.json \
+  --pr-curves experiments/revision_2026/pr_curves_d1_split.json \
+  --pr-curves experiments/revision_2026/pr_curves_d2.json \
+  --pr-curves experiments/revision_2026/pr_curves_d4.json \
+  --confusion results/v2-xgboost-none \
+  --confusion results/d4-xgboost-tuned \
+  --confusion results/d1-xgboost-no-delta \
+  --confusion results/d1-xgboost-no-timing-deltas \
+  --confusion results/d2-rule-interval-timestamp \
+  --out experiments/revision_2026/cross_run_comparison.md \
+  --json-out experiments/revision_2026/cross_run_comparison.json
+```

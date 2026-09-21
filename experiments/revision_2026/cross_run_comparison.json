@@ -1,0 +1,1864 @@
+{
+  "generated": "2026-09-21 16:44:44 UTC",
+  "dataset_sha256": "3109e4d480524d8ac94f80abe54719aff1125b286fa0312428ec332abc64f026",
+  "protocol": "stratified-group-kfold",
+  "splits": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\experiments\\revision_2026\\splits_grouped.json",
+  "rows_evaluated": 11057478,
+  "verified_against_confusion_matrix": [
+    "v2-xgboost-none",
+    "d4-xgboost-tuned",
+    "d1-xgboost-no-delta",
+    "d1-xgboost-no-timing-deltas",
+    "d2-rule-interval-timestamp"
+  ],
+  "runs": [
+    {
+      "label": "d1-xgboost-no-absolute-time",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d1-xgboost-no-absolute-time",
+      "card": "D.1",
+      "card_name": "feature-group ablation",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": "no-absolute-time",
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9814250591319287,
+      "count_residual": 3.637978807091713e-12,
+      "average_precision": {
+        "average_precision": 0.8304005217738349,
+        "ci": {
+          "lower": 0.8011240973353756,
+          "upper": 0.8597352437959633
+        },
+        "source": "pr_curves_d1.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8258589710681676,
+            "recall": 0.8870596112566218,
+            "f1-score": 0.8553659763959703,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.6504472326063596,
+            "recall": 0.6719040695402029,
+            "f1-score": 0.6610015687963333,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8446018405366985,
+            "recall": 0.721182307970783,
+            "f1-score": 0.7780279360411688,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.6956435545423006,
+            "recall": 0.2560005836433939,
+            "f1-score": 0.37426838210785945,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.9185211475894706,
+            "recall": 0.5737320888849476,
+            "f1-score": 0.706294406084259,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9863038556291973,
+            "recall": 0.9991088243700017,
+            "f1-score": 0.9926650470165073,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.8202294336620324,
+            "recall": 0.6848312476109918,
+            "f1-score": 0.7279372194070164
+          },
+          "weighted": {
+            "precision": 0.9799222029995884,
+            "recall": 0.9814250591319287,
+            "f1-score": 0.9791289929537703
+          }
+        }
+      }
+    },
+    {
+      "label": "d1-xgboost-no-counters",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d1-xgboost-no-counters",
+      "card": "D.1",
+      "card_name": "feature-group ablation",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": "no-counters",
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9810080562674418,
+      "count_residual": 7.275957614183426e-12,
+      "average_precision": {
+        "average_precision": 0.8305974869332979,
+        "ci": {
+          "lower": 0.8011860601649572,
+          "upper": 0.859625641142017
+        },
+        "source": "pr_curves_d1.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8227799298683655,
+            "recall": 0.8825695661592391,
+            "f1-score": 0.8516266342353299,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.6490894838398457,
+            "recall": 0.6731704266529087,
+            "f1-score": 0.6609106746790075,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8407549616036701,
+            "recall": 0.718094507975042,
+            "f1-score": 0.7745988721329551,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.6954649827784156,
+            "recall": 0.26515648938498576,
+            "f1-score": 0.38393281571858656,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.9096238719451947,
+            "recall": 0.5612543507659565,
+            "f1-score": 0.6941843965148882,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9860648427862657,
+            "recall": 0.9989722152819214,
+            "f1-score": 0.9924765650153201,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.817296345470293,
+            "recall": 0.6832029260366755,
+            "f1-score": 0.7262883263826813
+          },
+          "weighted": {
+            "precision": 0.9794367353152239,
+            "recall": 0.9810080562674418,
+            "f1-score": 0.9786680716127144
+          }
+        }
+      }
+    },
+    {
+      "label": "d1-xgboost-no-delta",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d1-xgboost-no-delta",
+      "card": "D.1",
+      "card_name": "feature-group ablation",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": "no-delta",
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9612597917897734,
+      "count_residual": 3.637978807091713e-12,
+      "average_precision": {
+        "average_precision": 0.11013042790120682,
+        "ci": {
+          "lower": 0.0906193183955091,
+          "upper": 0.1343992156587344
+        },
+        "source": "pr_curves_d1.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.1833868378812199,
+            "recall": 0.008999783375017232,
+            "f1-score": 0.017157552889940118,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.9858875839737083,
+            "recall": 0.22611789744385571,
+            "f1-score": 0.36786438844055724,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9612976768836193,
+            "recall": 0.999730187590578,
+            "f1-score": 0.9801373292560808,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.35509534978975793,
+            "recall": 0.2058079780682418,
+            "f1-score": 0.22752654509776302
+          },
+          "weighted": {
+            "precision": 0.9439174421861154,
+            "recall": 0.9612597917897734,
+            "f1-score": 0.9460369959217991
+          }
+        }
+      }
+    },
+    {
+      "label": "d1-xgboost-no-electrical",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d1-xgboost-no-electrical",
+      "card": "D.1",
+      "card_name": "feature-group ablation",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": "no-electrical",
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9811426258320387,
+      "count_residual": 3.637978807091713e-12,
+      "average_precision": {
+        "average_precision": 0.8327445258051459,
+        "ci": {
+          "lower": 0.8036698226692769,
+          "upper": 0.8615871971005425
+        },
+        "source": "pr_curves_d1.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8294579383886256,
+            "recall": 0.8823332479962189,
+            "f1-score": 0.8550789636910158,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.6633195230715709,
+            "recall": 0.6558010099588825,
+            "f1-score": 0.6595388401034583,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8371449559255632,
+            "recall": 0.7280606486509509,
+            "f1-score": 0.7788015808836093,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.6996950504339667,
+            "recall": 0.27201429926315024,
+            "f1-score": 0.39173660086941675,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.9097984172017322,
+            "recall": 0.5628209960020987,
+            "f1-score": 0.6954324338514427,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9860084977149833,
+            "recall": 0.9990992693022066,
+            "f1-score": 0.9925107200331414,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.8209040637894071,
+            "recall": 0.6833549118622514,
+            "f1-score": 0.7288498565720141
+          },
+          "weighted": {
+            "precision": 0.9795057706832108,
+            "recall": 0.9811426258320387,
+            "f1-score": 0.9787957300588582
+          }
+        }
+      }
+    },
+    {
+      "label": "d1-xgboost-no-goose-header",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d1-xgboost-no-goose-header",
+      "card": "D.1",
+      "card_name": "feature-group ablation",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": "no-goose-header",
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9814753418455818,
+      "count_residual": 9.094947017729282e-13,
+      "average_precision": {
+        "average_precision": 0.8326658872935624,
+        "ci": {
+          "lower": 0.8036204486976224,
+          "upper": 0.8618872149923259
+        },
+        "source": "pr_curves_d1.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8290481299249011,
+            "recall": 0.8826483388802457,
+            "f1-score": 0.8550090136492402,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.6607951051046316,
+            "recall": 0.6551131122680299,
+            "f1-score": 0.6579418414772014,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8407605612962096,
+            "recall": 0.7259950169296621,
+            "f1-score": 0.7791744754765277,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.7012974802557352,
+            "recall": 0.272087254687386,
+            "f1-score": 0.39206307490144543,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.9148658268958092,
+            "recall": 0.5745486657651067,
+            "f1-score": 0.7058276158680372,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9862906189313532,
+            "recall": 0.9991584918016099,
+            "f1-score": 0.9926828564502741,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.8221762870681065,
+            "recall": 0.6849251467220068,
+            "f1-score": 0.7304498129704543
+          },
+          "weighted": {
+            "precision": 0.9799063074047973,
+            "recall": 0.9814753418455818,
+            "f1-score": 0.9792083573763551
+          }
+        }
+      }
+    },
+    {
+      "label": "d1-xgboost-no-sequence",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d1-xgboost-no-sequence",
+      "card": "D.1",
+      "card_name": "feature-group ablation",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": "no-sequence",
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.980530370487737,
+      "count_residual": 9.094947017729282e-13,
+      "average_precision": {
+        "average_precision": 0.8239790918293949,
+        "ci": {
+          "lower": 0.7933883409437559,
+          "upper": 0.8530636679097584
+        },
+        "source": "pr_curves_d1.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8146889315797251,
+            "recall": 0.8685480218200438,
+            "f1-score": 0.8407568031263403,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.6376872417355371,
+            "recall": 0.6176383221549958,
+            "f1-score": 0.6275026803796211,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8333208536128791,
+            "recall": 0.7109819203986456,
+            "f1-score": 0.7673055708769995,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.688061498564416,
+            "recall": 0.2709929233238491,
+            "f1-score": 0.3888409096856926,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.913982826782162,
+            "recall": 0.5364577560023943,
+            "f1-score": 0.6760886065928744,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.985474232103543,
+            "recall": 0.9995121239146602,
+            "f1-score": 0.9924435397821427,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.812202597396377,
+            "recall": 0.6673551779357648,
+            "f1-score": 0.7154896850739451
+          },
+          "weighted": {
+            "precision": 0.978807440741695,
+            "recall": 0.980530370487737,
+            "f1-score": 0.9779437846206526
+          }
+        }
+      }
+    },
+    {
+      "label": "d1-xgboost-no-size-state-deltas",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d1-xgboost-no-size-state-deltas",
+      "card": "D.1",
+      "card_name": "feature-group ablation",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": "no-size-state-deltas",
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9814414281448265,
+      "count_residual": 7.275957614183426e-12,
+      "average_precision": {
+        "average_precision": 0.8324774194913258,
+        "ci": {
+          "lower": 0.8031856339631663,
+          "upper": 0.8616204457737239
+        },
+        "source": "pr_curves_d1_split.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.829513715480088,
+            "recall": 0.8831603615667895,
+            "f1-score": 0.8554968428683161,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.6616064686634785,
+            "recall": 0.6575207541860137,
+            "f1-score": 0.6595572841113141,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8403301481244934,
+            "recall": 0.7284865520986392,
+            "f1-score": 0.7804215905461513,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.6999322099554522,
+            "recall": 0.2636426643320931,
+            "f1-score": 0.3830153683094859,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.9121654814260316,
+            "recall": 0.5763074467377569,
+            "f1-score": 0.7063450730695554,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9862930579274665,
+            "recall": 0.9990936876289402,
+            "f1-score": 0.9926521072360814,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.8216401802628349,
+            "recall": 0.6847019110917055,
+            "f1-score": 0.7295813776901507
+          },
+          "weighted": {
+            "precision": 0.9798407794827093,
+            "recall": 0.9814414281448265,
+            "f1-score": 0.9791636466995227
+          }
+        }
+      }
+    },
+    {
+      "label": "d1-xgboost-no-timing-deltas",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d1-xgboost-no-timing-deltas",
+      "card": "D.1",
+      "card_name": "feature-group ablation",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": "no-timing-deltas",
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9744504126528671,
+      "count_residual": 3.637978807091713e-12,
+      "average_precision": {
+        "average_precision": 0.7683422684084309,
+        "ci": {
+          "lower": 0.7296021992161124,
+          "upper": 0.8021297207734309
+        },
+        "source": "pr_curves_d1_split.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.7856271237351455,
+            "recall": 0.8241202071722562,
+            "f1-score": 0.8044134325202315,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.5095052363256657,
+            "recall": 0.5187373950565171,
+            "f1-score": 0.5140798698531975,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8124210922180138,
+            "recall": 0.6440511935944121,
+            "f1-score": 0.7185042643669968,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.5931298083990787,
+            "recall": 0.22076311373750637,
+            "f1-score": 0.3217651359074899,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.8470453355930514,
+            "recall": 0.37672645044006475,
+            "f1-score": 0.5215096250489117,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9809075032018144,
+            "recall": 0.9986114878214984,
+            "f1-score": 0.9896803270184934,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.7547726832454615,
+            "recall": 0.5971683079703758,
+            "f1-score": 0.6449921091192201
+          },
+          "weighted": {
+            "precision": 0.9713691438060155,
+            "recall": 0.9744504126528671,
+            "f1-score": 0.9701560045984868
+          }
+        }
+      }
+    },
+    {
+      "label": "d2-rule-delay",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d2-rule-delay",
+      "card": "D.2",
+      "card_name": "rule baseline",
+      "model": "rule:delay",
+      "balance": "none",
+      "feature_set": "rule",
+      "tuned": null,
+      "rule": "delay",
+      "designated_attack_class": "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
+      "status": "full_grouped_run",
+      "is_rule": true,
+      "accuracy": 0.28088357942018966,
+      "count_residual": 1.1641532182693481e-10,
+      "average_precision": {
+        "average_precision": 0.017546020122091246,
+        "ci": {
+          "lower": 0.01466207406553223,
+          "upper": 0.021106300290819464
+        },
+        "source": "pr_curves_d2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.007730618618597553,
+            "recall": 0.9648390475743789,
+            "f1-score": 0.0153383412302486,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.990155206661946,
+            "recall": 0.28799068939057304,
+            "f1-score": 0.446201770002823,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.16631430421342394,
+            "recall": 0.2088049561608253,
+            "f1-score": 0.0769233518721786
+          },
+          "weighted": {
+            "precision": 0.9465756102452944,
+            "recall": 0.28088357942018966,
+            "f1-score": 0.42663171287280344
+          }
+        }
+      }
+    },
+    {
+      "label": "d2-rule-interval-t",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d2-rule-interval-t",
+      "card": "D.2",
+      "card_name": "rule baseline",
+      "model": "rule:interval-t",
+      "balance": "none",
+      "feature_set": "rule",
+      "tuned": null,
+      "rule": "interval-t",
+      "designated_attack_class": "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
+      "status": "full_grouped_run",
+      "is_rule": true,
+      "accuracy": 0.9052964880418483,
+      "count_residual": 0.0,
+      "average_precision": {
+        "average_precision": 0.10095046424969309,
+        "ci": {
+          "lower": 0.0821717166333209,
+          "upper": 0.12367444363528093
+        },
+        "source": "pr_curves_d2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.009274304391190275,
+            "recall": 0.10074574363303784,
+            "f1-score": 0.016985026081134866,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9653753791861256,
+            "recall": 0.946410733387403,
+            "f1-score": 0.9557989929948757,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.16244161392955264,
+            "recall": 0.17452607950340682,
+            "f1-score": 0.16213066984600175
+          },
+          "weighted": {
+            "precision": 0.9228964634223583,
+            "recall": 0.9052964880418483,
+            "f1-score": 0.9137865975830938
+          }
+        }
+      }
+    },
+    {
+      "label": "d2-rule-interval-timestamp",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d2-rule-interval-timestamp",
+      "card": "D.2",
+      "card_name": "rule baseline",
+      "model": "rule:interval-timestamp",
+      "balance": "none",
+      "feature_set": "rule",
+      "tuned": null,
+      "rule": "interval-timestamp",
+      "designated_attack_class": "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
+      "status": "full_grouped_run",
+      "is_rule": true,
+      "accuracy": 0.9596556285257813,
+      "count_residual": 0.0,
+      "average_precision": {
+        "average_precision": 0.2410870051081017,
+        "ci": {
+          "lower": 0.18945157520282738,
+          "upper": 0.3051610056560964
+        },
+        "source": "pr_curves_d2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.3014005347732406,
+            "recall": 0.7260603786564107,
+            "f1-score": 0.42597238210110666,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9689579226431696,
+            "recall": 0.9994913108957005,
+            "f1-score": 0.983987809087963,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.2117264095694017,
+            "recall": 0.2875919482586852,
+            "f1-score": 0.2349933651981783
+          },
+          "weighted": {
+            "precision": 0.9280109980617873,
+            "recall": 0.9596556285257813,
+            "f1-score": 0.9430992942326897
+          }
+        }
+      }
+    },
+    {
+      "label": "d2-rule-sqnum-gap",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d2-rule-sqnum-gap",
+      "card": "D.2",
+      "card_name": "rule baseline",
+      "model": "rule:sqnum-gap",
+      "balance": "none",
+      "feature_set": "rule",
+      "tuned": null,
+      "rule": "sqnum-gap",
+      "designated_attack_class": "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
+      "status": "full_grouped_run",
+      "is_rule": true,
+      "accuracy": 0.9214269293594797,
+      "count_residual": 0.0,
+      "average_precision": {
+        "average_precision": 0.045067464772618374,
+        "ci": {
+          "lower": 0.0337795550898886,
+          "upper": 0.05918743307691849
+        },
+        "source": "pr_curves_d2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.08703177609427609,
+            "recall": 0.7759016931663618,
+            "f1-score": 0.156508247359284,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.966796882077054,
+            "recall": 0.9591991036778781,
+            "f1-score": 0.9629830068034997,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.17563810969522167,
+            "recall": 0.28918346614070667,
+            "f1-score": 0.18658187569379728
+          },
+          "weighted": {
+            "precision": 0.9247051329147188,
+            "recall": 0.9214269293594797,
+            "f1-score": 0.9214611826242768
+          }
+        }
+      }
+    },
+    {
+      "label": "d2-rule-stnum-gap",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d2-rule-stnum-gap",
+      "card": "D.2",
+      "card_name": "rule baseline",
+      "model": "rule:stnum-gap",
+      "balance": "none",
+      "feature_set": "rule",
+      "tuned": null,
+      "rule": "stnum-gap",
+      "designated_attack_class": "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
+      "status": "full_grouped_run",
+      "is_rule": true,
+      "accuracy": 0.9450923619291849,
+      "count_residual": 0.0,
+      "average_precision": {
+        "average_precision": 0.2191536618473112,
+        "ci": {
+          "lower": 0.1754310528492622,
+          "upper": 0.2712412485345037
+        },
+        "source": "pr_curves_d2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.00779329883547381,
+            "recall": 0.027265763019245503,
+            "f1-score": 0.012121843993813967,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9644533130706271,
+            "recall": 0.9884853864698537,
+            "f1-score": 0.9763214852847855,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.16204110198435015,
+            "recall": 0.16929185824818319,
+            "f1-score": 0.16474055487976658
+          },
+          "weighted": {
+            "precision": 0.9220064547356146,
+            "recall": 0.9450923619291849,
+            "f1-score": 0.9333767772057553
+          }
+        }
+      }
+    },
+    {
+      "label": "d2-rule-time-since-change",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d2-rule-time-since-change",
+      "card": "D.2",
+      "card_name": "rule baseline",
+      "model": "rule:time-since-change",
+      "balance": "none",
+      "feature_set": "rule",
+      "tuned": null,
+      "rule": "time-since-change",
+      "designated_attack_class": "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE",
+      "status": "full_grouped_run",
+      "is_rule": true,
+      "accuracy": 0.00578459211042518,
+      "count_residual": 0.0,
+      "average_precision": {
+        "average_precision": 0.012701534146532538,
+        "ci": {
+          "lower": 0.010489996277758063,
+          "upper": 0.015262340197930874
+        },
+        "source": "pr_curves_d2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.0057853936696145225,
+            "recall": 1.0,
+            "f1-score": 0.01150423083498255,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.0009642322782690871,
+            "recall": 0.16666666666666666,
+            "f1-score": 0.0019173718058304251
+          },
+          "weighted": {
+            "precision": 3.3466142576955946e-05,
+            "recall": 0.00578459211042518,
+            "f1-score": 6.654728292455015e-05
+          }
+        }
+      }
+    },
+    {
+      "label": "v2-decision-tree-downsample",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\v2-decision-tree-downsample",
+      "card": "D.3",
+      "card_name": "model family comparison",
+      "model": "decision-tree",
+      "balance": "downsample",
+      "feature_set": null,
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.7607814367797069,
+      "count_residual": 9.094947017729282e-13,
+      "average_precision": {
+        "average_precision": 0.6663766147448821,
+        "ci": {
+          "lower": 0.623086796106363,
+          "upper": 0.7085971623882459
+        },
+        "source": "pr_curves_d3_v2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.4857975527476695,
+            "recall": 0.958545855570216,
+            "f1-score": 0.6448040378080849,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.26452260847732306,
+            "recall": 0.7247314853899911,
+            "f1-score": 0.3875806310016011,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.2740973612910826,
+            "recall": 0.792797972699589,
+            "f1-score": 0.4073573581788241,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.04311940854574785,
+            "recall": 0.8253629532355731,
+            "f1-score": 0.08195713337480723,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.14150408996728153,
+            "recall": 0.8279313632030505,
+            "f1-score": 0.24169876131987095,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9996896381058016,
+            "recall": 0.7578530122162015,
+            "f1-score": 0.8621330508036336,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.3681217765224844,
+            "recall": 0.8145371070524369,
+            "f1-score": 0.43758849541447037
+          },
+          "weighted": {
+            "precision": 0.9642476152221844,
+            "recall": 0.7607814367797069,
+            "f1-score": 0.837404408313554
+          }
+        }
+      }
+    },
+    {
+      "label": "v2-decision-tree-none",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\v2-decision-tree-none",
+      "card": "D.3",
+      "card_name": "model family comparison",
+      "model": "decision-tree",
+      "balance": "none",
+      "feature_set": null,
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9798742534237915,
+      "count_residual": 7.275957614183426e-12,
+      "average_precision": {
+        "average_precision": 0.7572004619190814,
+        "ci": {
+          "lower": 0.7208979936254135,
+          "upper": 0.794358489142601
+        },
+        "source": "pr_curves_d3_v2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8145608320475456,
+            "recall": 0.8421197739222908,
+            "f1-score": 0.8281110809868703,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.7058104487608842,
+            "recall": 0.6589903537982896,
+            "f1-score": 0.6815973092502607,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.833315783931768,
+            "recall": 0.6741199770012138,
+            "f1-score": 0.7453117826409409,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.6562047637847085,
+            "recall": 0.18189611147588824,
+            "f1-score": 0.28483706052037816,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.909927868067403,
+            "recall": 0.5616570968290213,
+            "f1-score": 0.6945809544045309,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9842767659174528,
+            "recall": 0.9986831981322776,
+            "f1-score": 0.9914276498313457,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.8173494104182937,
+            "recall": 0.6529110851931635,
+            "f1-score": 0.7043109729390545
+          },
+          "weighted": {
+            "precision": 0.9777989787269019,
+            "recall": 0.9798742534237915,
+            "f1-score": 0.9770710110656361
+          }
+        }
+      }
+    },
+    {
+      "label": "v2-decision-tree-none-cap4m",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\v2-decision-tree-none-cap4m",
+      "card": "D.3",
+      "card_name": "model family comparison",
+      "model": "decision-tree",
+      "balance": "none",
+      "feature_set": null,
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9798133896355028,
+      "count_residual": 3.637978807091713e-12,
+      "average_precision": {
+        "average_precision": 0.7548114014150882,
+        "ci": {
+          "lower": 0.7177689633213947,
+          "upper": 0.791717701028902
+        },
+        "source": "pr_curves_d3_v2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8162230671736375,
+            "recall": 0.8370389334173576,
+            "f1-score": 0.8264999562482378,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.7073943006146396,
+            "recall": 0.6531588574644717,
+            "f1-score": 0.6791955910324983,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8272388355675419,
+            "recall": 0.6662620583913627,
+            "f1-score": 0.7380750176928521,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.6554067046984168,
+            "recall": 0.18649230320274313,
+            "f1-score": 0.2903633446449616,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.9099831727458366,
+            "recall": 0.5614760458465426,
+            "f1-score": 0.6944585988716574,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9842046360167116,
+            "recall": 0.9986949291066002,
+            "f1-score": 0.9913968377233181,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.8167417861361307,
+            "recall": 0.6505205212381796,
+            "f1-score": 0.7033315577022542
+          },
+          "weighted": {
+            "precision": 0.9777184109632434,
+            "recall": 0.9798133896355028,
+            "f1-score": 0.9770139386905451
+          }
+        }
+      }
+    },
+    {
+      "label": "v2-logistic-regression-downsample",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\v2-logistic-regression-downsample",
+      "card": "D.3",
+      "card_name": "model family comparison",
+      "model": "logistic-regression",
+      "balance": "downsample",
+      "feature_set": null,
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.6931496494951199,
+      "count_residual": 1.8189894035458565e-12,
+      "average_precision": {
+        "average_precision": 0.45930809960191904,
+        "ci": {
+          "lower": 0.3960613807888666,
+          "upper": 0.5186282329907028
+        },
+        "source": "pr_curves_d3_v2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.4129433137621442,
+            "recall": 0.926603517201993,
+            "f1-score": 0.5712898094972134,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.028986744519368585,
+            "recall": 0.3768897643950409,
+            "f1-score": 0.053833158966033544,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.11239663254438272,
+            "recall": 0.7056581273025405,
+            "f1-score": 0.19390779475746167,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.03507841702716321,
+            "recall": 0.7529364558254906,
+            "f1-score": 0.06703380837670915,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.10433075209036556,
+            "recall": 0.4717782162413816,
+            "f1-score": 0.17087384097784433,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9966084527233573,
+            "recall": 0.6992442130583341,
+            "f1-score": 0.8218552322534567,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.2817240521111303,
+            "recall": 0.6555183823374634,
+            "f1-score": 0.3131322741381198
+          },
+          "weighted": {
+            "precision": 0.9579687002835321,
+            "recall": 0.6931496494951199,
+            "f1-score": 0.7939189798892987
+          }
+        }
+      }
+    },
+    {
+      "label": "v2-logistic-regression-none",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\v2-logistic-regression-none",
+      "card": "D.3",
+      "card_name": "model family comparison",
+      "model": "logistic-regression",
+      "balance": "none",
+      "feature_set": null,
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9622299045044449,
+      "count_residual": 0.0,
+      "average_precision": {
+        "average_precision": 0.5087376504121958,
+        "ci": {
+          "lower": 0.44838126939839607,
+          "upper": 0.5630157553249318
+        },
+        "source": "pr_curves_d3_v2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.5624081412438838,
+            "recall": 0.5953248390082514,
+            "f1-score": 0.5783985458719985,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.6826485112911732,
+            "recall": 0.3032006644093784,
+            "f1-score": 0.41990090834021465,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.036926147704590816,
+            "recall": 0.0006748376741810754,
+            "f1-score": 0.001325452265806914,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.5340083798882681,
+            "recall": 0.1412751901035316,
+            "f1-score": 0.22343838570368332,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.967637197553111,
+            "recall": 0.9987501782114748,
+            "f1-score": 0.9829475467665142,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.46393806294683787,
+            "recall": 0.3398709515678029,
+            "f1-score": 0.36766847315803625
+          },
+          "weighted": {
+            "precision": 0.9437402398610284,
+            "recall": 0.9622299045044449,
+            "f1-score": 0.9495556259949095
+          }
+        }
+      }
+    },
+    {
+      "label": "v2-random-forest-downsample",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\v2-random-forest-downsample",
+      "card": "D.3",
+      "card_name": "model family comparison",
+      "model": "random-forest",
+      "balance": "downsample",
+      "feature_set": null,
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.8047690440803952,
+      "count_residual": 9.094947017729282e-13,
+      "average_precision": {
+        "average_precision": 0.3758082051970435,
+        "ci": {
+          "lower": 0.343358290320789,
+          "upper": 0.41006935794494964
+        },
+        "source": "pr_curves_d3_v2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.5715685166346407,
+            "recall": 0.8962366332539041,
+            "f1-score": 0.6979954295179521,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.21605802814953143,
+            "recall": 0.7814205087316105,
+            "f1-score": 0.33851790896684375,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.23812735857655917,
+            "recall": 0.8344726250558998,
+            "f1-score": 0.37052165773125695,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.06455061261409424,
+            "recall": 0.8160976143576275,
+            "f1-score": 0.11963823771231476,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.1650834874067466,
+            "recall": 0.8478765306197855,
+            "f1-score": 0.2763592088022198,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9989491399502962,
+            "recall": 0.8031764829536171,
+            "f1-score": 0.8904289985977285,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.375722857221978,
+            "recall": 0.8298800658287407,
+            "f1-score": 0.448910240221386
+          },
+          "weighted": {
+            "precision": 0.9641839136229666,
+            "recall": 0.8047690440803952,
+            "f1-score": 0.8652929057257579
+          }
+        }
+      }
+    },
+    {
+      "label": "v2-random-forest-none-cap4m",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\v2-random-forest-none-cap4m",
+      "card": "D.3",
+      "card_name": "model family comparison",
+      "model": "random-forest",
+      "balance": "none",
+      "feature_set": null,
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9814626807306331,
+      "count_residual": 3.637978807091713e-12,
+      "average_precision": {
+        "average_precision": 0.7934308420091497,
+        "ci": {
+          "lower": 0.7612035700421359,
+          "upper": 0.823687143128549
+        },
+        "source": "pr_curves_d3_v2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8186381576426409,
+            "recall": 0.8414502057937336,
+            "f1-score": 0.8298874462237674,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.6408056130432588,
+            "recall": 0.595422353548145,
+            "f1-score": 0.6172809491393562,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8128499572933473,
+            "recall": 0.7295726058902446,
+            "f1-score": 0.7689631566543593,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.6150690357627886,
+            "recall": 0.3964944918654702,
+            "f1-score": 0.4821674133877478,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.8817867180042342,
+            "recall": 0.6109546929153642,
+            "f1-score": 0.7218018198922208,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9877816748904253,
+            "recall": 0.9981110293201513,
+            "f1-score": 0.9929194887297623,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.7928218594394493,
+            "recall": 0.6953342298888515,
+            "f1-score": 0.7355033790045357
+          },
+          "weighted": {
+            "precision": 0.9798125012024851,
+            "recall": 0.9814626807306331,
+            "f1-score": 0.9798783883713855
+          }
+        }
+      }
+    },
+    {
+      "label": "v2-xgboost-downsample",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\v2-xgboost-downsample",
+      "card": "D.3",
+      "card_name": "model family comparison",
+      "model": "xgboost",
+      "balance": "downsample",
+      "feature_set": null,
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.7880153141611496,
+      "count_residual": 2.3283064365386963e-10,
+      "average_precision": {
+        "average_precision": 0.8208014984248383,
+        "ci": {
+          "lower": 0.7884717128935455,
+          "upper": 0.8517621108220182
+        },
+        "source": "pr_curves_d3_v2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.5186685283678494,
+            "recall": 0.9583095374071959,
+            "f1-score": 0.6730567081604425,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.2733319784463108,
+            "recall": 0.7779810202773478,
+            "f1-score": 0.40453621656775873,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.2962439005938647,
+            "recall": 0.8338976554015205,
+            "f1-score": 0.4371790291608985,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.05468802285694816,
+            "recall": 0.8197089078572992,
+            "f1-score": 0.10253526268059111,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.1527583108244411,
+            "recall": 0.8617731172545281,
+            "f1-score": 0.25951488945982243,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9996265422000086,
+            "recall": 0.7850012303332344,
+            "f1-score": 0.879408106920679,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.38255288054823716,
+            "recall": 0.8394452447551877,
+            "f1-score": 0.45937170215836537
+          },
+          "weighted": {
+            "precision": 0.9648160824688266,
+            "recall": 0.7880153141611496,
+            "f1-score": 0.8548109331232862
+          }
+        }
+      }
+    },
+    {
+      "label": "v2-xgboost-none",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\v2-xgboost-none",
+      "card": "D.3",
+      "card_name": "model family comparison",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": null,
+      "tuned": null,
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9815179374537304,
+      "count_residual": 3.637978807091713e-12,
+      "average_precision": {
+        "average_precision": 0.8328541986434453,
+        "ci": {
+          "lower": 0.803668857512806,
+          "upper": 0.8618419895439601
+        },
+        "source": "pr_curves_d3_v2.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8298100773758839,
+            "recall": 0.8828058843222591,
+            "f1-score": 0.8554880201524794,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.6633889850836365,
+            "recall": 0.6528930788111877,
+            "f1-score": 0.6580991852750682,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.840731713322008,
+            "recall": 0.7271875465831896,
+            "f1-score": 0.7798483602813557,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.7063586004450547,
+            "recall": 0.27210549354344493,
+            "f1-score": 0.3928688988663445,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.9133642656119266,
+            "recall": 0.5767914809970367,
+            "f1-score": 0.7070680076910361,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9863181761129399,
+            "recall": 0.9991529101283435,
+            "f1-score": 0.992694059162908,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.8233286363252416,
+            "recall": 0.6851560657309103,
+            "f1-score": 0.731011088571532
+          },
+          "weighted": {
+            "precision": 0.979939374802342,
+            "recall": 0.9815179374537304,
+            "f1-score": 0.9792593936579558
+          }
+        }
+      }
+    },
+    {
+      "label": "d4-xgboost-tuned",
+      "directory": "C:\\Users\\ResTIC16\\Desktop\\Pessoal\\Pesquisa\\Cyberseguran\u00e7a\\explicability-GOOSE-research\\results\\d4-xgboost-tuned",
+      "card": "D.4",
+      "card_name": "nested tuning",
+      "model": "xgboost",
+      "balance": "none",
+      "feature_set": "all",
+      "tuned": "champion-xgboost",
+      "rule": null,
+      "designated_attack_class": null,
+      "status": "full_grouped_run",
+      "is_rule": false,
+      "accuracy": 0.9813976568617184,
+      "count_residual": 2.2737367544323206e-13,
+      "average_precision": {
+        "average_precision": 0.8327896246018991,
+        "ci": {
+          "lower": 0.8037120397168741,
+          "upper": 0.8618759549398771
+        },
+        "source": "pr_curves_d4.json"
+      },
+      "pooled": {
+        "per_class": {
+          "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8299105572119034,
+            "recall": 0.8825695661592391,
+            "f1-score": 0.8554304256537507,
+            "support": 50779
+          },
+          "FULLY_RANDOMIZED_ORIENTEDGRAYHOLE": {
+            "precision": 0.6629735298779521,
+            "recall": 0.6539249253474665,
+            "f1-score": 0.6584181404610674,
+            "support": 63963
+          },
+          "RANDOMIC_BURST_ORIENTEDGRAYHOLE": {
+            "precision": 0.8400738916256157,
+            "recall": 0.7263144445154284,
+            "f1-score": 0.7790632602016926,
+            "support": 46959
+          },
+          "RANDOMIC_MESSAGE_ORIENTEDGRAYHOLE": {
+            "precision": 0.7021940563637237,
+            "recall": 0.2667615087181732,
+            "f1-score": 0.38663970286952964,
+            "support": 54828
+          },
+          "benign_degradation": {
+            "precision": 0.9117098627887885,
+            "recall": 0.5744969369129699,
+            "f1-score": 0.704847432578845,
+            "support": 270642
+          },
+          "normal": {
+            "precision": 0.9862263501480798,
+            "recall": 0.9991123247413722,
+            "f1-score": 0.992627518801056,
+            "support": 10570307
+          }
+        },
+        "rows": 11057478,
+        "averages": {
+          "macro": {
+            "precision": 0.8221813746693439,
+            "recall": 0.6838632843991083,
+            "f1-score": 0.7295044134276569
+          },
+          "weighted": {
+            "precision": 0.9797857163193077,
+            "recall": 0.9813976568617184,
+            "f1-score": 0.9791087934871552
+          }
+        }
+      }
+    }
+  ]
+}
