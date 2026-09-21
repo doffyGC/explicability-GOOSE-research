@@ -323,6 +323,61 @@ def inner_partitions(y, group_codes, positions, n_splits, seed):
             for train_idx, test_idx in splitter.split(positions, labels, groups=groups)]
 
 
+def selection_binding(args, points, split, dataset_digest, fold_index):
+    """Everything that could change which point a fold would select.
+
+    The key of the selection cache below.  A search costs ~38 min per outer
+    fold on the real pool, so replaying one that is still valid is worth
+    recovering after an interruption - but only if "still valid" is decided
+    by the whole of what went into it, not by a filename.  Anything that
+    could move a score belongs here, and the conservative reading of "could"
+    is the one taken:
+
+      - the dataset hash, the fold's own train groups, the feature set and the
+        discard list decide **which rows and columns** the search saw;
+      - the grid, the metric, the inner split count, the inner subsample, the
+        balancing and the seed decide **what was compared and how** - and the
+        fold's *position* travels with the seed, because every fit in the
+        search is seeded at ``seed + fold_index``, so the same fold read at a
+        different index is a different search;
+      - ``n_jobs`` is in here although it is a throughput knob and not a
+        hyperparameter, because XGBoost's histogram reduction order depends on
+        the thread count and can move the last decimals of a score
+        (``run_grouped_validation.classifier``).  With observed gaps of
+        ~0.001 between points, a last-decimal change can flip a selection, so
+        a cached choice is reused only where it would have been computed
+        identically.
+    """
+    return {
+        "dataset_sha256": dataset_digest,
+        "split_id": split["split_id"],
+        "fold_index": fold_index,
+        "train_groups": sorted(str(group) for group in split["train_groups"]),
+        "model": args.model,
+        "grid": args.grid,
+        "points": points,
+        "selection_metric": args.selection_metric,
+        "inner_splits": args.inner_splits,
+        "inner_max_rows": args.inner_max_rows,
+        "balance": args.balance,
+        "smote_oversample_factor": args.smote_oversample_factor,
+        "smote_max_target": args.smote_max_target,
+        "seed": args.seed,
+        "n_jobs": args.n_jobs,
+        "feature_set": args.feature_set,
+        "discard_columns": sorted(args.discard_column),
+        "max_train_rows_per_fold": args.max_train_rows_per_fold,
+        "max_rows_per_group_class": args.max_rows_per_group_class,
+    }
+
+
+def binding_digest(binding):
+    import hashlib
+
+    canonical = json.dumps(binding, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 class GridSelector:
     """`run_folds`'s `model_selector`: choose a point, hand back the estimator.
 
@@ -333,7 +388,7 @@ class GridSelector:
 
     def __init__(self, model_name, points, inner_splits, inner_max_rows, seed,
                  n_jobs, balance, smote_factor, smote_max_target, metric,
-                 log=None):
+                 log=None, cache_dir=None, bindings=None):
         self.model_name = model_name
         self.points = points
         self.inner_splits = inner_splits
@@ -347,12 +402,76 @@ class GridSelector:
             raise TuningError("unknown selection metric: %s" % metric)
         self.metric = metric
         self.log = log or (lambda message: None)
+        # The selection cache. A fold's search is the expensive part of this
+        # runner (~38 min against ~8 min for the refit that follows it), and
+        # a run interrupted midway - this one was killed once by system
+        # memory pressure - otherwise repeats every completed search from
+        # scratch. Cached by `binding_digest`, so a cache entry is reused
+        # only where the search would have been recomputed identically; it
+        # is a speed recovery, never a different answer.
+        self.cache_dir = cache_dir
+        self.bindings = bindings or {}
+
+    def _cache_path(self, split_id):
+        if not self.cache_dir:
+            return None
+        return os.path.join(self.cache_dir, "%s.json" % split_id)
+
+    def load_cached(self, split_id):
+        """A previous search for this fold, if it was the same search.
+
+        Any failure to read, parse or match is treated as "no cache": a
+        selection is cheap to recompute and impossible to verify after the
+        fact, so a damaged or foreign entry is discarded rather than trusted.
+        """
+        path = self._cache_path(split_id)
+        expected = self.bindings.get(split_id)
+        if not path or not expected or not os.path.exists(path):
+            return None
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                payload = json.load(fh)
+        except (OSError, json.JSONDecodeError, ValueError):
+            return None
+        if payload.get("binding_sha256") != expected:
+            return None
+        record = payload.get("record")
+        return record if isinstance(record, dict) else None
+
+    def store_cached(self, split_id, record):
+        path = self._cache_path(split_id)
+        expected = self.bindings.get(split_id)
+        if not path or not expected:
+            return
+        try:
+            os.makedirs(self.cache_dir, exist_ok=True)
+            # Staged and renamed, so a process killed mid-write cannot leave
+            # a truncated entry that a later run would have to distrust.
+            with open(path + ".tmp", "w", encoding="utf-8", newline='\n') as fh:
+                json.dump({"binding_sha256": expected, "record": record}, fh, indent=2)
+                fh.write('\n')
+            os.replace(path + ".tmp", path)
+        except OSError:
+            pass
 
     def __call__(self, fold_index, split_id, X, y, group_codes, train_positions,
                  classes):
         import gc
 
         import numpy as np
+
+        cached = self.load_cached(split_id)
+        if cached is not None:
+            self.log("  %s selection reused from cache: %s (%s=%.4f)"
+                     % (split_id, cached["selected_params"],
+                        cached["selection_metric"], cached["score"]))
+            record = dict(cached, from_cache=True)
+            return {
+                "estimator": build_estimator(
+                    self.model_name, record["selected_params"],
+                    self.seed + fold_index, self.n_jobs),
+                "record": record,
+            }
 
         # Every grid point is fitted at the same seed on the same inner
         # partitions, so a difference between two points is the
@@ -437,8 +556,10 @@ class GridSelector:
                 "fold_rows": [int(len(test_idx)) for _, test_idx in partitions],
             },
             "seconds": time.time() - started,
+            "from_cache": False,
             "grid": rows,
         }
+        self.store_cached(split_id, record)
         estimator = build_estimator(self.model_name, chosen, fold_seed, self.n_jobs)
         return {"estimator": estimator, "record": record}
 
@@ -488,6 +609,14 @@ def parse_args(argv=None):
     parser.add_argument("--plan-only", action="store_true",
                         help="Print the grid and the fit count, then exit. Reads the "
                              "split file only - it verifies nothing and trains nothing.")
+    parser.add_argument("--selection-cache", default=None, metavar="DIR",
+                        help="Directory in which each outer fold's completed search is "
+                             "recorded, so a run killed midway replays it instead of "
+                             "repeating ~38 min of fits. An entry is reused only when "
+                             "the whole selection binding matches (see "
+                             "`selection_binding`); anything else is recomputed. Off "
+                             "by default: without this flag the run is bit for bit "
+                             "what it was before the cache existed.")
     # Everything below is passed straight through to the shared runner, so a
     # tuned run is configured exactly like the run it is compared against.
     parser.add_argument("--group-column", default="split_group")
@@ -546,11 +675,23 @@ def main(argv=None):
         split_payload = inputs["splits"]
         os.makedirs(args.out_dir, exist_ok=True)
 
+        # One binding per outer fold, computed before the first fit. They are
+        # derived from the arguments and the verified dataset digest, so a
+        # cache written by a run that differed in any of them - a different
+        # grid, a different subsample, a different dataset - cannot be read
+        # back here.
+        bindings = {
+            split["split_id"]: binding_digest(
+                selection_binding(args, points, split, inputs["digest"], fold_index))
+            for fold_index, split in enumerate(split_payload["splits"])
+        } if args.selection_cache else {}
+
         selector = GridSelector(
             args.model, points, args.inner_splits, args.inner_max_rows, args.seed,
             args.n_jobs, args.balance, args.smote_oversample_factor,
             args.smote_max_target, args.selection_metric,
             log=lambda message: print(message, flush=True),
+            cache_dir=args.selection_cache, bindings=bindings,
         )
 
         predictions_path = os.path.join(args.out_dir, "grouped_predictions.csv")
@@ -596,6 +737,15 @@ def main(argv=None):
             "excluded_axes": definition["excluded"],
             "expected_nulls": definition["expected_nulls"],
             "plan": plan(points, len(split_payload["splits"]), args.inner_splits),
+            # Which folds this process actually searched, and which it replayed
+            # from a previous one. The plan above counts the fits the protocol
+            # calls for; this counts the ones that were paid here, so a report
+            # never implies a search it did not run.
+            "selection_cache": {
+                "dir": os.path.abspath(args.selection_cache) if args.selection_cache else None,
+                "folds_reused": [fold["split_id"] for fold in metrics
+                                 if fold.get("selection", {}).get("from_cache")],
+            },
         }
         report["fold_metrics"] = metrics
         with open(os.path.join(args.out_dir, "grouped_validation_report.json"),

@@ -32,14 +32,22 @@ from run_nested_tuning import (
     GridSelector,
     TuningError,
     attack_columns,
+    binding_digest,
     build_estimator,
     expand_grid,
     grid_definition,
     inner_partitions,
+    parse_args,
     plan,
     score_point,
+    selection_binding,
 )
 from run_nested_tuning import main as run_nested_tuning_main
+
+def _digest_file(path):
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
+
 
 ATTACK = "DETERMINISTIC_BURST_ORIENTEDGRAYHOLE"
 OTHER_ATTACK = "RANDOMIC_BURST_ORIENTEDGRAYHOLE"
@@ -298,17 +306,238 @@ class SelectorIsolationTests(unittest.TestCase):
                          20.0, 100, "accuracy")
 
 
+BINDING_PLACEHOLDER = "<<binding>>"
+
+
+class SelectionBindingTests(unittest.TestCase):
+    """What the resume cache is keyed on.
+
+    A cached selection is replayed, never re-derived, so the only thing
+    standing between a resumed run and a selection it never made is this key.
+    Every axis that could move a grid point's score has to be in it - the
+    tests are written as "changing X changes the key", so an axis added to
+    the runner and forgotten here fails loudly rather than silently widening
+    what a cache entry is allowed to answer for.
+    """
+
+    SPLIT = {"split_id": "fold-00", "train_groups": ["run-1", "run-0"],
+             "test_groups": ["run-2"]}
+
+    def _args(self, *extra):
+        return parse_args([
+            "--dataset", "d.parquet", "--preparation-report", "p.json",
+            "--splits", "s.json", "--out-dir", "out",
+        ] + list(extra))
+
+    def _digest(self, args=None, points=None, split=None, dataset_digest="a" * 64,
+                fold_index=0):
+        return binding_digest(selection_binding(
+            args if args is not None else self._args(),
+            points or [{"max_depth": 6}],
+            split or self.SPLIT, dataset_digest, fold_index))
+
+    def test_the_same_search_is_the_same_key(self):
+        self.assertEqual(self._digest(), self._digest())
+
+    def test_group_order_is_not_part_of_the_search(self):
+        """Reordering a fold's train groups is not a different search.
+
+        The binding sorts them, so a split file rewritten in another order
+        does not throw away a cache that is still valid.
+        """
+        reordered = dict(self.SPLIT, train_groups=["run-0", "run-1"])
+        self.assertEqual(self._digest(), self._digest(split=reordered))
+
+    def test_a_different_dataset_is_a_different_key(self):
+        self.assertNotEqual(self._digest(), self._digest(dataset_digest="b" * 64))
+
+    def test_a_different_fold_is_a_different_key(self):
+        other = dict(self.SPLIT, split_id="fold-01",
+                     train_groups=["run-2", "run-3"])
+        self.assertNotEqual(self._digest(), self._digest(split=other))
+
+    def test_the_fold_position_is_part_of_the_key(self):
+        """Every fit in the search is seeded at ``seed + fold_index``.
+
+        The same fold read at a different index is a different search, and
+        the refit that follows it would be seeded differently too - so the
+        index travels with the rest.
+        """
+        self.assertNotEqual(self._digest(), self._digest(fold_index=1))
+
+    def test_a_different_grid_is_a_different_key(self):
+        self.assertNotEqual(
+            self._digest(), self._digest(points=[{"max_depth": 10}]))
+
+    def test_every_argument_that_could_move_a_score_is_in_the_key(self):
+        for flag, value in [
+            ("--grid", "smoke-xgboost"),
+            ("--model", "random-forest"),
+            ("--selection-metric", "macro-f1"),
+            ("--inner-splits", "5"),
+            ("--inner-max-rows", "1000"),
+            ("--balance", "downsample"),
+            ("--smote-oversample-factor", "3.0"),
+            ("--smote-max-target", "1000"),
+            ("--seed", "7"),
+            # A throughput knob rather than a hyperparameter - but XGBoost's
+            # histogram reduction order depends on it, and the observed gaps
+            # between grid points are ~0.001, so it can flip a selection.
+            ("--n-jobs", "2"),
+            ("--feature-set", "no-delta"),
+            ("--discard-column", "delay"),
+            ("--max-train-rows-per-fold", "1000"),
+            ("--max-rows-per-group-class", "10"),
+        ]:
+            with self.subTest(flag=flag):
+                self.assertNotEqual(
+                    self._digest(), self._digest(args=self._args(flag, value)),
+                    "%s does not change the selection key" % flag)
+
+    def test_the_output_directory_is_not_part_of_the_key(self):
+        """Where the result is written did not change what was searched.
+
+        Resuming into a fresh output directory is the ordinary case, so it
+        must not discard a cache that is still valid.
+        """
+        self.assertEqual(
+            self._digest(),
+            self._digest(args=self._args("--out-dir", "somewhere-else")))
+
+
+class SelectionCacheTests(unittest.TestCase):
+    """The resume path: what may be replayed, and what must be recomputed.
+
+    A fold's search is ~38 min on the real pool against ~8 min for the refit
+    that follows it, and the D.4 run was killed midway once under memory
+    pressure, so replaying a completed search is worth recovering. The risk it
+    carries is worse than a slow run - a report naming a selection this
+    process never made - so most of what is pinned below is the refusal, and
+    the hit is proven by counting fits rather than by reading a log line.
+    """
+
+    BINDING = "f" * 64
+
+    def setUp(self):
+        RecordingEstimator.fitted = []
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.cache_dir = os.path.join(self.tmp.name, "selection_cache")
+        self.groups = np.repeat(np.arange(8, dtype="int32"), 25)
+        rows = len(self.groups)
+        rng = np.random.RandomState(9)
+        self.X = rng.normal(size=(rows, 3)).astype("float32")
+        self.boundary = float(np.quantile(self.X[:, 0], 0.75))
+        self.y = np.where(self.X[:, 0] > self.boundary, 0, 2).astype("int16")
+        self.train_positions = np.flatnonzero(self.groups < 6)
+
+    def _proba(self, point, X):
+        out = np.full((len(X), 3), 1 / 3, dtype="float32")
+        if point["max_depth"] == 10:
+            out[X[:, 0] > self.boundary] = [0.9, 0.05, 0.05]
+        return out
+
+    def _select(self, bindings=None, cache_dir=True):
+        import run_nested_tuning
+
+        selector = GridSelector(
+            "xgboost", [{"max_depth": 6}, {"max_depth": 10}], inner_splits=2,
+            inner_max_rows=0, seed=0, n_jobs=1, balance="none",
+            smote_factor=20.0, smote_max_target=100, metric="any-attack-ap",
+            cache_dir=self.cache_dir if cache_dir else None,
+            bindings={"fold-00": self.BINDING} if bindings is None else bindings)
+        original = run_nested_tuning.build_estimator
+        run_nested_tuning.build_estimator = (
+            lambda model, point, seed, n_jobs: RecordingEstimator(point, self._proba))
+        try:
+            return selector(fold_index=0, split_id="fold-00", X=self.X, y=self.y,
+                            group_codes=self.groups,
+                            train_positions=self.train_positions,
+                            classes=CLASSES)
+        finally:
+            run_nested_tuning.build_estimator = original
+
+    def _entry(self):
+        return os.path.join(self.cache_dir, "fold-00.json")
+
+    def test_a_completed_search_is_replayed_without_refitting_anything(self):
+        first = self._select()["record"]
+        self.assertFalse(first["from_cache"])
+        self.assertTrue(os.path.exists(self._entry()))
+
+        RecordingEstimator.fitted = []
+        second = self._select()["record"]
+        self.assertTrue(second["from_cache"])
+        # The whole point: the second pass paid for no fit at all.
+        self.assertEqual(RecordingEstimator.fitted, [])
+        self.assertEqual(second["selected_params"], first["selected_params"])
+        self.assertEqual(second["score"], first["score"])
+        self.assertEqual(second["grid"], first["grid"])
+
+    def test_the_replayed_estimator_is_the_point_that_was_selected(self):
+        """The record is not the result - the refit that follows it is."""
+        first = self._select()
+        RecordingEstimator.fitted = []
+        second = self._select()
+        self.assertEqual(second["estimator"].point,
+                         first["record"]["selected_params"])
+        self.assertEqual(second["estimator"].point, {"max_depth": 10})
+
+    def test_an_entry_written_under_another_binding_is_ignored(self):
+        self._select()
+        RecordingEstimator.fitted = []
+        record = self._select(bindings={"fold-00": "0" * 64})["record"]
+        self.assertFalse(record["from_cache"])
+        self.assertTrue(RecordingEstimator.fitted)
+
+    def test_a_damaged_entry_is_recomputed_rather_than_trusted(self):
+        """A process killed mid-write must not poison the next run.
+
+        Writes are staged and renamed so a truncated entry should not exist,
+        but a selection is cheap to recompute and impossible to verify after
+        the fact, so anything unreadable is discarded rather than believed.
+        """
+        damaged = [
+            "",
+            "{",
+            '{"binding_sha256": "%s"}' % BINDING_PLACEHOLDER,
+            '{"binding_sha256": "%s", "record": 7}' % BINDING_PLACEHOLDER,
+        ]
+        for damage in damaged:
+            with self.subTest(damage=damage[:24] or "empty"):
+                os.makedirs(self.cache_dir, exist_ok=True)
+                with open(self._entry(), "w", encoding="utf-8") as fh:
+                    fh.write(damage.replace(BINDING_PLACEHOLDER, self.BINDING))
+                RecordingEstimator.fitted = []
+                record = self._select()["record"]
+                self.assertFalse(record["from_cache"])
+                self.assertTrue(RecordingEstimator.fitted)
+
+    def test_a_fold_with_no_binding_is_never_read_from_cache(self):
+        self._select()
+        RecordingEstimator.fitted = []
+        record = self._select(bindings={})["record"]
+        self.assertFalse(record["from_cache"])
+        self.assertTrue(RecordingEstimator.fitted)
+
+    def test_without_a_cache_directory_nothing_is_written_or_read(self):
+        """No flag, no cache: the run is what it was before this existed."""
+        record = self._select(cache_dir=False)["record"]
+        self.assertFalse(record["from_cache"])
+        self.assertFalse(os.path.exists(self.cache_dir))
+
+
 class NestedTuningRunnerTests(unittest.TestCase):
     """The CLI end to end, against the audits that consume its output."""
 
     GROUPS = ("run-0", "run-1", "run-2", "run-3")
     ROWS_PER_GROUP = 60
 
-    def _dataset(self, directory):
+    def _dataset(self, directory, seed=4):
         import pyarrow as pa
         import pyarrow.parquet as pq
 
-        rng = np.random.RandomState(4)
+        rng = np.random.RandomState(seed)
         rows = self.ROWS_PER_GROUP * len(self.GROUPS)
         attack = np.arange(rows) % 4 == 0
         other = np.arange(rows) % 4 == 1
@@ -426,6 +655,70 @@ class NestedTuningRunnerTests(unittest.TestCase):
             code, report, _ = self._run(tmp, digest="0" * 64)
             self.assertEqual(code, 1)
             self.assertIsNone(report)
+
+    def test_a_default_run_reports_that_it_searched_every_fold_itself(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, report, _ = self._run(tmp)
+            cache = report["tuning"]["selection_cache"]
+            self.assertIsNone(cache["dir"])
+            self.assertEqual(cache["folds_reused"], [])
+            for fold in report["fold_metrics"]:
+                self.assertFalse(fold["selection"]["from_cache"])
+
+    def test_a_resumed_run_replays_its_selections_and_says_so(self):
+        """The CLI end of the resume path, on the artifacts the audits read.
+
+        Two runs over the same dataset, splits and cache: the second must
+        reach the same selections without searching for them, write the same
+        predictions, and record in its own report which folds it did not
+        search - so a reader is never left inferring that 180 fits were paid
+        here when they were paid in a process that died.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = os.path.join(tmp, "selection_cache")
+            dataset = self._dataset(tmp)
+            first_code, first, first_dir = self._run(
+                tmp, "--selection-cache", cache_dir, dataset=dataset)
+            self.assertEqual(first_code, 0)
+            self.assertEqual(first["tuning"]["selection_cache"]["folds_reused"], [])
+            self.assertEqual(
+                sorted(os.listdir(cache_dir)), ["fold-00.json", "fold-01.json"])
+
+            second_code, second, second_dir = self._run(
+                tmp, "--selection-cache", cache_dir, dataset=dataset)
+            self.assertEqual(second_code, 0)
+            self.assertEqual(second["tuning"]["selection_cache"]["folds_reused"],
+                             ["fold-00", "fold-01"])
+            self.assertEqual(
+                [fold["selection"]["selected_params"] for fold in second["fold_metrics"]],
+                [fold["selection"]["selected_params"] for fold in first["fold_metrics"]])
+            # A replay, not a different answer: the refit is seeded and fed
+            # exactly as it was, so the predictions have to be the same bytes.
+            self.assertEqual(
+                _digest_file(os.path.join(second_dir, "grouped_predictions.csv")),
+                _digest_file(os.path.join(first_dir, "grouped_predictions.csv")))
+
+    def test_a_cache_written_for_another_dataset_is_not_reused(self):
+        """The hash binding reaches the cache too.
+
+        Running the same grid against a different pool is the case where a
+        replayed selection would be a fabricated result rather than a
+        recovered one.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = os.path.join(tmp, "selection_cache")
+            self._run(tmp, "--selection-cache", cache_dir,
+                      dataset=self._dataset(tmp))
+            other = os.path.join(tmp, "other")
+            os.makedirs(other)
+            # A different seed, so this is a different pool rather than a
+            # second copy of the same bytes - the fixture is deterministic.
+            other_dataset = self._dataset(other, seed=11)
+            self.assertNotEqual(_digest_file(other_dataset),
+                                _digest_file(os.path.join(tmp, "prepared.parquet")))
+            _, report, _ = self._run(tmp, "--selection-cache", cache_dir,
+                                     dataset=other_dataset)
+            self.assertEqual(report["tuning"]["selection_cache"]["folds_reused"], [])
 
     def test_plan_only_trains_nothing_and_writes_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
