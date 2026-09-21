@@ -92,6 +92,50 @@ differences between features rather than invent them. So a feature that still
 separates under this budget is separating in spite of the sample, and a
 feature that does not separate is the weaker claim of the two.
 
+### 3.1 Amendment, 2026-09-21: the budget, measured
+
+**Made before any importance value was read.** The wiring smoke was killed
+mid-fold and its output was never inspected beyond its timing lines; nothing
+below was informed by a ranking.
+
+Two numbers came out of pricing the card rather than estimating it, and both
+change §3 as originally written:
+
+**The background sampler had a floor.** Sampling the background with the same
+(`split_group`, `class`) stratification used for the explained rows cannot
+return fewer rows than it has non-empty strata. Asked for 100, it returned
+**411** on a 265-run smoke, and would return ~1,000 on the real 212-run train
+partitions. Interventional SHAP costs O(explained × background), so the card
+was silently an order of magnitude more expensive than the flag said.
+
+*Corrected:* the background is now stratified **by class only**
+(`background_sample`). It is a reference distribution - "what does this model
+see normally?" - not an evaluation sample, so it does not need every training
+run represented; the explained rows keep their (`split_group`, `class`)
+stratification, because there representation is the point. Classes are kept
+whatever their prevalence: a background missing a class gives that class's
+attributions a reference the model never sees.
+
+**The preregistered 200,000 explained rows per fold was wrong by two orders of
+magnitude.** Measured on the smoke: **1,980 rows × 6 classes against 411
+background rows took 6.9 minutes** - ~4.8 rows/second, on a model fitted to
+164k rows. The real model is fitted to ~8.8M and carries fuller trees, so the
+rate is lower. At 200,000 rows per fold this card would have run for days.
+
+*Corrected budget, which is what will be run:* **20,000 explained rows and
+100 background rows per fold**, five folds. That keeps the card inside §4's
+4-8 h band, which is the same band every other card in this revision was held
+to.
+
+What this costs the claim, stated now: 20,000 rows spread over a fold's ~53
+test runs and six classes is ~60 rows per (run, class) stratum. That is
+comfortable for a **mean** |SHAP| per feature, which is what F.3 asks for, and
+it is thin for anything that needs the tail of the distribution - so no claim
+in this card may rest on a small number of high-attribution rows. The
+fold-to-fold spread reported for F.4 is the check on that: a feature whose
+ranking is stable across five independent samples of five different fold
+partitions is not an artifact of 20,000 rows.
+
 ## 4. What is expected, written before running
 
 ### 4.1 The prediction D.1/D.5 already earned
@@ -181,6 +225,10 @@ and D.4's individual refits ran ~8 min each (§18). SHAP itself is linear in
 (explained rows × background rows × trees) and is the term the sample in §3
 controls. The budget for this card is the same 4-8 h band §4 uses.
 
+`--limit-folds N` prices the card on the real pool before committing to all
+five folds, and marks its output `partial_probe` so a run made for timing can
+never be mistaken for a result. §3.1 is what that flag was added to record.
+
 ## 7. The wording this card is allowed to produce (F.5)
 
 Fixed in advance so the manuscript inherits it rather than negotiating it:
@@ -197,5 +245,12 @@ Fixed in advance so the manuscript inherits it rather than negotiating it:
 
 ## 8. Status
 
-**Preregistered; not implemented, not executed.** The implementation and the
-result each belong in a new section rather than in this one.
+**Preregistered and implemented (`run_grouped_shap.py`, 33 tests); not yet
+executed on the pool.** The result belongs in a new section rather than in
+this one.
+
+The implementation's load-bearing check is the one §2.2 demanded, and it is
+established by outcome rather than by code reading: `test_grouped_shap.py`
+produces a reference run with `run_grouped_validation.py` and then explains it
+**with verification on**, so a passing test means the refit reproduces that
+run's predictions row for row - same fold rows, same seed, same estimator.
