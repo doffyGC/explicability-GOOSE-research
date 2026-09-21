@@ -45,6 +45,25 @@ separating `normal` from everything are not the same finding
 feature, per class, **per fold** - the spread across folds is F.4's
 deliverable and is shown rather than averaged away.
 
+Two aggregations, because at 2% attack prevalence one of them answers a
+question nobody asked:
+
+- **global** - mean |SHAP| over every explained row. This is the standard
+  global importance, and on this pool it is measured on ~95.6% `normal`
+  traffic, because the explained sample is a proportional replica of the
+  held-out distribution. "What moves the `SAG.DB` output across held-out
+  traffic" is a real quantity, and it is mostly a statement about normal
+  messages.
+- **conditional** - mean |SHAP| over the rows whose *true* class is a given
+  one. "When the model is looking at an actual `SAG.DB` message, what drives
+  its `SAG.DB` score" is the question an explainability claim in this paper
+  is actually making, and it is not recoverable from the global average.
+
+Both are written. The conditional one rests on far fewer rows - ~90-120 per
+attack class per fold, from ~9 runs - so its support is reported in the same
+table as its values, and the fold-to-fold spread is what says whether a
+ranking survives that thinness.
+
 `feature_perturbation="interventional"` is not a default worth inheriting
 silently: `tree_path_dependent` ignores the background entirely and answers a
 different question, so a run that fell back to it would satisfy F.3's letter
@@ -313,7 +332,7 @@ def background_sample(positions, y, cap, seed):
 # SHAP
 # --------------------------------------------------------------------------
 
-def explain_fold(model, X, explain_positions, background_positions, classes,
+def explain_fold(model, X, y, explain_positions, background_positions, classes,
                  feature_names):
     """Mean |SHAP| per feature per class, on held-out rows.
 
@@ -360,16 +379,38 @@ def explain_fold(model, X, explain_positions, background_positions, classes,
             "SHAP returned %d features for %d model columns"
             % (stacked.shape[2], len(feature_names)))
 
-    mean_abs = np.abs(stacked).mean(axis=1)
-    del stacked, rows, background, explainer
-    gc.collect()
-    return {
-        str(classes[index]): {
-            name: float(mean_abs[index, position])
-            for position, name in enumerate(feature_names)
+    magnitude = np.abs(stacked)
+    del stacked
+
+    def block(mean_abs):
+        return {
+            str(classes[index]): {
+                name: float(mean_abs[index, position])
+                for position, name in enumerate(feature_names)
+            }
+            for index in range(len(classes))
         }
-        for index in range(len(classes))
-    }
+
+    # Global: every explained row, which on this pool is ~95.6% `normal`.
+    result = {"global": block(magnitude.mean(axis=1)), "conditional": {},
+              "support": {}}
+
+    # Conditional: rows whose *true* class is the one named. A class with no
+    # row in this fold's sample gets no entry rather than a zero, because a
+    # zero would rank as "this feature does nothing" instead of "nothing was
+    # measured".
+    true_labels = y[explain_positions]
+    for index, class_name in enumerate(classes):
+        selected = np.flatnonzero(true_labels == index)
+        result["support"][str(class_name)] = int(len(selected))
+        if len(selected) == 0:
+            continue
+        result["conditional"][str(class_name)] = block(
+            magnitude[:, selected, :].mean(axis=1))
+
+    del magnitude, rows, background, explainer
+    gc.collect()
+    return result
 
 
 # --------------------------------------------------------------------------
@@ -397,15 +438,41 @@ def stability(per_fold_values):
     }
 
 
-def aggregate(fold_importances, classes, feature_names):
+def aggregate(fold_blocks, classes, feature_names):
+    """Fold-to-fold spread per output class per feature (F.4)."""
     return {
         str(class_name): {
-            feature: stability([fold[str(class_name)][feature]
-                                for fold in fold_importances])
+            feature: stability([block[str(class_name)][feature]
+                                for block in fold_blocks])
             for feature in feature_names
         }
         for class_name in classes
     }
+
+
+def aggregate_conditional(fold_importances, classes, feature_names):
+    """The same, restricted to rows of each true class.
+
+    A fold where a true class had no sampled row contributes nothing rather
+    than a zero, and the number of folds that did contribute travels with the
+    values - a ranking from two folds is not a ranking from five.
+    """
+    out = {}
+    for true_name in classes:
+        blocks = [fold["conditional"][str(true_name)] for fold in fold_importances
+                  if str(true_name) in fold["conditional"]]
+        rows = sum(fold["support"].get(str(true_name), 0)
+                   for fold in fold_importances)
+        if not blocks:
+            out[str(true_name)] = {"folds_measured": 0, "rows": rows,
+                                   "per_output_class": {}}
+            continue
+        out[str(true_name)] = {
+            "folds_measured": len(blocks),
+            "rows": rows,
+            "per_output_class": aggregate(blocks, classes, feature_names),
+        }
+    return out
 
 
 def build_report(payload, top_n=12):
@@ -460,20 +527,64 @@ def build_report(payload, top_n=12):
         "",
     ]
 
-    for class_name, features in payload["importances"].items():
+    lines += [
+        "## Global importance: every held-out row",
+        "",
+        "Mean |SHAP| over the whole explained sample, which is a proportional "
+        "replica of the held-out distribution and therefore **~95.6% "
+        "`normal`**. This answers \"what moves this class's output across "
+        "held-out traffic\", and on a pool at 2% attack prevalence that is "
+        "largely a statement about normal messages. For \"what the model "
+        "keys on when it is looking at an actual attack of this family\", "
+        "read the conditional section below instead.",
+        "",
+    ]
+
+    def table(features, heading):
         ordered = sorted(features.items(), key=lambda kv: -kv[1]["median"])
-        lines += [
-            "## `%s`" % class_name,
+        rows = [
+            heading,
             "",
             "| Rank | Feature | median mean\\|SHAP\\| | min | max | max/median |",
             "|---:|---|---:|---:|---:|---:|",
         ]
         for rank, (name, block) in enumerate(ordered[:top_n], start=1):
             ratio = block["max_over_median"]
-            lines.append("| %d | `%s` | %.6g | %.6g | %.6g | %s |" % (
+            rows.append("| %d | `%s` | %.6g | %.6g | %.6g | %s |" % (
                 rank, name, block["median"], block["min"], block["max"],
                 "—" if ratio is None else "%.2f" % ratio))
-        lines.append("")
+        rows.append("")
+        return rows
+
+    for class_name, features in payload["importances"].items():
+        lines += table(features, "### `%s`" % class_name)
+
+    lines += [
+        "## Conditional importance: rows of that class only",
+        "",
+        "Mean |SHAP| for a class's own output, over the held-out rows whose "
+        "**true** class is that class. This is the question an explainability "
+        "claim in this paper makes, and it is not recoverable from the global "
+        "average above.",
+        "",
+        "It also rests on far fewer rows, so each table says how many and "
+        "across how many folds. An attack class here carries ~90-120 rows per "
+        "fold from ~9 runs; a ranking that is not stable across the folds is "
+        "not a finding.",
+        "",
+    ]
+    for true_name, block in payload["conditional_importances"].items():
+        if not block["per_output_class"]:
+            lines += ["### `%s`" % true_name, "",
+                      "Not measured: no held-out row of this class was sampled.",
+                      ""]
+            continue
+        own = block["per_output_class"].get(true_name)
+        lines += table(
+            own,
+            "### `%s` — %s rows across %d of %d folds"
+            % (true_name, format(block["rows"], ","), block["folds_measured"],
+               len(payload["folds"])))
 
     lines += [
         "## How to read the spread",
@@ -629,7 +740,7 @@ def main(argv=None):
                 train_positions, y, args.background_rows, args.seed + fold_index)
 
             importances = explain_fold(
-                model, X, explain_positions, background_positions,
+                model, X, y, explain_positions, background_positions,
                 classes, feature_names)
             fold_importances.append(importances)
             fold_records.append({
@@ -639,6 +750,7 @@ def main(argv=None):
                 "explained_rows": int(len(explain_positions)),
                 "background_rows": int(len(background_positions)),
                 "explained_groups": int(len(np.unique(group_codes[explain_positions]))),
+                "explained_support": importances["support"],
                 "seconds": time.time() - started,
             })
             print("  %s explained %s held-out rows against %s background rows "
@@ -661,7 +773,11 @@ def main(argv=None):
             "explain_rows_per_fold": args.explain_max_rows,
             "background_rows_per_fold": args.background_rows,
             "folds": fold_records,
-            "importances": aggregate(fold_importances, classes, feature_names),
+            "importances": aggregate(
+                [fold["global"] for fold in fold_importances],
+                classes, feature_names),
+            "conditional_importances": aggregate_conditional(
+                fold_importances, classes, feature_names),
             "per_fold_importances": fold_importances,
         })
         payload["generated"] = datetime.now(timezone.utc).strftime(

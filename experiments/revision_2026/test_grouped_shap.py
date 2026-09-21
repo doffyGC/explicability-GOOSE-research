@@ -26,6 +26,7 @@ import pandas as pd
 
 from run_grouped_shap import (
     ShapRunError,
+    aggregate_conditional,
     background_sample,
     load_reference,
     reference_predictions,
@@ -190,6 +191,66 @@ class StabilityTests(unittest.TestCase):
         """Dividing by a zero median would print `inf` as if it meant something."""
         block = stability([0.0, 0.0, 0.0])
         self.assertIsNone(block["max_over_median"])
+
+
+class ConditionalAggregationTests(unittest.TestCase):
+    """The second aggregation, and why it is not the first one again.
+
+    At ~2% attack prevalence the global mean is taken over a sample that is
+    ~95.6% `normal`, so "what drives the `SAG.DB` output" is mostly measured
+    on normal traffic. The conditional average restricts to rows whose *true*
+    class is the one named, which is the question the paper's explainability
+    claim actually makes.
+    """
+
+    FEATURES = ["timestampDiff", "sqDiff"]
+
+    def _fold(self, conditional, support):
+        return {
+            "global": {c: {f: 1.0 for f in self.FEATURES} for c in CLASSES},
+            "conditional": conditional,
+            "support": support,
+        }
+
+    def _block(self, value):
+        return {c: {f: value for f in self.FEATURES} for c in CLASSES}
+
+    def test_it_reports_values_folds_and_rows_together(self):
+        folds = [
+            self._fold({ATTACK: self._block(0.4)}, {ATTACK: 90, "normal": 19_000}),
+            self._fold({ATTACK: self._block(0.6)}, {ATTACK: 110, "normal": 19_000}),
+        ]
+        out = aggregate_conditional(folds, CLASSES, self.FEATURES)
+        entry = out[ATTACK]
+        self.assertEqual(entry["folds_measured"], 2)
+        self.assertEqual(entry["rows"], 200)
+        block = entry["per_output_class"][ATTACK]["timestampDiff"]
+        self.assertAlmostEqual(block["median"], 0.5)
+        self.assertEqual(block["folds"], [0.4, 0.6])
+
+    def test_a_fold_without_rows_of_a_class_contributes_nothing_not_a_zero(self):
+        """A zero would rank as 'this feature does nothing', not 'unmeasured'."""
+        folds = [
+            self._fold({ATTACK: self._block(0.5)}, {ATTACK: 100}),
+            self._fold({}, {ATTACK: 0}),
+        ]
+        entry = aggregate_conditional(folds, CLASSES, self.FEATURES)[ATTACK]
+        self.assertEqual(entry["folds_measured"], 1)
+        self.assertEqual(entry["rows"], 100)
+        self.assertEqual(
+            entry["per_output_class"][ATTACK]["timestampDiff"]["folds"], [0.5])
+
+    def test_a_class_measured_nowhere_is_marked_rather_than_emptied(self):
+        folds = [self._fold({}, {ATTACK: 0}), self._fold({}, {ATTACK: 0})]
+        entry = aggregate_conditional(folds, CLASSES, self.FEATURES)[ATTACK]
+        self.assertEqual(entry["folds_measured"], 0)
+        self.assertEqual(entry["per_output_class"], {})
+
+    def test_it_keeps_every_output_class_for_each_true_class(self):
+        """The full (true class x output class) object, not only the diagonal."""
+        folds = [self._fold({ATTACK: self._block(0.3)}, {ATTACK: 50})]
+        entry = aggregate_conditional(folds, CLASSES, self.FEATURES)[ATTACK]
+        self.assertEqual(set(entry["per_output_class"]), set(CLASSES))
 
 
 class ReferenceRunTests(unittest.TestCase):
@@ -358,11 +419,25 @@ class EndToEndTests(unittest.TestCase):
                 for block in features.values():
                     self.assertEqual(len(block["folds"]), 2)
 
+            # The conditional axis: measured, counted, and not a copy of the
+            # global one.
+            conditional = payload["conditional_importances"]
+            self.assertEqual(set(conditional), set(CLASSES))
+            for true_name, entry in conditional.items():
+                self.assertGreater(entry["rows"], 0, true_name)
+                self.assertEqual(entry["folds_measured"], 2, true_name)
+                self.assertEqual(set(entry["per_output_class"]), set(CLASSES))
+            for fold in payload["folds"]:
+                self.assertEqual(sum(fold["explained_support"].values()),
+                                 fold["explained_rows"])
+
             with open(os.path.join(out_dir, "shap_importances.md"),
                       encoding="utf-8") as handle:
                 report = handle.read()
             self.assertIn("the model published", report)
             self.assertNotIn("UNVERIFIED", report)
+            self.assertIn("Global importance", report)
+            self.assertIn("Conditional importance", report)
 
     def test_the_signal_feature_outranks_the_noise_features(self):
         """A sanity check on the fixture, not a finding about the pool.
