@@ -388,3 +388,100 @@ recall number.
 
 **Done.** Evidence: `results/f3-xgboost-shap` (`shap_importances.json` /
 `.md`); `results/f3-xgboost-shap-globalonly` (the regression reference).
+
+## 10. Does removing the clocks remove the proxy? (2026-09-21)
+
+§9 found `benign_degradation` attributing 47.6% of its score to absolute
+time, unstably, and §14 had already measured what removing those three
+columns costs in detection (-0.0025 AP paired, separating). What neither
+measured is the question that decides whether the removal is worth making:
+**with the clocks gone, does the model find another position proxy to lean
+on?**
+
+`results/f3-xgboost-shap-no-absolute-time`, explaining
+`results/d1-xgboost-no-absolute-time` (37 features). Five folds, 99,744
+held-out rows, refit verified against that run across **11,057,478 rows, 0
+mismatches**.
+
+### On the four attack families: clean
+
+Attribution redistributes proportionally across the groups that were already
+there. Share of conditional own-class attribution, full model → no-clocks
+model:
+
+| Class | counter-deltas | counters | timing deltas | abs-time |
+|---|---|---|---|---|
+| `SAG.DB` | 51.6% → 57.1% | 28.6% → 30.1% | 5.3% → 6.5% | 9.2% → 0 |
+| `SAG.PB` | 47.0% → 51.0% | 23.9% → 23.2% | 11.3% → 10.9% | 3.2% → 0 |
+| `FRG` | 28.3% → 30.3% | 32.9% → 38.2% | 17.1% → 20.6% | 15.1% → 0 |
+| `SAG.PBM` | 15.9% → 15.7% | 32.1% → 37.9% | 21.0% → 21.3% | 5.6% → 0 |
+
+No group absorbs the freed share disproportionately and the top-ranked
+feature is unchanged in all four. For the attack classes, the clocks were
+carrying 3-15% of a score that the remaining columns reconstruct without
+reorganising themselves.
+
+### On `benign_degradation`: the proxy moved rather than vanished
+
+| Group | full | no-clocks |
+|---|---:|---:|
+| counters | 13.7% | **62.5%** |
+| timing deltas | 25.2% | 24.1% |
+| counter-deltas | 5.8% | 4.8% |
+| absolute time | 47.6% | — |
+
+`StNum` alone goes from 0.70 (6th) to **6.69**, nearly ten times, and becomes
+the class's dominant feature. That is the same *kind* of quantity the clock
+was: `StNum` increases monotonically within a run, so "what value of StNum is
+this" is a statement about position in the execution rather than about
+whether a message was dropped.
+
+**But one thing does not transfer, and it is the thing that made the clocks
+suspicious.** The absolute-time attribution was *unstable* across folds
+(max/median **2.13-2.53**) - it moved with which runs were held out, which is
+how a run identifier behaves. The new `StNum` concentration is
+max/median **1.01**, the most stable entry in the whole table. Attribution
+that does not move with the held-out set is not behaving like an identifier
+of those runs; it is more consistent with a systematic difference - for
+instance, the 85 benign-control runs occupying a different `StNum` range than
+the attack runs by construction.
+
+**So this experiment does not decide the question, and saying otherwise would
+be reading the result we hoped for.** What it establishes is narrower and
+still useful: removing the clocks is clean for every attack family, and for
+`benign_degradation` it relocates the model's dependence onto a stable
+position feature rather than eliminating dependence on position.
+
+### The cheap experiment that would decide it, preregistered here
+
+D.1 measured `no-counters` alone at **-0.0023 AP [-0.0051, +0.0004], which
+does not separate** - the raw counters are nearly free on their own. The
+combination `no-absolute-time` + `no-counters` was never run. It is one
+training run (~25 min) plus one SHAP run (~2 h).
+
+Written before running it:
+
+- **If** detection holds (paired against the reference, no separation beyond
+  the -0.0025 the clocks already cost) **and** `benign_degradation`'s
+  attribution moves onto the *deltas* - `stDiff`, `sqDiff`, `timestampDiff`,
+  which measure a **gap** rather than a **position** - then the detector can
+  be reported as not depending on any position variable, and that is the
+  configuration the paper should publish.
+- **If** detection holds but the attribution concentrates on some third
+  position-like feature, the honest conclusion is that this pool cannot
+  separate position from signature for benign degradation, which is a
+  limitation to state rather than a result to fix.
+- **If** detection degrades materially, the clocks and counters were carrying
+  signal after all, and §9's leakage reading was too strong.
+
+The expected null, stated now: the four **attack** classes should be
+essentially unchanged again, since `no-counters` alone did not separate and
+the clocks were already shown to redistribute cleanly there. A surprise in
+the attack classes would mean the two ablations interact, which neither D.1
+nor this card predicts.
+
+### Status
+
+**Done**, and it narrows rather than closes the question. Evidence:
+`results/f3-xgboost-shap-no-absolute-time`. The combined run above is the
+open step.
