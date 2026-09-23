@@ -131,6 +131,12 @@ FEATURE_SETS = {
     # neither changes the meaning of a run already executed.
     "no-timing-deltas": ("timing-deltas",),
     "no-size-state-deltas": ("size-state-deltas",),
+    # Added 2026-09-22, for explainability_card.md SS10's follow-up: with
+    # `no-absolute-time`, `benign_degradation`'s SHAP attribution moved onto
+    # `StNum` rather than disappearing. This set drops both groups at once to
+    # ask whether it moves again, onto the deltas, when the raw counters are
+    # gone too.
+    "no-absolute-time-no-counters": ("absolute-time", "counters"),
 }
 
 

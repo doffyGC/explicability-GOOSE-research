@@ -369,6 +369,20 @@ class FeatureGroupRegistryTests(unittest.TestCase):
             timing | size_state,
             set(resolve_feature_set("no-delta", self.vocabulary())) - counter)
 
+    def test_no_absolute_time_no_counters_is_the_union_of_the_two_groups(self):
+        """explainability_card.md SS10's follow-up: does the combined ablation
+
+        drop exactly the clocks and the raw counters, and nothing else -
+        so that whatever the SHAP run attributes afterward is attributable to
+        removing both, and not to some third column caught in the crossfire.
+        """
+        absolute_time = set(resolve_feature_set("no-absolute-time", self.vocabulary()))
+        counters = set(resolve_feature_set("no-counters", self.vocabulary()))
+        combined = set(
+            resolve_feature_set("no-absolute-time-no-counters", self.vocabulary()))
+        self.assertEqual(absolute_time & counters, set())
+        self.assertEqual(combined, absolute_time | counters)
+
     def test_a_missing_column_is_fatal_rather_than_a_silent_no_op(self):
         vocabulary = [c for c in self.vocabulary()
                       if c not in FEATURE_GROUPS["electrical"]]

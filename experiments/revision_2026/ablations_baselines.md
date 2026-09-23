@@ -522,6 +522,14 @@ The last two are the pair that matters most for the paper's claim. `SAG.PBM`'s
 weakness and the `FRG`/congestion collision both say the models lean on gap
 structure; `no-counters` and `no-sequence` are what measure how much.
 
+Added 2026-09-22, for `explainability_card.md` §10's follow-up — not a D.1
+detection ablation on its own, but the feature-set the card F.3/F.4 SHAP rerun
+in §11 needs:
+
+| `--feature-set` | drops | n features | The question |
+|---|---|---:|---|
+| `no-absolute-time-no-counters` | `absolute-time` + `counters` | 35 | With `no-absolute-time`, `benign_degradation`'s SHAP attribution moved onto `StNum` (13.7% → 62.5%), position to position. Drop the raw counters too: does it move again, onto the deltas — which measure a gap, not a position? |
+
 ### The guard that makes a null result trustworthy
 
 `resolve_feature_set` is resolved against the dataset's own column names and is

@@ -483,5 +483,143 @@ nor this card predicts.
 ### Status
 
 **Done**, and it narrows rather than closes the question. Evidence:
-`results/f3-xgboost-shap-no-absolute-time`. The combined run above is the
-open step.
+`results/f3-xgboost-shap-no-absolute-time`. The combined run above is closed
+in §11.
+
+## 11. The combined run: the proxy moves again, onto neither counter nor clock (2026-09-22)
+
+The cheap experiment §10 preregistered, run in full:
+`results/f10-xgboost-no-abs-no-counters` (35 features, `--feature-set
+no-absolute-time-no-counters`), explained by
+`results/f3-xgboost-shap-no-abs-no-counters`. Five folds, 99,744 held-out
+rows, refit verified against that run across **11,057,478 rows, 0
+mismatches** — the same guarantee every card-F number carries.
+
+### Detection: holds, at a real cost — not the free ride `no-counters` alone was
+
+`grouped_pr_curves.py`, paired against the reference `v2-xgboost-none`
+(`pr_curves_f10.md`):
+
+| Target | AP (reference → combined) | paired Δ | 95% CI | separates? |
+|---|---|---:|---|---|
+| `ANY_ATTACK` | 0.8329 → 0.8243 | -0.0085 | [-0.0119, -0.0058] | **yes** |
+| `SAG.DB` | 0.8839 → 0.8444 | -0.0395 | [-0.0651, -0.0221] | **yes** |
+| `FRG` | 0.6395 → 0.5914 | -0.0481 | [-0.0760, -0.0175] | **yes** |
+| `SAG.PB` | 0.8551 → 0.8285 | -0.0266 | [-0.0364, -0.0178] | **yes** |
+| `SAG.PBM` | 0.4094 → 0.3716 | -0.0378 | [-0.0448, -0.0311] | **yes** |
+
+Every class separates, and `ANY_ATTACK`'s -0.0085 is roughly **3.4x** the
+-0.0025 that `no-absolute-time` cost alone (§14) — dropping the raw counters
+on top of the clocks is not free the way `no-counters` alone was
+(-0.0023, did not separate, §14). Detection still holds in absolute terms
+(0.8243 is well clear of the rule baseline's 0.2411, §16), but this is the
+**second** preregistered branch's premise, not the first's: not "detection
+holds at the clocks' price," but "detection holds at a higher, still-affordable
+price."
+
+### The four attack families: clean, as predicted
+
+Conditional own-class attribution, `no-absolute-time` (37 features) →
+`no-absolute-time-no-counters` (35 features):
+
+| Class | top feature, before → after | counter-deltas | timing-deltas | `delay` |
+|---|---|---|---|---:|
+| `SAG.DB` | `stDiff` → `stDiff` | 57.1% → 63.6% | 6.5% → 20.3% | 4.1% |
+| `SAG.PB` | `stDiff` → `stDiff` | 51.0% → 47.6% | 10.9% → 29.9% | 3.3% |
+| `FRG` | `StNum` → `sqDiff` | 30.3% → 44.6% | 20.6% → 31.0% | 12.6% |
+| `SAG.PBM` | `SqNum` → `timeFromLastChange` | 15.7% → 16.9% | 21.3% → 50.9% | 1.3% |
+
+Exactly the outcome §10 asked for on this axis: the 23-38% each class had on
+raw counters (§10's first table) moves onto `counter-deltas`/`timing-deltas`
+— the two groups that measure a **gap**, not a position — and the top feature
+is a delta in all four, never `delay` and never an electrical/header column.
+`FRG` and `SAG.PBM`, whose top feature was a raw counter with the clocks
+already gone, are the ones that move the most (`FRG`'s top feature actually
+*changes*, from `StNum` to `sqDiff`). No group outside counter-deltas/timing-
+deltas absorbs a disproportionate share for any of the four.
+
+### `benign_degradation`: neither branch §10 wrote down
+
+| Group | full (§9) | no-clocks (§10) | no-clocks-no-counters |
+|---|---:|---:|---:|
+| absolute time | 47.6% | — | — |
+| counters | 13.7% | 62.5% | — |
+| counter-deltas | 5.8% | 4.8% | 10.4% |
+| timing-deltas | 25.2% | 24.1% | 29.6% |
+| electrical | 6.6% | 6.6% | 13.7% |
+| **`delay`** | 0.4% | 1.5% | **44.8%** |
+
+`counter-deltas` + `timing-deltas` together do rise, from 28.9% to 40.0% —
+part of the freed attribution goes exactly where the first preregistered
+branch predicted. But the feature that actually dominates is `delay`
+(`GooseTimestamp - Time`, the ungrouped per-message transport delay, §13):
+it goes from the 6th-ranked feature at 1.5% to **the top feature at 44.8%**,
+a thirtyfold jump, and pulls the class's whole ranking with it (compare the
+full-model top-5 in §9 — all clocks and counters — with `delay`,
+`timestampDiff`, `sqDiff` now leading).
+
+This is not the second branch's failure mode either. §10 wrote that branch as
+"attribution concentrates on some third **position-like** feature," naming
+`StNum` as the example of what that would look like. `delay` fails that
+description on every count that made `StNum` suspicious:
+
+- **Not monotonic, not a position.** `StNum` increases across a run by
+  construction; `delay` is a per-message quantity with no cumulative
+  relationship to where in the run a message sits.
+- **Stable across folds**: max/median **1.15** for `benign_degradation`
+  (folds 2.7-4.0 around a median of 3.5) — in the same range as `StNum`'s
+  1.01 and nothing like absolute time's 2.13-2.53. An unstable quantity would
+  say "this is standing in for which runs got held out"; a stable one does
+  not rule that out by itself, but it does rule out the specific failure mode
+  observed with the clocks.
+- **Class-specific in the direction the impairment predicts, not in the
+  direction a run-identity leak predicts.** `delay`'s share is 44.8% for
+  `benign_degradation`, 28.8% for `normal`, and 1.3-12.6% across the four
+  *attack* families — elevated exactly on the two classes whose traffic
+  shares the benign substation, and low on the classes that would share a
+  position leak with `benign_degradation` if `delay` were acting as a run
+  identifier the way `StNum` was suspected of.
+
+`delay` is a real transport-timing measurement, and `benign_degradation` is
+the one class in this pool constructed by injecting timing/loss impairment
+directly (`benign_controls.md`). The model attributing that class's score to
+a per-message transport-delay column is the physically legible reading, not
+an artifact reading — but it is exactly as unproven as the `StNum` reading
+was in §10, for the same reason: nothing here tests whether `delay`'s
+distribution differs between benign-control runs and attack runs for a
+reason connected to the impairment mechanism, versus for some other reason
+tied to how the two run batches were generated. The claim this section is
+entitled to is narrower than "the model has found the impairment signature":
+it is that the freed attribution did **not** relocate onto a position
+variable, and it did **not** land solely on the gap-measuring deltas either
+— it landed on a third, physically-named quantity whose behaviour argues
+against (but does not rule out) the run-identity reading that sank `StNum`.
+
+### Reading this against §10's three preregistered branches
+
+None of the three fits cleanly:
+
+- Not "clocks and counters were carrying signal after all" — detection holds,
+  well clear of the rule baseline.
+- Not "attribution moves onto the deltas, report no position dependency" —
+  the deltas gain real share (28.9% → 40.0%) but are not what dominates.
+- Not §10's "third position-like feature" either — `delay` does not behave
+  like `StNum` did, on every check §10 used to make `StNum` suspicious.
+
+The honest statement is the one the falsification list did not anticipate:
+**removing both proxies does not make `benign_degradation`'s explanation
+position-free — it makes it a claim about transport timing that this pool
+cannot adjudicate between "real" and "an artifact of how benign and attack
+runs were generated" any more than §10 could adjudicate `StNum`.** Whatever
+configuration the paper reports for `benign_degradation`, the wording is
+bound by §7's vocabulary: attribution, not detection of the impairment
+mechanism.
+
+### Status
+
+**Done.** Evidence: `results/f10-xgboost-no-abs-no-counters`,
+`results/f3-xgboost-shap-no-abs-no-counters`, `pr_curves_f10.md`,
+`prediction_integrity_f10.md` (39 checks, 0 failed). Feeds `NEXT_STEPS.md`
+§4.2's configuration choice: this run buys the same clock-free property
+`no-absolute-time` bought, at roughly 3.4x its AP cost, and does not buy an
+uncomplicated `benign_degradation` story in exchange.
