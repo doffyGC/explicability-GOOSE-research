@@ -51,6 +51,40 @@ numbers do not transfer.
 Hashes identify the local artifacts audited for this revision. Regenerating or
 rewriting either file requires updating this section and `metadata_audit.md`.
 
+### The submitted paper's two sample counts (Reviewer 3, comment 2)
+
+The submitted paper's Section IV-A class counts sum to 1,006,989; its Section
+IV-E reports 1,009,086 paired predictions for McNemar's test. Audited
+2026-09-23:
+
+- **Every output the baseline pipeline produces gives 1,006,989.** The legacy
+  CSV holds 1,006,989 rows (the table above); the five validation folds hold
+  4 × 201,398 + 201,397 = 1,006,989; the aggregated confusion matrix in both
+  `results_with*_delta_features/metrics_report_*.md` sums to 1,006,989; and
+  the notebook prints `Predictions collected for McNemar: 1006989 samples` for
+  **both** scenarios. Both `.npy` vectors that `model/evaluate.py` saves for
+  the test therefore hold 1,006,989 predictions, over the same rows.
+- **1,009,086 is produced by nothing in this repository.** It appears in no
+  file, output or commit on any branch (`git log --all -S`), and neither
+  `main.py` nor the notebook implements McNemar's test — `model/evaluate.py`
+  only saves the vectors. The test ran in an unversioned script (the
+  author's recollection, 2026-09-23).
+- **But the test itself ran on the 1,006,989 predictions; the 1,009,086 is a
+  typo in the text.** The paper's contingency table closes exactly against
+  the two published confusion matrices: the delta model gets 947,926 rows
+  right and the model without deltas 822,488, a difference of **125,438**,
+  and the paper's `n01 − n10` = 133,604 − 8,166 = **125,438**. Its χ² of
+  110,985.69 is exactly the continuity-corrected McNemar statistic on those
+  two cells (`(|n01 − n10| − 1)² / (n01 + n10)`; uncorrected would give
+  110,987.46). The implied table is 814,322 both right, 133,604 / 8,166
+  discordant, 50,897 both wrong — summing to 1,006,989.
+
+What the response letter can state as fact: the paired count was 1,006,989 and
+1,009,086 was a transcription error, verifiable from the released confusion
+matrices, and the revision replaces the
+message-level McNemar test with run-level paired bootstraps, so the count no
+longer carries any inference.
+
 No dataset license is declared in this repository. Confirm ownership and add an
 explicit license before public redistribution. The absence of a declared
 license is not permission to redistribute.
