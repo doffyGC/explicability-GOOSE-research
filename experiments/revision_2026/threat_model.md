@@ -145,6 +145,11 @@ which is the check that the quantity counts what it claims to.
    independently rarely removes all three frames of a fault state. It is the
    variant the detector finds hardest (AP 0.3716) *and* the one this proxy
    says is least harmful. That is the reading the paper must not invert.
+   **Refined by `protection_consequence.md` §7:** it holds for *missed* trips
+   and fails for *timing*. `SAG.PBM` drops the fault's first frame in ≈
+   `loss_rate` of events, so the trip arrives on the +100 ms retransmission and
+   breaks the 10 ms transfer-time limit as often as `SAG.PB` does — at 170 ms
+   of clearing rather than the backup's 450 ms.
 4. **Benign degradation is not harmless by this measure.** A queue overload
    dropping 10-frame bursts at 15% loses more trip indications (delivery 0.471)
    than `SAG.PB` at 30% (0.677). So "state-aware attacks are more harmful than
@@ -202,7 +207,7 @@ latter is per row and reads `none` on every unlabeled row of an attack run.
 |---|---|---|
 | This table | 1 | **drafted** (this file) |
 | VLAN / PRP-HSR / 62351-6 / monitoring discussion | 2 | **drafted** as §3; needs citations for PRP/HSR and 62351-6 |
-| Protection-function validation | 3 | not started. §4 is the preliminary proxy, not the validation |
-| HIL/cosim vs. simple model decision (60 days) | 4 | open |
+| Protection-function validation | 3 | preliminary model done: `protection_consequence.md` §7 (transfer trip, subscriber + clearing time). Not HIL, not a real relay |
+| HIL/cosim vs. simple model decision (60 days) | 4 | **decided 2026-09-23**: simple two-layer model for this revision |
 | Hypothesis wording for "more harmful" claims | 5 | §5 lists the claims to soften |
-| Promote §4 to a tested script | — | only if the paper cites §4 |
+| Promote §4 to a tested script | — | superseded: `protection_consequence.py` counts the same quantity per event, with tests |
