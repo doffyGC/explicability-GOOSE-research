@@ -126,6 +126,7 @@ these is not a result:
 | D.4 nested tuning | **done** (2026-09-21) — the champion is already fitted: paired **-0.0001 AP** [-0.0003, +0.0002] on `ANY_ATTACK`, and the only separation in the card is **against** tuning (`SAG.PBM`, -0.0013 [-0.0023, -0.0003]). The inner gain every fold selected on was noise | §17 (preregistration), §18 (result); `run_nested_tuning.py`; `test_nested_tuning.py` (45 tests); `results/d4-xgboost-tuned`; `pr_curves_d4.md`; `prediction_integrity_d4.md` (39 checks, 0 failures) |
 | D.5 per-class cross-run report | **done** (2026-09-21) — 24 runs, one pool, per class + macro, with five confusion matrices that double as verification of the pooled arithmetic | §19; `cross_run_report.py`; `test_cross_run_report.py` (32 tests); `cross_run_comparison.md` / `.json` |
 | D.5 threshold axis (AP + alert budgets) | **done for all nine D.3 runs** on the corrected pool — see §11 | `grouped_pr_curves.py`; `validation_protocol.md`, "The threshold axis"; `pr_curves_d3_v2.md`; `prediction_integrity_d3_v2.md` |
+| Published configuration | **decided** (2026-09-23) — `f10-xgboost-no-abs-no-counters` (35 features); D.2 re-paired (−0.5832 AP vs the best rule); D.3/E/D.4/D.5 on 35 features pending | §20; `pr_curves_f10.md`; `pr_curves_f10_d2.md` / `.json` |
 
 ## 7. Per-fold train subsampling policy (D.3)
 
@@ -1365,3 +1366,72 @@ python experiments/revision_2026/cross_run_report.py \
   --out experiments/revision_2026/cross_run_comparison.md \
   --json-out experiments/revision_2026/cross_run_comparison.json
 ```
+
+## 20. The published configuration: no clocks, no raw counters (2026-09-23)
+
+**Decision.** The detector the paper reports is
+`f10-xgboost-no-abs-no-counters` — XGBoost, library defaults, `--balance
+none`, `--feature-set no-absolute-time-no-counters` (35 features: the 40
+minus `Time`/`t`/`GooseTimestamp` and `StNum`/`SqNum`). `v2-xgboost-none` and
+`d1-xgboost-no-absolute-time` move to the ablation table.
+
+**Why.** Reviewer 3's first comment names absolute time, `stNum` and `sqNum`
+as columns that can reveal trace position, and asks for an ablation without
+absolute time *and other possible identifiers*. Card F measured the concern
+directly: on `v2`, `benign_degradation` puts 47.6% of its attribution on the
+absolute clocks, unstably across folds; removing only the clocks moves it onto
+`StNum` (`explainability_card.md` §10), another position variable. Only the
+35-feature set leaves both groups out, and it costs **-0.0085 AP paired**
+[-0.0119, -0.0058] on `ANY_ATTACK` (0.8329 → 0.8243) with recall at the 1%
+budget essentially unchanged (0.4833 → 0.4804; `pr_curves_f10.md`). Reporting
+the 40-feature model and then its SHAP would be conceding the point the
+reviewer raised. What `f10` does **not** resolve: `benign_degradation` now
+leans on `delay` (44.8%), physically plausible and untested
+(`explainability_card.md` §11) — that caveat travels with the headline.
+
+### D.2 re-paired against the published detector
+
+`pr_curves_f10_d2.md` / `.json` — the six §16 rule runs, unchanged, paired
+against `f10` on the same resampled runs (2 min 40 s; the scores were
+already persisted):
+
+| Rule (B) | AP `ANY_ATTACK` | B − A vs `f10` | 95% CI | separates? | (§16, vs `v2`) |
+|---|---|---:|---|---|---:|
+| `interval-timestamp` | 0.2411 | **−0.5832** | [−0.6293, −0.5303] | yes | −0.5918 |
+| `stnum-gap` | 0.2192 | −0.6052 | [−0.6423, −0.5622] | yes | −0.6137 |
+| `interval-t` | 0.1010 | −0.7234 | [−0.7507, −0.6948] | yes | −0.7319 |
+| `sqnum-gap` | 0.0451 | −0.7793 | [−0.8094, −0.7472] | yes | −0.7878 |
+| `delay` | 0.0175 | −0.8068 | [−0.8365, −0.7770] | yes | −0.8153 |
+| `time-since-change` | 0.0127 | −0.8116 | [−0.8414, −0.7819] | yes | −0.8202 |
+
+§16's conclusion transfers intact: the published detector is ~3.4x the best
+single threshold in AP (0.8243 against 0.2411), and at the 1% budget the best
+rule's recall is **−0.1824** [−0.2418, −0.1289] behind it (§16 had −0.1853
+against `v2`).
+
+**One operating point where a rule wins, missing from §16.** At a budget of
+**10 alerts per 10,000 messages (0.1%)**, `stnum-gap` recovers *more* of
+`ANY_ATTACK` than the model: **+0.0722** [+0.0309, +0.1137] against `f10`,
+and **+0.0705** [+0.0313, +0.1106] against `v2` (`pr_curves_d2.md` already
+carried it; §16 did not report it). At 1 alert/10,000 the two tie, and from
+100/10,000 up the model wins by 0.29-0.57 recall. So at the tightest useful
+budget a single threshold on `stDiff` is the better alarm, and it is the one
+place the "model earns its complexity" claim has to be qualified. `stDiff` is
+a within-trace delta, so it is still in `f10`'s feature set — the model has
+the column and still does not reach the rule's recall at that budget. Why is
+not measured here.
+
+### What is not yet on `f10`
+
+Every other card-D comparison was measured on the 40-feature `v2`. Reviewer 3
+(comment 7) asks for every benchmark on the same held-out runs, and Reviewer 1
+(comments 5-6) for the result with and without SMOTE, so:
+
+| Item | Status | Needed for |
+|---|---|---|
+| D.2 rule baseline | **done** above | R3.7 |
+| D.3 families on 35 features (DT, RF cap 4M, LR; `none`) | **pending** — queued for the night of 2026-09-23 | R3.7 |
+| E balancing on 35 features (XGBoost `downsample`, `smote`) | **pending**, same batch | R1.5-6, R2.2 |
+| D.4 nested tuning on 35 features | **open decision** — rerun (~5 h) or report the defaults as validated on `v2` only | R3.7 ("hyperparameter selection inside the grouped training data") |
+| D.5 consolidation | **pending** the batch above | R3.7 (per-class tables) |
+| F SHAP on `f10` | **done** (`explainability_card.md` §11) | R3.8 |
