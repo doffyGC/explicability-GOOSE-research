@@ -126,7 +126,11 @@ these is not a result:
 | D.4 nested tuning | **done** (2026-09-21) — the champion is already fitted: paired **-0.0001 AP** [-0.0003, +0.0002] on `ANY_ATTACK`, and the only separation in the card is **against** tuning (`SAG.PBM`, -0.0013 [-0.0023, -0.0003]). The inner gain every fold selected on was noise | §17 (preregistration), §18 (result); `run_nested_tuning.py`; `test_nested_tuning.py` (45 tests); `results/d4-xgboost-tuned`; `pr_curves_d4.md`; `prediction_integrity_d4.md` (39 checks, 0 failures) |
 | D.5 per-class cross-run report | **done** (2026-09-21) — 24 runs, one pool, per class + macro, with five confusion matrices that double as verification of the pooled arithmetic | §19; `cross_run_report.py`; `test_cross_run_report.py` (32 tests); `cross_run_comparison.md` / `.json` |
 | D.5 threshold axis (AP + alert budgets) | **done for all nine D.3 runs** on the corrected pool — see §11 | `grouped_pr_curves.py`; `validation_protocol.md`, "The threshold axis"; `pr_curves_d3_v2.md`; `prediction_integrity_d3_v2.md` |
-| Published configuration | **decided** (2026-09-23) — `f10-xgboost-no-abs-no-counters` (35 features); D.2 re-paired (−0.5832 AP vs the best rule); D.3/E/D.4/D.5 on 35 features pending | §20; `pr_curves_f10.md`; `pr_curves_f10_d2.md` / `.json` |
+| Published configuration | **decided** (2026-09-23) — `f10-xgboost-no-abs-no-counters` (35 features); D.2 re-paired (−0.5832 AP vs the best rule) | §20; `pr_curves_f10.md`; `pr_curves_f10_d2.md` / `.json` |
+| D.3 families on 35 features | **done** (2026-09-29) — same ranking as §9; XGBoost separates from RF (−0.0327), DT (−0.1555) and LR (−0.3410) | §21; `results/f20-{decision-tree,logistic-regression,random-forest}-*`; `pr_curves_f20.md`; `prediction_integrity_f20.md` (195 checks, 0 failures) |
+| E balancing on 35 features | **done** (2026-09-29) — card E closed on the corrected pool: `smote` **does not separate** (+0.0024 AP [−0.0004, +0.0055]), `downsample` separates the wrong way (−0.0104). Balancing buys nothing | §21; `results/f20-xgboost-{downsample,smote}`; `pr_curves_f20.md` |
+| D.5 on 35 features | **done** (2026-09-29) — 30 runs, one pool; D.1 rows now carry their `ANY_ATTACK` AP. Known defect: the five `f20-*` runs are filed under card D.1 | §21; `cross_run_comparison.md` / `.json` |
+| D.4 nested tuning on 35 features | **open decision** — rerun (~5 h) or report the defaults as validated on `v2` only | §18, §21 |
 
 ## 7. Per-fold train subsampling policy (D.3)
 
@@ -1430,8 +1434,127 @@ Every other card-D comparison was measured on the 40-feature `v2`. Reviewer 3
 | Item | Status | Needed for |
 |---|---|---|
 | D.2 rule baseline | **done** above | R3.7 |
-| D.3 families on 35 features (DT, RF cap 4M, LR; `none`) | **pending** — queued for the night of 2026-09-23 | R3.7 |
-| E balancing on 35 features (XGBoost `downsample`, `smote`) | **pending**, same batch | R1.5-6, R2.2 |
+| D.3 families on 35 features (DT, RF cap 4M, LR; `none`) | **done** (2026-09-29) — §21 | R3.7 |
+| E balancing on 35 features (XGBoost `downsample`, `smote`) | **done** (2026-09-29) — §21, both null or negative | R1.5-6, R2.2 |
 | D.4 nested tuning on 35 features | **open decision** — rerun (~5 h) or report the defaults as validated on `v2` only | R3.7 ("hyperparameter selection inside the grouped training data") |
-| D.5 consolidation | **pending** the batch above | R3.7 (per-class tables) |
+| D.5 consolidation | **done** (2026-09-29) — §21, 30 runs | R3.7 (per-class tables) |
 | F SHAP on `f10` | **done** (`explainability_card.md` §11) | R3.8 |
+
+## 21. D.3 and E on the published 35 features (2026-09-29)
+
+The batch §20 queued. Five runs, all `--feature-set
+no-absolute-time-no-counters --save-scores`, on the same
+`splits_grouped.json` and the same pool (`3109e4d4…`, 265 runs,
+11,057,478 rows) as every other number in this file. Wall clock 2 h 01 on
+one machine, sequential: `f20-decision-tree-none` 7.9 min,
+`f20-logistic-regression-none` 16.5 min, `f20-random-forest-none-cap4m`
+68.4 min, `f20-xgboost-downsample` 1.8 min, `f20-xgboost-smote` 26.6 min.
+
+Integrity: `prediction_integrity_f20.md` — **195 checks, 0 failures** (39 per
+run), and all five pair row-for-row with `f10` over the full 11,057,478.
+Curves: `pr_curves_f20.md` / `.json`, `f10` as the reference run, `--prior
+auto` (so `downsample` and `smote` are read at their natural prior and `f10`
+as trained — the correction without which the three are not comparable).
+
+### D.3: the family ranking survives the feature cut
+
+| Run (B) | AP `ANY_ATTACK` | macro F1 | B − A vs `f10` | 95% CI | separates? |
+|---|---:|---:|---:|---|---|
+| `f10-xgboost-no-abs-no-counters` (A) | 0.8243 | 0.7063 | — | — | — |
+| `f20-random-forest-none-cap4m` | 0.7917 | 0.6913 | **−0.0327** | [−0.0389, −0.0272] | yes |
+| `f20-decision-tree-none` | 0.6688 | 0.6240 | −0.1555 | [−0.1782, −0.1334] | yes |
+| `f20-logistic-regression-none` | 0.4833 | 0.3205 | −0.3410 | [−0.3833, −0.2969] | yes |
+
+Same order as §9 measured on 40 features, and XGBoost separates from all
+three per class as well as on `ANY_ATTACK` (`pr_curves_f20.json`). The
+margin over Random Forest **narrows** on 35 features: −0.0327 here against
+−0.0412 in §9. The gap to the linear model is where the cut bites hardest —
+logistic regression loses more than a third of the pool's AP, and its
+`SAG.PBM` AP (0.0886) is barely above the 0.0050 prevalence floor.
+
+Per class, the four attack families rank as they did on `v2`, with one
+detail worth keeping: Random Forest's only near-tie with the champion is
+`SAG.PBM` (−0.0145 [−0.0227, −0.0072]), the class both are worst at.
+
+### E: balancing buys nothing, and SMOTE is the first scenario that does not lose
+
+| Run (B) | AP `ANY_ATTACK` | macro F1 | B − A vs `f10` | 95% CI | separates? |
+|---|---:|---:|---:|---|---|
+| `f20-xgboost-smote` | 0.8268 | 0.7181 | **+0.0024** | [−0.0004, +0.0055] | **no** |
+| `f20-xgboost-downsample` | 0.8140 | 0.4440 | −0.0104 | [−0.0157, −0.0052] | yes |
+
+**This closes card E on the corrected pool.** `smote` is the run that had
+never been executed since the 2026-09-13 regeneration, and the answer is a
+null: +0.0024 AP, interval straddling zero, does not separate. `downsample`
+separates in the *wrong* direction. So on the published detector, neither
+balancing strategy improves ranking, and the paper reports the unbalanced
+model without a balancing caveat.
+
+Two readings that must not be taken from the macro F1 column:
+
+- `downsample`'s macro F1 of **0.4440** against `f10`'s 0.7063 is not a
+  detectability verdict. It is the same score read at a different threshold:
+  every `grouped_validation_report.json` metric is `argmax(p)` at whatever
+  the training prior implies, and downsampling moves that prior by ~213x.
+  The AP row, at the natural prior, has the two within 0.0104 of each other.
+- `smote`'s macro F1 of **0.7181** against 0.7063 is likewise an argmax
+  artefact and not evidence that SMOTE helps: the paired AP says it does not
+  separate. Per class, SMOTE's only separations are small and mixed — `FRG`
+  +0.0205 [+0.0005, +0.0430] and `SAG.PBM` +0.0107 [+0.0032, +0.0188], with
+  `SAG.DB` and `SAG.PB` not separating.
+
+What SMOTE actually did, per fold: the five minority classes oversampled to
+200,000 rows each (the `--smote-max-target` default, reached before the 20x
+factor binds), `normal` untouched at 8,643,721. So the fold is not balanced
+— it is a capped partial oversample, and that is the configuration this null
+applies to.
+
+### Where the ranking inverts: Random Forest at a tight alert budget
+
+Recall on `ANY_ATTACK`, paired against `f10` (`*` = separates):
+
+| Run | 0.01% | 0.1% | 1% | 10% |
+|---|---:|---:|---:|---:|
+| `f10-xgboost-no-abs-no-counters` | 0.0052 | 0.0494 | 0.4804 | 0.9825 |
+| `f20-random-forest-none-cap4m` | 0.2556 | 0.2556 | 0.4722 | 0.9584 |
+| Δ RF − `f10` | +0.2504\* | +0.2062\* | −0.0081 | −0.0241\* |
+
+**This is not a Random Forest win, and it must not be written as one.** At
+both tight budgets the forest's achieved alert rate is **0.5150%** — 51x the
+0.01% budget and 5x the 0.1% one — because its posterior is a vote fraction
+over trees and the top bucket alone already covers that many rows. The
+threshold column shows it: the same grid ceiling (0.999999998) at every
+fold, at every one of those budgets. The forest **cannot be run that
+quietly**; the two recalls are read at operating points whose alert rates
+differ by 51x, so the paired delta is not a like-for-like comparison.
+`grouped_pr_curves.py` documents exactly this case ("achieved alert rate can
+exceed the budget … the model cannot be run that quietly, which is a result,
+not a rounding problem"), and the result here is the coarseness of the
+posterior, not the quality of the ranking. Where the budget is actually met
+— 1% and 10% — the forest is at or behind the champion.
+
+By contrast the §20 finding about `stnum-gap` **is** a genuine inversion:
+that rule meets the budget and still beats the model on recall. The two look
+alike in a table and are not the same claim.
+
+### D.5 regenerated
+
+`cross_run_comparison.md` / `.json` now carries **30 runs** (was 24) on one
+pool: the six curve reports merged are `pr_curves_d1`, `pr_curves_d1_split`,
+`pr_curves_d3_v2`, `pr_curves_d4`, `pr_curves_f10_d2` and `pr_curves_f20`,
+which fills the `ANY_ATTACK` AP column for the D.1 ablation rows that §19
+left blank. One cosmetic defect to fix before the table is used as a figure:
+`cross_run_report.py` infers the card from the feature set, so it files the
+five `f20-*` runs under **D.1** rather than D.3/E. The numbers are right;
+the card label is not.
+
+### What is still not on `f10`
+
+| Item | Status | Needed for |
+|---|---|---|
+| D.2 rule baseline | done (§20) | R3.7 |
+| D.3 families on 35 features | **done** above | R3.7 |
+| E balancing (`downsample`, `smote`) | **done** above — both null or negative | R1.5-6, R2.2, E.5 |
+| D.5 consolidation | **done** above (30 runs) | R3.7 |
+| F SHAP on `f10` | done (`explainability_card.md` §11) | R3.8 |
+| D.4 nested tuning on 35 features | **still an open decision** — rerun (~5 h) or report the defaults as validated on `v2` only | R3.7 |

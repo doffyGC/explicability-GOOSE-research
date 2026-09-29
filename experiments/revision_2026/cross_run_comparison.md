@@ -1,7 +1,7 @@
 # Cross-run comparison (checklist D.5)
 
-- Generated: 2026-09-21 16:44:44 UTC
-- Runs: **24**, all on dataset `3109e4d48052…`, protocol `stratified-group-kfold`, 5 folds from `splits_grouped.json`.
+- Generated: 2026-09-29 03:48:47 UTC
+- Runs: **30**, all on dataset `3109e4d48052…`, protocol `stratified-group-kfold`, 5 folds from `splits_grouped.json`.
 - Rows evaluated per run: **11,057,478**
 
 Every metric here is **pooled over the folds** - counts summed first, metric computed once - not averaged across them. The folds partition the runs rather than replicate them, so a fold mean would weight a fold holding one `SAG.DB` run the same as one holding four (`bootstrap_run_intervals.py`). These are the same point estimates that script reports.
@@ -22,6 +22,12 @@ AP is on `ANY_ATTACK` and is the axis card D compares on (§11); macro F1 and ac
 | D.1 | `d1-xgboost-no-sequence` | `xgboost` | none | features: `no-sequence` | 0.8240 [0.7934, 0.8531] | 0.7155 | 0.9779 | 0.9805 |
 | D.1 | `d1-xgboost-no-size-state-deltas` | `xgboost` | none | features: `no-size-state-deltas` | 0.8325 [0.8032, 0.8616] | 0.7296 | 0.9792 | 0.9814 |
 | D.1 | `d1-xgboost-no-timing-deltas` | `xgboost` | none | features: `no-timing-deltas` | 0.7683 [0.7296, 0.8021] | 0.6450 | 0.9702 | 0.9745 |
+| D.1 | `f10-xgboost-no-abs-no-counters` | `xgboost` | none | features: `no-absolute-time-no-counters` | 0.8243 [0.7941, 0.8540] | 0.7063 | 0.9776 | 0.9801 |
+| D.1 | `f20-decision-tree-none` | `decision-tree` | none | features: `no-absolute-time-no-counters` | 0.6688 [0.6221, 0.7118] | 0.6240 | 0.9698 | 0.9752 |
+| D.1 | `f20-logistic-regression-none` | `logistic-regression` | none | features: `no-absolute-time-no-counters` | 0.4833 [0.4211, 0.5423] | 0.3205 | 0.9470 | 0.9611 |
+| D.1 | `f20-random-forest-none-cap4m` | `random-forest` | none, cap 4,000,000 | features: `no-absolute-time-no-counters` | 0.7917 [0.7593, 0.8218] | 0.6913 | 0.9780 | 0.9801 |
+| D.1 | `f20-xgboost-downsample` | `xgboost` | downsample | features: `no-absolute-time-no-counters` | 0.8140 [0.7808, 0.8447] | 0.4440 | 0.8427 | 0.7698 |
+| D.1 | `f20-xgboost-smote` | `xgboost` | smote | features: `no-absolute-time-no-counters` | 0.8268 [0.7969, 0.8548] | 0.7181 | 0.9780 | 0.9800 |
 | D.2 | `d2-rule-delay` | `rule:delay` | none | rule: `delay` | 0.0175 [0.0147, 0.0211] | 0.0769 | 0.4266 | 0.2809 |
 | D.2 | `d2-rule-interval-t` | `rule:interval-t` | none | rule: `interval-t` | 0.1010 [0.0822, 0.1237] | 0.1621 | 0.9138 | 0.9053 |
 | D.2 | `d2-rule-interval-timestamp` | `rule:interval-timestamp` | none | rule: `interval-timestamp` | 0.2411 [0.1895, 0.3052] | 0.2350 | 0.9431 | 0.9597 |
@@ -59,6 +65,12 @@ Per-class values first, macro as the headline average, weighted and accuracy as 
 | `d1-xgboost-no-sequence` | 0.8147 | 0.8685 | 0.8408 |
 | `d1-xgboost-no-size-state-deltas` | 0.8295 | 0.8832 | 0.8555 |
 | `d1-xgboost-no-timing-deltas` | 0.7856 | 0.8241 | 0.8044 |
+| `f10-xgboost-no-abs-no-counters` | 0.7975 | 0.8869 | 0.8399 |
+| `f20-decision-tree-none` | 0.7814 | 0.8656 | 0.8213 |
+| `f20-logistic-regression-none` | 0.5986 | 0.4849 | 0.5358 |
+| `f20-random-forest-none-cap4m` | 0.7878 | 0.7707 | 0.7792 |
+| `f20-xgboost-downsample` | 0.4628 | 0.9690 | 0.6264 |
+| `f20-xgboost-smote` | 0.7862 | 0.8812 | 0.8310 |
 | `d2-rule-delay` | n/a | n/a | n/a |
 | `d2-rule-interval-t` | n/a | n/a | n/a |
 | `d2-rule-interval-timestamp` | n/a | n/a | n/a |
@@ -90,6 +102,12 @@ Per-class values first, macro as the headline average, weighted and accuracy as 
 | `d1-xgboost-no-sequence` | 0.6377 | 0.6176 | 0.6275 |
 | `d1-xgboost-no-size-state-deltas` | 0.6616 | 0.6575 | 0.6596 |
 | `d1-xgboost-no-timing-deltas` | 0.5095 | 0.5187 | 0.5141 |
+| `f10-xgboost-no-abs-no-counters` | 0.6470 | 0.6194 | 0.6329 |
+| `f20-decision-tree-none` | 0.6913 | 0.6671 | 0.6789 |
+| `f20-logistic-regression-none` | 0.0000 | 0.0000 | 0.0000 |
+| `f20-random-forest-none-cap4m` | 0.6434 | 0.5498 | 0.5929 |
+| `f20-xgboost-downsample` | 0.2916 | 0.7254 | 0.4159 |
+| `f20-xgboost-smote` | 0.6723 | 0.6811 | 0.6767 |
 | `d2-rule-delay` | 0.0077 | 0.9648 | 0.0153 |
 | `d2-rule-interval-t` | 0.0093 | 0.1007 | 0.0170 |
 | `d2-rule-interval-timestamp` | 0.3014 | 0.7261 | 0.4260 |
@@ -121,6 +139,12 @@ Per-class values first, macro as the headline average, weighted and accuracy as 
 | `d1-xgboost-no-sequence` | 0.8333 | 0.7110 | 0.7673 |
 | `d1-xgboost-no-size-state-deltas` | 0.8403 | 0.7285 | 0.7804 |
 | `d1-xgboost-no-timing-deltas` | 0.8124 | 0.6441 | 0.7185 |
+| `f10-xgboost-no-abs-no-counters` | 0.8223 | 0.6851 | 0.7475 |
+| `f20-decision-tree-none` | 0.8184 | 0.4801 | 0.6051 |
+| `f20-logistic-regression-none` | 0.3442 | 0.1522 | 0.2111 |
+| `f20-random-forest-none-cap4m` | 0.7178 | 0.7004 | 0.7090 |
+| `f20-xgboost-downsample` | 0.3019 | 0.7819 | 0.4356 |
+| `f20-xgboost-smote` | 0.7679 | 0.7081 | 0.7368 |
 | `d2-rule-delay` | n/a | n/a | n/a |
 | `d2-rule-interval-t` | n/a | n/a | n/a |
 | `d2-rule-interval-timestamp` | n/a | n/a | n/a |
@@ -152,6 +176,12 @@ Per-class values first, macro as the headline average, weighted and accuracy as 
 | `d1-xgboost-no-sequence` | 0.6881 | 0.2710 | 0.3888 |
 | `d1-xgboost-no-size-state-deltas` | 0.6999 | 0.2636 | 0.3830 |
 | `d1-xgboost-no-timing-deltas` | 0.5931 | 0.2208 | 0.3218 |
+| `f10-xgboost-no-abs-no-counters` | 0.6922 | 0.2260 | 0.3408 |
+| `f20-decision-tree-none` | 0.5989 | 0.0535 | 0.0983 |
+| `f20-logistic-regression-none` | 0.0317 | 0.0009 | 0.0018 |
+| `f20-random-forest-none-cap4m` | 0.5996 | 0.2621 | 0.3648 |
+| `f20-xgboost-downsample` | 0.0515 | 0.8090 | 0.0969 |
+| `f20-xgboost-smote` | 0.4900 | 0.3123 | 0.3815 |
 | `d2-rule-delay` | n/a | n/a | n/a |
 | `d2-rule-interval-t` | n/a | n/a | n/a |
 | `d2-rule-interval-timestamp` | n/a | n/a | n/a |
@@ -183,6 +213,12 @@ Per-class values first, macro as the headline average, weighted and accuracy as 
 | `d1-xgboost-no-sequence` | 0.9140 | 0.5365 | 0.6761 |
 | `d1-xgboost-no-size-state-deltas` | 0.9122 | 0.5763 | 0.7063 |
 | `d1-xgboost-no-timing-deltas` | 0.8470 | 0.3767 | 0.5215 |
+| `f10-xgboost-no-abs-no-counters` | 0.8830 | 0.5590 | 0.6846 |
+| `f20-decision-tree-none` | 0.9215 | 0.3931 | 0.5511 |
+| `f20-logistic-regression-none` | 0.5938 | 0.1145 | 0.1920 |
+| `f20-random-forest-none-cap4m` | 0.8662 | 0.6006 | 0.7094 |
+| `f20-xgboost-downsample` | 0.1286 | 0.7921 | 0.2213 |
+| `f20-xgboost-smote` | 0.9293 | 0.5491 | 0.6903 |
 | `d2-rule-delay` | 0.0000 | 0.0000 | 0.0000 |
 | `d2-rule-interval-t` | 0.0000 | 0.0000 | 0.0000 |
 | `d2-rule-interval-timestamp` | 0.0000 | 0.0000 | 0.0000 |
@@ -214,6 +250,12 @@ Per-class values first, macro as the headline average, weighted and accuracy as 
 | `d1-xgboost-no-sequence` | 0.9855 | 0.9995 | 0.9924 |
 | `d1-xgboost-no-size-state-deltas` | 0.9863 | 0.9991 | 0.9927 |
 | `d1-xgboost-no-timing-deltas` | 0.9809 | 0.9986 | 0.9897 |
+| `f10-xgboost-no-abs-no-counters` | 0.9856 | 0.9988 | 0.9922 |
+| `f20-decision-tree-none` | 0.9790 | 0.9995 | 0.9892 |
+| `f20-logistic-regression-none` | 0.9656 | 0.9995 | 0.9823 |
+| `f20-random-forest-none-cap4m` | 0.9867 | 0.9984 | 0.9925 |
+| `f20-xgboost-downsample` | 0.9973 | 0.7682 | 0.8679 |
+| `f20-xgboost-smote` | 0.9861 | 0.9980 | 0.9920 |
 | `d2-rule-delay` | 0.9902 | 0.2880 | 0.4462 |
 | `d2-rule-interval-t` | 0.9654 | 0.9464 | 0.9558 |
 | `d2-rule-interval-timestamp` | 0.9690 | 0.9995 | 0.9840 |
@@ -232,65 +274,6 @@ Per-class values first, macro as the headline average, weighted and accuracy as 
 | `d4-xgboost-tuned` | 0.9862 | 0.9991 | 0.9926 |
 
 `n/a` marks a cell that is **not a result**. A single-threshold rule has one score and cannot name an attack family, so `run_rule_baseline.py` puts that score on one designated class and exactly zero on the other three; those three would come back at the prevalence floor by construction and mean nothing next to a learned run's (`ablations_baselines.md` §16). Only a rule's `ANY_ATTACK` column is a result.
-
-## Confusion matrices
-
-Built from each run's `grouped_predictions.csv`, over the full six-class vocabulary, so ideal `normal` and `benign_degradation` are never folded into one bucket (checklist C.3). Every matrix here also **verifies the table above**: the pooled metrics reconstructed from the per-fold report are checked against `check_prediction_integrity.metrics_from_confusion` on this matrix, and a disagreement beyond 1e-09 is fatal.
-
-### `v2-xgboost-none`
-
-| true \ predicted | normal | benign_degradation | SAG.DB | FRG | SAG.PB | SAG.PBM | total |
-|---|---|---|---|---|---|---|---|
-| normal | 10,561,353 | 7,601 | 65 | 118 | 914 | 256 | 10,570,307 |
-| benign_degradation | 92,119 | 156,104 | 1,723 | 16,731 | 2,031 | 1,934 | 270,642 |
-| SAG.DB | 4,162 | 66 | 44,828 | 4 | 1,715 | 4 | 50,779 |
-| FRG | 12,327 | 5,157 | 338 | 41,761 | 448 | 3,932 | 63,963 |
-| SAG.PB | 5,953 | 458 | 6,200 | 124 | 34,148 | 76 | 46,959 |
-| SAG.PBM | 31,942 | 1,525 | 868 | 4,213 | 1,361 | 14,919 | 54,828 |
-
-### `d4-xgboost-tuned`
-
-| true \ predicted | normal | benign_degradation | SAG.DB | FRG | SAG.PB | SAG.PBM | total |
-|---|---|---|---|---|---|---|---|
-| normal | 10,560,924 | 7,993 | 48 | 111 | 949 | 282 | 10,570,307 |
-| benign_degradation | 92,727 | 155,483 | 1,705 | 16,781 | 2,008 | 1,938 | 270,642 |
-| SAG.DB | 4,162 | 60 | 44,816 | 4 | 1,731 | 6 | 50,779 |
-| FRG | 12,395 | 5,056 | 338 | 41,827 | 442 | 3,905 | 63,963 |
-| SAG.PB | 5,971 | 446 | 6,225 | 138 | 34,107 | 72 | 46,959 |
-| SAG.PBM | 32,239 | 1,502 | 869 | 4,229 | 1,363 | 14,626 | 54,828 |
-
-### `d1-xgboost-no-delta`
-
-| true \ predicted | normal | benign_degradation | SAG.DB | FRG | SAG.PB | SAG.PBM | total |
-|---|---|---|---|---|---|---|---|
-| normal | 10,567,455 | 868 | 1,979 | 5 | 0 | 0 | 10,570,307 |
-| benign_degradation | 209,443 | 61,197 | 0 | 2 | 0 | 0 | 270,642 |
-| SAG.DB | 50,319 | 3 | 457 | 0 | 0 | 0 | 50,779 |
-| FRG | 63,904 | 5 | 54 | 0 | 0 | 0 | 63,963 |
-| SAG.PB | 46,958 | 0 | 1 | 0 | 0 | 0 | 46,959 |
-| SAG.PBM | 54,827 | 0 | 1 | 0 | 0 | 0 | 54,828 |
-
-### `d1-xgboost-no-timing-deltas`
-
-| true \ predicted | normal | benign_degradation | SAG.DB | FRG | SAG.PB | SAG.PBM | total |
-|---|---|---|---|---|---|---|---|
-| normal | 10,555,630 | 3,183 | 2,370 | 5,511 | 1,962 | 1,651 | 10,570,307 |
-| benign_degradation | 138,519 | 101,958 | 2,463 | 22,640 | 1,904 | 3,158 | 270,642 |
-| SAG.DB | 7,328 | 84 | 41,848 | 0 | 1,519 | 0 | 50,779 |
-| FRG | 14,015 | 12,663 | 235 | 33,180 | 432 | 3,438 | 63,963 |
-| SAG.PB | 10,234 | 570 | 5,741 | 114 | 30,244 | 56 | 46,959 |
-| SAG.PBM | 35,360 | 1,911 | 610 | 3,677 | 1,166 | 12,104 | 54,828 |
-
-### `d2-rule-interval-timestamp`
-
-| true \ predicted | normal | benign_degradation | SAG.DB | FRG | SAG.PB | SAG.PBM | total |
-|---|---|---|---|---|---|---|---|
-| normal | 10,564,930 | 0 | 0 | 5,377 | 0 | 0 | 10,570,307 |
-| benign_degradation | 217,830 | 0 | 0 | 52,812 | 0 | 0 | 270,642 |
-| SAG.DB | 30,304 | 0 | 0 | 20,475 | 0 | 0 | 50,779 |
-| FRG | 17,522 | 0 | 0 | 46,441 | 0 | 0 | 63,963 |
-| SAG.PB | 25,719 | 0 | 0 | 21,240 | 0 | 0 | 46,959 |
-| SAG.PBM | 47,089 | 0 | 0 | 7,739 | 0 | 0 | 54,828 |
 
 ## Where the uncertainty lives
 
